@@ -15,10 +15,31 @@ dev = [
     "pytest>=9.1.1",
     "ruff>=0.15.19",
     "pyright>=1.1.411",
+    "pytest-cov>=7.1.0",
 ]
 
 [tool.uv]
 package = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--cov --cov-report=term-missing"
+
+[tool.coverage.run]
+source = ["src/alexandria"]
+branch = true
+relative_files = true
+omit = ["*/__init__.py"]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true
+precision = 1
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "if __name__ == .__main__.:",
+]
 
 [tool.ruff]
 line-length = 119
