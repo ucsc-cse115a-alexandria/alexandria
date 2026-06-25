@@ -1,0 +1,95 @@
+[project]
+name = "alexandria"
+version = "0.1.0"
+description = "Label-free prompt optimization library using sentence embeddings to compress prompts while preserving meaning."
+readme = "README.md"
+requires-python = ">=3.14"
+license = { text = "MIT"}
+authors = [
+  {name = "Masamune William Ishihara", email = "masaishi@champierre.com"}
+]
+dependencies = []
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+    "ruff>=0.15.19",
+    "pyright>=1.1.411",
+]
+
+[tool.uv]
+package = true
+
+[tool.ruff]
+line-length = 119
+target-version = "py314"
+exclude = [
+    ".venv",
+    "__pycache__",
+    "*.pyc",
+    ".git",
+    ".pytest_cache",
+    ".ruff_cache",
+]
+
+[tool.ruff.lint]
+select = [
+    # Core quality
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "SIM", # flake8-simplify
+    "C4",  # flake8-comprehensions
+
+    # Exception handling
+    "TRY", # tryceratops
+
+    # Async/await
+    "ASYNC", # flake8-async
+
+    # Type checking
+    "TCH", # flake8-type-checking
+    "FA",  # flake8-future-annotations
+
+    # Security
+    "S", # flake8-bandit
+
+    # Code quality
+    "ARG",  # flake8-unused-arguments
+    "PERF", # perflint - performance
+    "RUF",  # ruff-specific rules
+    "PIE",  # flake8-pie
+    "RET",  # flake8-return
+    "SLF",  # flake8-self
+
+    # Path operations
+    "PTH", # flake8-use-pathlib
+]
+ignore = [
+    "TRY003", # Allow long exception messages inline
+    "S311",   # Allow standard pseudo-random generators (not used for security)
+    "RUF001", # Allow fullwidth characters in Japanese content
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+"*/*_test.py" = ["S101"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "auto"
+
+[tool.pyright]
+typeCheckingMode = "strict"
+include = ["src"]
+exclude = [
+    ".venv",
+    "venv",
+    "build",
+    "dist",
+    "__pycache__",
+    "migrations",
+]
