@@ -7,21 +7,29 @@ Today is Week 1, Wed Jun 24. Deadlines are marked with `[due M/D]`.
 
 ## Now / Week 1 (through Jun 26) — Highest priority
 
-- [] Form the team (5 +/- 1). Register on Grepthink2.com (UCSC email, class code
-      `Y8JH5YUK`), then propose or join a project. Constraints: at most two members
-      with the same native language (English excepted); at most two KAIST students.
-- [ ] Set up the team GitHub repository (branching strategy, member access).
-- [ ] Decide the technology stack (scoped to what the team can realistically learn).
-- [ ] [due 6/24] Submit the Release Plan (per `ReleasePlanTemplate.md`):
+- [x] Form the team (5 +/- 1). Register on Grepthink2.com (UCSC email, class code
+      `Y8JH5YUK`), then propose or join a project.
+      - Grepthink2 project: https://www.grepthink2.com/app/projects/451b877a-d0ff-4cfe-ac34-8a328d5a0820
+      - Constraints: at most two members with the same native language (English
+        excepted); at most two KAIST students.
+- [x] Set up the team GitHub repository (branching strategy, member access).
+      - Org: https://github.com/ucsc-cse115a-alexandria
+      - Repo: https://github.com/ucsc-cse115a-alexandria/alexandria
+- [x] Decide the technology stack (scoped to what the team can realistically learn).
+      - Decision doc: `tech-stack.md`
+      - Supporting spec: `spec.md`
+- [x] [due 6/24] Submit the Release Plan (per `ReleasePlanTemplate.md`):
       - High-level goals.
       - All user stories (INVEST-compliant, story-point estimates, prioritized,
         assigned across the three summer sprints).
       - Capacity sanity check (total story points vs. team capacity; account for
         the Jul 3 holiday).
       - Product backlog.
-- [ ] [due 6/24] Submit the Sprint 1 Plan (per `SprintPlanTemplate.md`): goal, task
+      - Plan file: `release-plan.md`
+- [x] [due 6/24] Submit the Sprint 1 Plan (per `SprintPlanTemplate.md`): goal, task
       breakdown with time estimates, team roles, initial task assignments, burnup
       chart, scrum board, and scheduled Scrum days/times including the TA visit slot.
+      - Plan file: `sprint-1-plan.md`
 - [ ] Start Sprint 1.
 - [ ] Schedule two Team/TA meetings per week with the coaching TA.
 - [ ] Write the Team Working Agreement (Definition of Done, style guide) — required
