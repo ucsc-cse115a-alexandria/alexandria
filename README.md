@@ -1,5 +1,7 @@
 # Alexandria
 
+[![Coverage badge](https://raw.githubusercontent.com/ucsc-cse115a-alexandria/alexandria/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
+
 ## What Problem Are We Solving?
 
 LLM applications often rely on long, instruction-heavy prompts that evolve over time as new requirements are added. These prompts become difficult to maintain and can degrade model performance due to instruction interference and increased context length.
