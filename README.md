@@ -1,6 +1,6 @@
 # Alexandria
 
-[![Coverage badge](https://raw.githubusercontent.com/ucsc-cse115a-alexandria/alexandria/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
+[![Coverage badge](https://github.com/ucsc-cse115a-alexandria/alexandria/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
 
 ## What Problem Are We Solving?
 
