@@ -32,10 +32,11 @@ in order. **Score** and **Optimize** are *open sets*, not single steps: many sco
 optimizers coexist behind a registry, an optimizer **declares which scorer(s) it consumes**, and
 the scores it receives travel as a name-keyed **bundle** (`Scores = dict[str, ScoreVector]`) so one
 optimizer can read several scorers at once. An optimizer does not return a `Document`; it returns a
-**`Plan`** — the edits it proposes, each carrying the score that ranked it — so several optimizers can
-run at once and their plans **merge** into one ranked list. A single pure primitive, `apply`, folds a
-chosen `Plan` into the smaller `Document` (and returns the inverse plan for undo): running it
-unattended reduces a prompt end to end, while a human can step through the ranked plan and accept or
+**`Plan`** — an ordered **stack** of edits, each carrying the score that ranked it — so several optimizers
+can run at once and their stacks **concatenate** into one series. A single pure primitive, `apply`, **folds
+the stack left** into the smaller `Document` — each edit applying to the result of the one before it, the way
+`sed` streams commands — and returns the inverse stack for undo: running it
+unattended reduces a prompt end to end, while a human can step through the stack and accept or
 reject each edit (the `review` verb). Adding a
 scorer or optimizer is one new file, never an edit to an existing one, and a third party can ship one
 from its own package (see [Extending a phase](#extending-a-phase-scorers-and-optimizers)).
@@ -68,8 +69,8 @@ scorer(s) it needs (`requires=(...)`) so the pipeline runs exactly those — sel
 hardcoded pairing. A strategy registers by name with `@register`, and the same registry is wired to
 Python **entry points**, so a third party can ship a scorer or optimizer from its own package and the
 registry discovers it with no edit to Alexandria. Optimizers return a **`Plan`** rather than a
-`Document`, so the plans of several optimizers merge and a human (or the pipeline) decides what to
-apply.
+`Document`, so the stacks of several optimizers concatenate into one ordered series that a human (or the
+pipeline) folds, deciding what to apply.
 
 **Library first; the CLI is a thin wrapper.** All behavior lives in importable, pure functions
 over the IR. The CLI only parses arguments, moves text in and out, and calls the library. Anything
@@ -106,9 +107,9 @@ src/
     core/               # the contract — depends on nothing else in alexandria
       __init__.py       #   re-exports IR / Protocols / registry / apply
       ir.py             #   Document / Section / Sentence + validation
-      protocols.py      #   Scorer/Optimizer/Embedder Protocols + Scores/ScoreVector/Edit/Candidate/Plan
+      protocols.py      #   Scorer/Optimizer/Embedder Protocols + Scores/ScoreVector/SentenceId/Edit/Candidate/Plan
       registry.py       #   @register (rejects dup names) + lookup + requires-check + entry points
-      select.py         #   apply(Document, edits) -> (Document, inverse); render diff; meaning-preservation
+      select.py         #   apply(Document, edits) folds the edit stack -> (Document, inverse); render diff; meaning-preservation
     represent/          # phase 1 — prompt → Document
       __init__.py       #   represent(prompt, *, embedder=..., reuse=None) -> Document
       split.py          #   split prompt into sentences under headers / XML blocks
@@ -117,8 +118,8 @@ src/
       __init__.py       #   score(document, names=...) -> Scores; imports built-ins
       redundancy.py     #   @register("redundancy")
       centrality.py     #   (later — a new file, nothing else changes)
-    optimize/           # phase 3 — strategy package (many optimizers → merged Plan)
-      __init__.py       #   optimize(document, scores, names=...) -> Plan; merges plans
+    optimize/           # phase 3 — strategy package (many optimizers → concatenated Plan stack)
+      __init__.py       #   optimize(document, scores, names=...) -> Plan; concatenates stacks
       greedy_pairwise.py#   @register("greedy_pairwise", requires=("redundancy",))
       merge.py          #   (later)
     persistence.py      # Parquet save / load
@@ -140,6 +141,7 @@ columns cannot drift out of sync.
 ```python
 type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # a 1-D vector
 type TokenCount = Annotated[int, Field(ge=0)]
+type SentenceId = str   # stable identity assigned at split; how an Edit names a row across edits
 
 class Encoded(BaseModel):
     """Shared base: text plus the encodings computed from it, stored at every level."""
@@ -150,6 +152,7 @@ class Encoded(BaseModel):
 
 class Sentence(Encoded):
     """The atomic instruction and keep/drop unit; split no further."""
+    id: SentenceId            # stable handle an Edit addresses; survives Parquet and reuse=
 
 class Section(Encoded):
     """A markdown header / XML block. Membership is the nesting itself."""
@@ -179,7 +182,8 @@ Represent and stored at every level.
 **Validated on build.** Constructing the tree checks that each node's `text` equals the concatenation
 of its children and its `token_count` equals their sum (so stored values can never drift from the
 children), that every embedding shares one dimension, that token counts are non-negative
-(`TokenCount`), and that no `Section` or `Document` is empty (`min_length=1`).
+(`TokenCount`), that no `Section` or `Document` is empty (`min_length=1`), and that every `Sentence`
+`id` is unique within the `Document` (an `Edit` must name exactly one row, never two).
 
 **One model per Document.** A `Document` records the `embedding_model` that produced its vectors.
 `reuse=` carries embeddings forward only when the model id matches, and `redundancy` refuses to
@@ -187,8 +191,9 @@ cosine-compare vectors across model ids — so the single impure input can never
 incompatible embedding spaces. The id round-trips through Parquet, so a loaded `Document` is
 reproducible.
 
-**Row alignment.** Scorers and optimizers operate on `Document.sentences` — the flattened,
-document-order tuple — so a `list[float]` of scores is row-aligned to it. The pipeline parses each
+**Row alignment.** Scorers rate `Document.sentences` — the flattened, document-order tuple — so a
+`list[float]` of scores is row-aligned to it; an optimizer reads that vector positionally but **names the
+rows it edits by their stable `id`**, so an edit stays valid as earlier edits reshape the document. The pipeline parses each
 scorer's output into a **`ScoreVector`** whose length is validated against `len(document.sentences)`,
 and an optimizer receives one or more of them as a **score bundle**,
 `Scores = dict[str, ScoreVector]` keyed by scorer name, every vector validated against the same
@@ -264,12 +269,20 @@ mutating the input and never reconstructing the `Document` itself. Each proposal
 serializable, invertible **`Edit`** wrapped with the score that ranked it and a short reason:
 
 ```python
-class Edit(BaseModel):
-    """A pure, serializable, invertible change to the IR, addressed by rows in Document.sentences."""
+class Delete(BaseModel):
+    """Drop the addressed sentences."""
     model_config = ConfigDict(frozen=True)
-    op: Literal["delete", "replace"]   # drop the rows, or replace them with one new sentence
-    indices: tuple[int, ...]           # rows in Document.sentences this edit targets (the cluster)
-    replacement: str | None = None     # "replace": text inserted at min(indices); None for "delete"
+    op: Literal["delete"] = "delete"
+    targets: tuple[SentenceId, ...]    # ids of the sentences this edit removes (the cluster)
+
+class Replace(BaseModel):
+    """Collapse the addressed sentences into one new sentence."""
+    model_config = ConfigDict(frozen=True)
+    op: Literal["replace"] = "replace"
+    targets: tuple[SentenceId, ...]    # ids of the cluster being collapsed
+    replacement: str                   # text of the single sentence that replaces them
+
+type Edit = Annotated[Delete | Replace, Field(discriminator="op")]   # no nullable field to keep in sync
 
 class Candidate(BaseModel):
     """A proposed Edit plus the ranking metadata shown during review."""
@@ -278,19 +291,21 @@ class Candidate(BaseModel):
     source: str     # the optimizer that proposed it
     reason: str     # human-readable rationale, shown during review
 
-type Plan = tuple[Candidate, ...]   # sorted by score, descending
+type Plan = tuple[Candidate, ...]   # an ordered stack: folded top-to-bottom, each edit on the prior result
 ```
 
 Returning a `Plan` of edits instead of a `Document` is what lets several optimizers run at once and
-keeps a human in the loop: a plan is data you can **merge, rank, review, serialize, and undo**, where
+keeps a human in the loop: a stack is data you can **concatenate, rank, review, serialize, and undo**, where
 a reconstructed `Document` is not. The single pure primitive
-`apply(document, edits) -> (Document, inverse)` (in `core`) folds the accepted edits into the smaller
-`Document` and returns the **inverse plan** alongside it — it is the *only* place the tree is
-rewritten. Every edit's `indices` resolve against the *input* `Document`, so an entire plan applies in
-one pass with no index-shift hazard. Because each `Edit` carries an inverse — a `delete`'s inverse
-restores the removed `Sentence`s verbatim (their stored embeddings included), a `replace`'s inverse
-puts the original span back — **undo is just `apply(reduced, inverse)`**, and `render(document, plan)`
-shows the plan as a unified diff for review and audit.
+`apply(document, edits) -> (Document, inverse)` (in `core`) **folds the stack left** — each edit applies to
+the `Document` the previous edit produced, the way `sed` streams commands — and returns the **inverse stack**
+alongside it; it is the *only* place the tree is rewritten. Because every edit addresses its targets by stable
+`id` rather than by row position, an edit stays valid as earlier edits reshape the document — there is no
+index-shift hazard even though the stack applies in sequence, and an edit whose targets an earlier edit
+already removed is simply skipped. Because each `Edit` carries an inverse — a `delete`'s inverse restores the
+removed `Sentence`s verbatim (their stored embeddings and ids included), a `replace`'s inverse puts the
+original cluster back — **undo is just folding the inverse stack** (`apply(reduced, inverse)`), and
+`render(document, plan)` shows the stack as a unified diff for review and audit.
 
 An optimizer **declares the scorer(s) it needs** when it registers (`requires=(...)`); the pipeline
 runs exactly those, assembles the `Scores` bundle, and hands it over. So
@@ -318,23 +333,24 @@ the shortened prompt rather than a vector average. Re-embedding costs a model ca
 `encode` is content-addressed, so identical candidate texts are embedded only once.
 
 **`merge` (stretch).** Collapse a redundant cluster into one representative instruction — a single
-`replace` `Edit` over the cluster's rows, which the `delete` op alone cannot express. The `Edit`
-algebra is what gives `merge` a home without a second mutation path: it is still a plan that merges,
+`replace` `Edit` over the cluster's ids, which the `delete` op alone cannot express. The `Edit`
+algebra is what gives `merge` a home without a second mutation path: it is still an edit that stacks,
 reviews, and undoes like any other.
 
-**Running several at once.** Because every optimizer returns a `Plan`, `reduce --optimizer A,B` runs
-both over the same scored `Document` and **merges** their plans into one ranked list: candidates that
-target the same row(s) collapse to a single entry that keeps the highest score and records every
-`source`. Merging plans is sound where chaining reduced `Document`s is not — there is no stale-score
-problem, because every optimizer scores the same original document and only `apply` mutates it, once,
-at the end.
+**Running several at once.** Every optimizer scores the same original `Document` and returns a stack, so
+`reduce --optimizer A,B` **concatenates** both stacks into one series ordered by score and folds it. No
+dedup step is needed: two candidates that target the same cluster apply in score order, and the second —
+finding its targets already removed — is skipped. Scoring once and folding in order stays sound because
+edits address stable ids and `apply` re-checks each edit against the *current* document as it folds, so a
+score only *ranks* the stack while correctness is enforced step by step.
 
 **Meaning preservation — the hard constraint.** A *unique* sentence (one with no peer above the
 redundancy threshold) must never be dropped. Optimizers do not emit `delete` candidates for unique
 sentences (and `merge` only ever `replace`s a redundant cluster, never a unique sentence), so neither
 an unattended `reduce` nor a human `review` — both of which can only act on proposed candidates — can
-remove a load-bearing instruction. `apply` additionally rejects any plan that would empty a `Section`
-or the `Document`, the structural half of the same guarantee.
+remove a load-bearing instruction. As it folds the stack, `apply` additionally rejects any edit that would
+empty a `Section` or the `Document` — the structural half of the same guarantee, re-checked at each step
+against the current document rather than a stale snapshot.
 
 ## Extending a phase: scorers and optimizers
 
@@ -347,7 +363,7 @@ addition looks the same:
 
    ```python
    type Scores = dict[str, ScoreVector]   # scorer name → row-aligned, length-validated scores
-   type Plan   = tuple[Candidate, ...]    # edit candidates, ranked by score
+   type Plan   = tuple[Candidate, ...]    # an ordered stack of edit candidates, folded top-to-bottom
 
    class Scorer(Protocol):
        def __call__(self, document: Document) -> list[float]: ...
@@ -431,21 +447,24 @@ A misaligned or short vector is a construction error, not a silent off-by-one.
 optimizer validates its `requires=(...)` against the registered scorers at startup — an unknown
 scorer is a clear error before any work runs.
 
-**Edit laws (property-tested).** Applying a plan and then its inverse restores the original exactly
-(`apply(reduced, inverse) == original`); `apply` never increases the `Document`'s token count; it
-never targets a unique sentence; and it refuses any plan that would empty a `Section` or the
-`Document`. All four are Hypothesis properties over generated documents and plans.
+**Edit laws (property-tested).** Folding a stack and then its inverse restores the original exactly
+(`apply(reduced, inverse) == original`); folding never increases the `Document`'s token count; no edit
+targets a unique sentence; an edit addressing an already-removed `id` is skipped, not misapplied; and
+`apply` refuses any edit that would empty a `Section` or the `Document`. Because edits address stable ids,
+**non-overlapping edits are order-independent** — folding them in any order yields the same `Document`. All
+are Hypothesis properties over generated documents and stacks.
 
 ## Persistence — Parquet
 
 The tree is the in-memory view; on disk it flattens to a single **Parquet** table, **one row per
 node** (columns `level` — `document` / `section` / `sentence` — plus `text`, `token_count`,
-`embedding`, `section_header`, `order`, and the document-level `embedding_model`). Every level's
+`embedding`, `section_header`, `order`, the sentence-level `id`, and the document-level `embedding_model`). Every level's
 `embedding` is stored, because each is a real model embedding that a mean cannot reconstruct; `load`
 regroups the sentence rows by `section_header` in `order` to rebuild the tree, attaches each stored
 `Section` / `Document` embedding, and restores `embedding_model`, so `load(path) -> Document` needs no
 model and `save(Document, path)` / `load(path)` round-trip exactly. Because a `Plan` is plain
-serializable data, it can be saved beside the `Document` and replayed — or inverted to undo — without
+serializable data and every `Edit` addresses sentences by their stable `id`, it can be saved beside the
+`Document` and replayed against the reloaded tree — its ids still match — or inverted to undo, without
 re-running an optimizer.
 
 Parquet beats JSON/JSONL here: embeddings are dense `float32` vectors that JSON bloats ~3–5× and
@@ -461,12 +480,12 @@ prompt from a `FILE` argument or stdin and writes its result to stdout; diagnost
 exit `0` on success, `2` on usage error, `1` otherwise.
 
 - `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — prompt in, **reduced
-  prompt out**. Runs all three phases end to end and `apply`s the whole merged `Plan` unattended;
-  pass several optimizers and their plans merge. There is no `--scorer` flag because each chosen
+  prompt out**. Runs all three phases end to end and folds the whole `Plan` stack unattended;
+  pass several optimizers and their stacks concatenate into one series. There is no `--scorer` flag because each chosen
   optimizer declares the scorer(s) it needs. Text in, text out, so it drops straight into a pipe:
   `alexandria reduce prompt.txt > reduced.txt`. This is the headline path.
 - `alexandria review [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — same pipeline, but
-  **interactive**: it walks the merged `Plan` from highest score down and asks you to accept or reject
+  **interactive**: it walks the `Plan` stack from highest score down and asks you to accept or reject
   each drop, then `apply`s only the accepted ones and writes the reduced prompt. This is the
   human-in-the-loop path; `reduce` is the same flow with every candidate auto-accepted.
 - `alexandria score [FILE] [--scorer NAME[,NAME...]] [--json]` — prompt in, per-instruction scores out
