@@ -17,18 +17,11 @@ def _as_vector(value: object) -> NDArray[np.float32]:
 
 
 Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]
-"""A 1-D float32 embedding vector."""
-
 TokenCount = Annotated[int, Field(ge=0)]
-"""A non-negative token count."""
-
 SentenceId = str
-"""Stable identity assigned at split; how an Edit names a row across edits."""
 
 
 class Encoded(BaseModel):
-    """Shared base: text plus the encodings computed from it, stored at every level."""
-
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     text: str
     token_count: TokenCount
@@ -36,14 +29,10 @@ class Encoded(BaseModel):
 
 
 class Sentence(Encoded):
-    """The atomic instruction and keep/drop unit; split no further."""
-
     id: SentenceId
 
 
 class Section(Encoded):
-    """A group of sentences (Sprint 1: one per Document, header="")."""
-
     header: str
     sentences: tuple[Sentence, ...] = Field(min_length=1)
 
@@ -58,14 +47,11 @@ class Section(Encoded):
 
 
 class Document(Encoded):
-    """The whole prompt — the apex of the IR."""
-
     embedding_model: str
     sections: tuple[Section, ...] = Field(min_length=1)
 
     @property
     def sentences(self) -> tuple[Sentence, ...]:
-        """Every section flattened in document order — the row axis for scores."""
         return tuple(s for section in self.sections for s in section.sentences)
 
     @model_validator(mode="after")
