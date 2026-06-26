@@ -1,35 +1,33 @@
 # Alexandria — Technology Stack Decision
 
-**Product:** Alexandria · **Team:** Alexandria Team · **Revision:** 1 (2026-06-24)
+**Product:** Alexandria · **Team:** Alexandria Team · **Revision:** 3 (2026-06-26)
 
-Scoped to what the team can realistically learn within a five-week course, and to what
-the pipeline in [`spec.md`](spec.md) actually needs.
+Scoped to what the team can learn in a five-week course and to what the pipeline in
+[`spec.md`](spec.md) actually needs.
 
 ## Decisions
 
 | Area | Choice | Why |
 |---|---|---|
-| Language / packaging | Python 3.14, `uv` | Already established in the repo; `uv` gives fast, reproducible envs. |
-| Embeddings | `sentence-transformers` (`all-MiniLM-L6-v2`) | Local, free, deterministic, no API key or network. Small/fast (384-dim) baseline; runs in CI. |
-| Numerics | NumPy | Cosine-similarity matrix and vector math behind the redundancy score. |
-| Data / reporting | Polars | Sprint 3 benchmark tables; faster and lighter than pandas. |
-| Token metric | `tiktoken` | Token-reduction measurement. Documented as a **model-independent proxy**, not an exact Claude token count. |
-| CLI | `argparse` + stdin/stdout JSON | Stdlib (minimal deps); stages compose with Unix pipes. |
-| Quality gates | `ruff`, `pyright` (strict), `pytest` | Already configured in `pyproject.toml`. |
-| CI | GitHub Actions (`.github/workflows/ci.yml`) | Already present; runs lint + types + tests. |
+| Language / packaging | Python 3.14, `uv` | Established in the repo; fast, reproducible envs. |
+| IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't drift from their children. |
+| Embeddings | `sentence-transformers` (`all-MiniLM-L6-v2`) | Local, free, deterministic, no API key. The one nondeterministic dependency, isolated inside Represent. |
+| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the ablation distances behind `greedy_pairwise`. |
+| Persistence | Parquet via Polars | One row per node; stores embeddings as compact `float32` lists. JSON/JSONL bloat them ~3–5× and round lossily. |
+| Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
+| Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |
+| Plugin discovery | Python entry points | One registry discovers built-in **and** third-party scorers/optimizers by name; adding one never edits Alexandria. |
+| CLI | [`click`](https://github.com/pallets/click) | Verbs `reduce` / `score` / `review` / `benchmark`; text in, text out, `--json` for machine-readable scores. |
+| Quality gates | `ruff`, `pyright` (strict), `pytest` + `pytest-cov` | Configured in `pyproject.toml`; coverage gated at 80%. |
+| CI | GitHub Actions | Runs lint + types + tests. |
 
 ## Rejected alternatives
 
-- **Hosted embedding API (OpenAI / Voyage):** higher quality, but adds cost, API keys,
-  network flakiness, and non-determinism in benchmarks. The IR keeps embeddings swappable,
-  so this stays open for a later release.
-- **pandas instead of Polars:** heavier; no feature we need that Polars lacks.
-- **Typer / Click for CLI:** nicer ergonomics, but an extra dependency for a single
-  entry point — `argparse` is enough for v1.
-- **Exact per-model tokenizers everywhere:** prompts target many models; one proxy
-  tokenizer keeps the metric comparable across the corpus.
-
-## Notes
-
-- Each stage in `spec.md` depends only on the IR, so any single choice above (model,
-  token counter, CLI framework) can be replaced without rewriting other stages.
+- **Hosted embedding API (OpenAI / Voyage):** higher quality, but adds cost, keys, and
+  benchmark non-determinism. The IR keeps embeddings swappable, so this stays open for later.
+- **JSON / JSONL for persistence:** readable, but bloats dense `float32` embeddings and rounds
+  them lossily; Parquet stores typed lists and round-trips exactly.
+- **Hand-built IR / dataclasses:** no validation at the boundary. Pydantic enforces the tree's
+  invariants on construction, so impossible states are unrepresentable.
+- **A hardcoded scorer↔optimizer table:** couples each new strategy to central wiring. The
+  registry lets an optimizer declare what it needs (`requires=(...)`), so selection is data.
