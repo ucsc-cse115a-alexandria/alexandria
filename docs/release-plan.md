@@ -69,20 +69,17 @@ high-level goal it serves (G1-G4).
 
 ## Capacity sanity check
 
-- Team of 5, one-week sprints. One story point is about 3 ideal hours, so each sprint holds
-  roughly 20 points.
-- Story points per sprint: S1 = 17, S2 = 16, S3 = 11, S4 = 11.
-- Sprint 1 also carries the spike (5) and infrastructure setup (3), which run in parallel with
-  coding.
-- Sprints 3 and 4 are lighter on purpose. Improvement and evaluation are open-ended, and other
-  course work (RACs, two tests, reports) runs in parallel.
+- Team of 5, one-week sprints, roughly 20 story points each. Every sprint's planned work fits
+  that budget.
+- Sprints 3 and 4 are lighter on purpose: improvement and evaluation are open-ended and run
+  alongside other course work.
 
 ## Product backlog (not in Release 1.0)
 
-- Hosted embedding API backend (swappable behind the representation).
-- Per-model exact tokenizers instead of the proxy counter.
+- Hosted embedding API backend.
+- Per-model exact tokenizers.
 - Rewriting instructions beyond drop and merge.
 - A web UI or hosted service.
-- A configurable redundancy metric (mean vs. max similarity, learned thresholds).
+- A configurable redundancy metric.
 
 We revisit and update the release plan and product backlog after each sprint.
