@@ -8,7 +8,16 @@ license = { text = "MIT"}
 authors = [
   {name = "Masamune William Ishihara", email = "mwishiha@ucsc.edu"}
 ]
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+    "numpy>=2.1",
+    "tiktoken>=0.8",
+    "click>=8.1",
+    "sentence-transformers>=3.0",
+]
+
+[project.scripts]
+alexandria = "alexandria.cli:cli"
 
 [dependency-groups]
 dev = [
@@ -22,14 +31,14 @@ dev = [
 package = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--cov --cov-report=term-missing"
+testpaths = ["src", "tests"]
+addopts = "--cov --cov-report=term-missing --import-mode=importlib"
 
 [tool.coverage.run]
 source = ["src/alexandria"]
 branch = true
 relative_files = true
-omit = ["*/__init__.py"]
+omit = ["*/__init__.py", "*_test.py"]
 
 [tool.coverage.report]
 fail_under = 80
