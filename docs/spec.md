@@ -8,38 +8,47 @@ meaning, using sentence embeddings.
 Given a long, redundant prompt, find which instructions overlap (a **redundancy score**) and
 drop the redundant ones — with no labels, no training, and no target output to compare against.
 
-## The three phases
+## The four phases
 
-Alexandria optimizes a prompt in **three phases over one intermediate representation (IR)**.
-The prompt becomes a `Document`, the `Document` is scored, the scores drive a `Plan` of edits, and
-applying the `Plan` yields a smaller `Document`. That is the whole system:
+Alexandria optimizes a prompt in **four phases over one intermediate representation (IR)**.
+The prompt becomes a `Document`, the `Document` is scored, the scores drive a `Plan` of ranked edit
+candidates, and a selector folds the `Plan` into a smaller `Document`. That is the whole system:
 
 ```
-                 ┌──────────────── optimize ────────────────┐
-prompt ─────────▶│  Represent   ──▶   Score   ──▶  Optimize  │──▶ apply ──▶ reduced prompt
-                 │  prompt→Document   →scores      →Plan      │
-                 └───────────────────────────────────────────┘
+                 ┌──────────────────────── reduce ────────────────────────┐
+prompt ─────────▶│  Represent   ──▶   Score   ──▶   Optimize   ──▶  Select │──▶ reduced prompt
+                 │  prompt→Document   →Scores       →Plan            →Document
+                 └────────────────────────────────────────────────────────┘
 ```
 
 | Phase | What it does | Contract |
 |---|---|---|
 | **1. Represent** | Turn the prompt into the IR: split into instructions, count tokens, embed each one. | `represent(str, *, embedder: Embedder = ..., reuse: Document \| None = None) -> Document` |
 | **2. Score** | Rate every instruction. The first scorer rates **redundancy**. | `Scorer = (Document) -> list[float]` |
-| **3. Optimize** | Use the scores to choose which instructions to drop. | `Optimizer = (Document, Scores) -> Plan` |
+| **3. Optimize** | Propose and rank the edits the scores justify. | `Optimizer = (Document, Scores, Params) -> Plan` |
+| **4. Select** | Apply candidates highest-confidence-first while the prompt stays within the drift budget. | `Selector = (Document, Plan, Embedder, Params) -> Document` |
 
-Each phase is a pure function over the IR, so each is tested on its own and the three compose
-in order. **Score** and **Optimize** are *open sets*, not single steps: many scorers and many
-optimizers coexist behind a registry, an optimizer **declares which scorer(s) it consumes**, and
-the scores it receives travel as a name-keyed **bundle** (`Scores = dict[str, ScoreVector]`) so one
-optimizer can read several scorers at once. An optimizer does not return a `Document`; it returns a
-**`Plan`** — an ordered **stack** of edits, each carrying the score that ranked it — so several optimizers
-can run at once and their stacks **concatenate** into one series. A single pure primitive, `apply`, **folds
-the stack left** into the smaller `Document` — each edit applying to the result of the one before it, the way
-`sed` streams commands — and returns the inverse stack for undo: running it
-unattended reduces a prompt end to end, while a human can step through the stack and accept or
-reject each edit (the `review` verb). Adding a
-scorer or optimizer is one new file, never an edit to an existing one, and a third party can ship one
-from its own package (see [Extending a phase](#extending-a-phase-scorers-and-optimizers)).
+Each phase is a pure function over the IR, so each is tested on its own and the four compose in
+order. The split between **Optimize** and **Select** is deliberate: Optimize only *proposes and ranks*
+candidates (it never decides how many survive or re-embeds anything), and Select is the controller that
+*chooses and applies* — keeping the "which edits, in what order, and when to stop" decision in one place.
+
+**Score** and **Optimize** are *open sets*, not single steps: many scorers and many optimizers coexist
+behind a registry, an optimizer **declares which scorer(s) it consumes**, and the scores it receives travel
+as a name-keyed **bundle** (`Scores = dict[str, ScoreVector]`) so one optimizer can read several scorers at
+once. An optimizer does not return a `Document`; it returns a **`Plan`** — an ordered **stack** of edit
+candidates, each carrying the `confidence` that ranked it — so several optimizers can run at once and their
+stacks **concatenate** into one series.
+
+**Select** is an open set too: a *selector* reads the `Plan` and folds it into a smaller `Document`. The
+default `auto` selector sorts candidates by `confidence` (highest first) and applies each only while the
+reduced prompt stays within `drift_budget` cosine distance of the original prompt embedding — so an
+unattended `reduce` compresses as far as the meaning budget allows. A future interactive selector (the
+`review` verb) walks the same ranked stack and asks a human to accept or reject each edit. Both call one
+pure primitive, `apply`, which **folds the stack left** into the smaller `Document` — each edit applying to
+the result of the one before it, the way `sed` streams commands — the only place the tree is rewritten.
+Adding a scorer, optimizer, or selector is one new file, never an edit to an existing one, and a third
+party can ship one from its own package (see [Extending a phase](#extending-a-phase-scorers-and-optimizers)).
 
 Two things sit **outside** the three phases on purpose:
 
@@ -55,8 +64,8 @@ decision and a principle disagree, the principle wins.
 
 **Modularity through contracts, not implementations.** The system talks to itself across exactly
 two stable contracts: the **IR** (`Document` / `Section` / `Sentence`) and the **phase signatures**
-(`represent`, `Scorer`, `Optimizer`). A caller depends on the contract and nothing behind it. Any
-scorer, optimizer, tokenizer, or embedding backend can be swapped without a neighbor noticing,
+(`represent`, `Scorer`, `Optimizer`, `Selector`). A caller depends on the contract and nothing behind it. Any
+scorer, optimizer, selector, tokenizer, or embedding backend can be swapped without a neighbor noticing,
 because only the data shape and the signature cross the boundary.
 
 **Every Score and Optimize strategy is a plugin.** Scorers and optimizers are the same kind of
@@ -97,34 +106,43 @@ with the rest.
 
 ## Project layout
 
-The folder structure is part of the design: it puts each phase in its own place, separates the stable
-contract (`core/`) from the swappable strategies, and makes the plugin convention visible.
+The folder structure is part of the design: every layer is its own folder, so the dependency order is
+visible in the tree — `cli` wraps `runtime`, `runtime` drives the `phases`, and the `phases` build on
+the stable contract in `core/`. It separates that contract from the swappable strategies and makes the
+plugin convention visible.
 
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, apply, Document
-    core/               # the contract — depends on nothing else in alexandria
-      __init__.py       #   re-exports IR / Protocols / registry / apply
+    __init__.py         # public API: represent, score, optimize, select, apply, reduce, score_report, Document
+    cli.py              # layer 1 — thin wrapper; verbs reduce / score
+    runtime/            # layer 2 — what runs the library at call time
+      embedding.py      #   Embedder implementations; the only place a model is built (imperative shell)
+      pipeline.py       #   compose the four phases end to end — reduce / score_report
+    phases/             # layer 3 — the four pluggable phases; each imports only core
+      represent/        #   phase 1 — prompt → Document
+        __init__.py     #     represent(prompt, embedder) -> Document
+        split.py        #     group prompt lines into a nested section tree (markdown / xml / plain)
+        encode.py       #     tokenize + embed (via injected Embedder) every node
+      score/            #   phase 2 — strategy package (many scorers → Scores bundle)
+        __init__.py     #     score(document, names=...) -> Scores; imports built-ins
+        redundancy.py   #     @register_scorer("redundancy")
+        centrality.py   #     (later — a new file, nothing else changes)
+      optimize/         #   phase 3 — strategy package (many optimizers → concatenated Plan stack)
+        __init__.py     #     optimize(document, scores, names=...) -> Plan
+        greedy_pairwise.py #  @register_optimizer("greedy_pairwise", requires=("redundancy",))
+        merge.py        #     (later)
+      select/           #   phase 4 — strategy package (selectors fold a Plan → reduced Document)
+        __init__.py     #     select(document, plan, embedder, name=...) -> Document
+        auto.py         #     @register_selector("auto") — confidence-ranked, drift-budgeted
+        review.py       #     (later — interactive accept/reject)
+    core/               # layer 4 — the contract; depends on nothing else in alexandria
+      __init__.py       #   re-exports IR / Protocols / registry / apply / similarity
       ir.py             #   Document / Section / Sentence + validation
-      protocols.py      #   Scorer/Optimizer/Embedder Protocols + Scores/ScoreVector/SentenceId/Edit/Candidate/Plan
-      registry.py       #   @register (rejects dup names) + lookup + requires-check + entry points
-      select.py         #   apply(Document, edits) folds the edit stack -> (Document, inverse); render diff; meaning-preservation
-    represent/          # phase 1 — prompt → Document
-      __init__.py       #   represent(prompt, *, embedder=..., reuse=None) -> Document
-      split.py          #   split prompt into sentences under headers / XML blocks
-      encode.py         #   tokenize + embed (via injected Embedder) every node, reusing unchanged text
-    score/              # phase 2 — strategy package (many scorers → Scores bundle)
-      __init__.py       #   score(document, names=...) -> Scores; imports built-ins
-      redundancy.py     #   @register("redundancy")
-      centrality.py     #   (later — a new file, nothing else changes)
-    optimize/           # phase 3 — strategy package (many optimizers → concatenated Plan stack)
-      __init__.py       #   optimize(document, scores, names=...) -> Plan; concatenates stacks
-      greedy_pairwise.py#   @register("greedy_pairwise", requires=("redundancy",))
-      merge.py          #   (later)
-    persistence.py      # Parquet save / load
-    cli.py              # invoke the phases; verbs reduce / score / review / benchmark
-benchmark/              # separate concern — measures the pipeline
+      protocols.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan
+      registry.py       #   @register_* (rejects dup names) + lookup + requires-check + entry points
+      apply.py          #   apply / try_apply: fold the edit stack -> a smaller Document (the only rewrite)
+      similarity.py     #   cosine helpers shared by score, optimize, and select
 pyproject.toml          # entry points (strategy discovery) + import-linter layering contracts
 tests/                  # mirrors src/alexandria; strategies.py (Hypothesis) + pure-function laws
 ```
@@ -143,6 +161,12 @@ type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # 
 type TokenCount = Annotated[int, Field(ge=0)]
 type SentenceId = str   # stable identity assigned at split; how an Edit names a row across edits
 
+class SectionKind(StrEnum):
+    """Where a Section came from. The Document is the root, so every Section has one of these."""
+    MARKDOWN = "markdown"   # a markdown header
+    XML = "xml"             # an XML tag block
+    PLAIN = "plain"         # body text under no header or tag (a preamble or a structureless prompt)
+
 class Encoded(BaseModel):
     """Shared base: text plus the encodings computed from it, stored at every level."""
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
@@ -152,21 +176,30 @@ class Encoded(BaseModel):
 
 class Sentence(Encoded):
     """The atomic instruction and keep/drop unit; split no further."""
+    node: Literal["sentence"] = "sentence"   # discriminates a child Sentence from a child Section
     id: SentenceId            # stable handle an Edit addresses; survives Parquet and reuse=
 
 class Section(Encoded):
-    """A markdown header / XML block. Membership is the nesting itself."""
-    header: str                                  # header path / xml tag ("" if top level)
-    sentences: tuple[Sentence, ...] = Field(min_length=1)
+    """A markdown header / XML block / plain run. Membership is the nesting itself; sections nest."""
+    node: Literal["section"] = "section"     # discriminator (mirrors Edit's `op`)
+    kind: SectionKind                            # markdown / xml / plain
+    header: str                                  # markdown: header text, xml: tag name, plain: ""
+    children: tuple[Node, ...] = Field(min_length=1)   # Sentences and sub-Sections, interleaved
+
+    @property
+    def sentences(self) -> tuple[Sentence, ...]:
+        """Every descendant Sentence, recursively, in document order."""
+
+type Node = Annotated[Sentence | Section, Field(discriminator="node")]
 
 class Document(Encoded):
-    """The whole prompt — the apex of the IR."""
+    """The whole prompt — the apex of the IR; its sections are the top level (it is the root)."""
     embedding_model: str                         # id of the model that produced every embedding
     sections: tuple[Section, ...] = Field(min_length=1)
 
     @property
     def sentences(self) -> tuple[Sentence, ...]:
-        """Every section flattened in document order — the row axis for scores."""
+        """Every section's descendants flattened in document order — the row axis for scores."""
         return tuple(s for section in self.sections for s in section.sentences)
 ```
 
@@ -205,18 +238,21 @@ a different model, or another tokenizer can be dropped in later without touching
 
 `represent(prompt) -> Document` builds the IR in two internal steps:
 
-1. **`split`** divides the prompt into sentences grouped under their headers / XML blocks. The split
-   is **lossless**: each `Sentence` keeps its original separators so the pieces re-concatenate into
-   the exact input.
-2. **`encode`** tokenizes each sentence with `tiktoken` and embeds it, then embeds each `Section`'s
-   and the `Document`'s reconstructed `text`, and assembles the validated tree.
+1. **`split`** groups the prompt's lines into a **nested section tree**: a markdown header opens a
+   section that nests by `#` depth, a standalone-line XML tag opens a section that nests by tag
+   stack (the block is a hard boundary), and text under no header or tag becomes a `plain` section
+   (a preamble, or a structureless prompt as one section). The header line and the XML tags stay as
+   `Sentence`s, so the split is **lossless**: concatenating every leaf `Sentence`'s text in document
+   order reproduces the exact input.
+2. **`encode`** tokenizes each sentence with `tiktoken` and embeds it, then embeds every `Section`'s
+   (including nested) and the `Document`'s reconstructed `text`, and assembles the validated tree.
 
 These are sub-steps, not phases — you always run them together to get a `Document`, and only the
 `Document` crosses into Score.
 
 **Injected embedder.** `encode` never hard-wires a model: it calls an `Embedder` Protocol passed into
 `represent`. Production wires in `sentence-transformers`; tests pass a deterministic fake. This is the
-system's only impure boundary — `core`, `score`, and `optimize` never import a model, a rule the
+system's only impure boundary — `core`, the `phases`, and `pipeline` never import a model, a rule the
 layering linter enforces (see [Invariants & enforcement](#invariants--enforcement)). The model's id
 is stamped onto the `Document` as `embedding_model`.
 
@@ -264,9 +300,10 @@ rest of the project.
 
 ## Phase 3 — Optimize
 
-An optimizer reads a scored `Document` and **proposes edits**: `(Document, Scores) -> Plan`, never
-mutating the input and never reconstructing the `Document` itself. Each proposal is a pure,
-serializable, invertible **`Edit`** wrapped with the score that ranked it and a short reason:
+An optimizer reads a scored `Document` and **proposes and ranks edits**:
+`(Document, Scores, Params) -> Plan`, never mutating the input, never reconstructing the `Document`, and
+never re-embedding (that is Select's job). Each proposal is a pure, serializable **`Edit`** wrapped with the
+`confidence` that ranked it and a short reason:
 
 ```python
 class Delete(BaseModel):
@@ -285,13 +322,13 @@ class Replace(BaseModel):
 type Edit = Annotated[Delete | Replace, Field(discriminator="op")]   # no nullable field to keep in sync
 
 class Candidate(BaseModel):
-    """A proposed Edit plus the ranking metadata shown during review."""
+    """A proposed Edit plus the ranking metadata Select orders by and review shows."""
     edit: Edit
-    score: float    # ranking key — high means a stronger candidate
-    source: str     # the optimizer that proposed it
-    reason: str     # human-readable rationale, shown during review
+    confidence: float   # ranking key — high means a stronger candidate (Select applies high → low)
+    source: str         # the optimizer that proposed it
+    reason: str         # human-readable rationale, shown during review
 
-type Plan = tuple[Candidate, ...]   # an ordered stack: folded top-to-bottom, each edit on the prior result
+type Plan = tuple[Candidate, ...]   # an ordered stack Select folds top-to-bottom, each edit on the prior result
 ```
 
 Returning a `Plan` of edits instead of a `Document` is what lets several optimizers run at once and
@@ -313,52 +350,97 @@ runs exactly those, assembles the `Scores` bundle, and hands it over. So
 dependency instead of the caller wiring it up.
 
 **The first optimizer — `greedy_pairwise` (over `redundancy`).** Registered as
-`@register("greedy_pairwise", requires=("redundancy",))`, it reads `scores["redundancy"]`. For each
-near-duplicate pair, it keeps the more load-bearing sentence by A/B ablation against the whole-prompt
-embedding — `Document.embedding`, the real embedding of the full text — and emits a `delete`
-`Candidate` for the one it would drop:
+`@register_optimizer("greedy_pairwise", requires=("redundancy",))`, it reads `scores["redundancy"]`.
+For each near-duplicate pair it proposes dropping the **more redundant** of the two — the one whose
+redundancy score is higher, i.e. the one most duplicated elsewhere — and ranks the candidate by the
+pair's similarity (its `confidence`):
 
 ```
-prompt_emb(S) = embed(join(s.text for s in S))   # a real embedding of the kept text
-base = Document.embedding                          # == prompt_emb(all sentences)
-for (a, b) in pairs with score ≥ threshold, sorted by similarity desc:
-    if a and b are both still present:
-        Δa = ‖prompt_emb(S without a) − base‖
-        Δb = ‖prompt_emb(S without b) − base‖
-        propose dropping argmin(Δa, Δb); keep the other   # the one that changes meaning least
+for (a, b) in pairs with similarity ≥ threshold, sorted by similarity desc:
+    if redundancy[a] ≥ threshold and redundancy[b] ≥ threshold and both still un-proposed:
+        drop = argmax(redundancy[a], redundancy[b]); keep the other
+        emit Candidate(Delete(drop), confidence=similarity)
 ```
 
-Each ablation re-embeds the remaining text, so the trial reflects the model's real representation of
-the shortened prompt rather than a vector average. Re-embedding costs a model call per trial;
-`encode` is content-addressed, so identical candidate texts are embedded only once.
+A per-pass `present` set keeps the proposals coherent — for three identical sentences it proposes two
+deletes, never all three — so at least one copy of every cluster survives the proposal stage. The
+optimizer does **not** re-embed and does **not** decide how far to compress; it hands Select a ranked,
+non-conflicting stack and lets the drift budget decide how much of it to apply.
 
 **`merge` (stretch).** Collapse a redundant cluster into one representative instruction — a single
 `replace` `Edit` over the cluster's ids, which the `delete` op alone cannot express. The `Edit`
 algebra is what gives `merge` a home without a second mutation path: it is still an edit that stacks,
 reviews, and undoes like any other.
 
-**Running several at once.** Every optimizer scores the same original `Document` and returns a stack, so
-`reduce --optimizer A,B` **concatenates** both stacks into one series ordered by score and folds it. No
-dedup step is needed: two candidates that target the same cluster apply in score order, and the second —
-finding its targets already removed — is skipped. Scoring once and folding in order stays sound because
-edits address stable ids and `apply` re-checks each edit against the *current* document as it folds, so a
-score only *ranks* the stack while correctness is enforced step by step.
+**Running several at once.** Every optimizer reads the same original `Document` and returns a stack, so
+`reduce --optimizer A,B` **concatenates** both stacks into one series; **Select** then orders the whole by
+`confidence` and folds it. No dedup step is needed: two candidates that target the same cluster apply in
+confidence order, and the second — finding its targets already removed — is skipped. Concatenating once and
+folding in order stays sound because edits address stable ids and `apply` re-checks each edit against the
+*current* document as it folds, so `confidence` only *ranks* the stack while correctness is enforced step by
+step.
 
-**Meaning preservation — the hard constraint.** A *unique* sentence (one with no peer above the
-redundancy threshold) must never be dropped. Optimizers do not emit `delete` candidates for unique
-sentences (and `merge` only ever `replace`s a redundant cluster, never a unique sentence), so neither
-an unattended `reduce` nor a human `review` — both of which can only act on proposed candidates — can
-remove a load-bearing instruction. As it folds the stack, `apply` additionally rejects any edit that would
-empty a `Section` or the `Document` — the structural half of the same guarantee, re-checked at each step
-against the current document rather than a stale snapshot.
+**Meaning preservation — the hard constraint.** It is enforced at two points. (1) *Unique* sentences (no
+peer above the redundancy threshold) are never proposed for deletion, so no optimizer can put a
+load-bearing instruction on the stack. (2) Select re-embeds the reduced prompt after each tentative edit
+and keeps the edit only while the prompt stays within `drift_budget` cosine distance of the original — so
+even among redundant candidates, compression stops before meaning drifts too far (see
+[Phase 4 — Select](#phase-4--select)). As it folds, `apply` additionally rejects any edit that would empty a
+`Section` or the `Document` — the structural half of the guarantee, re-checked at each step against the
+current document rather than a stale snapshot.
 
-## Extending a phase: scorers and optimizers
+## Phase 4 — Select
 
-Score and Optimize are open sets. Adding a strategy follows one convention for both, so every
-addition looks the same:
+A *selector* turns a ranked `Plan` into a reduced `Document`: `(Document, Plan, Embedder, Params) -> Document`.
+Optimize decides *what could change* and *how confident* each change is; Select decides *which changes
+actually happen* and *when to stop*. Keeping that controller in one phase is why `confidence` is finally
+read here, and why the drift budget lives in one place instead of being threaded through every optimizer.
 
-1. **One strategy, one file** in that phase's package (`score/` or `optimize/`).
-2. **Implement the phase `Protocol`.** Both live in `core/protocols.py`, alongside the data they
+**The default selector — `auto`.** It applies candidates greedily, highest-confidence-first, accepting each
+only while the reduced prompt stays within the drift budget:
+
+```
+base = Document.embedding                       # the real embedding of the original prompt
+current = Document
+for candidate in plan sorted by confidence desc:
+    trial = try_apply(current, candidate)       # None if it would empty a Section/Document → skip
+    if trial is None: continue
+    drift = cosine_distance(embed(trial.text), base)   # re-embed the reduced prompt
+    if drift ≤ params.drift_budget:             # default 0.01 — within 1% of the original
+        current = trial                         # accept; the budget is cumulative from here
+return current
+```
+
+The drift is measured against `base` after *every* accepted edit, so the budget is **cumulative**: the
+loop compresses as far as 1% of meaning allows and then stops. This is self-regulating — once one half of
+a redundant pair is dropped, removing its peer would delete genuinely unique content, drift past the
+budget, and be skipped — so the `auto` selector keeps one copy of a cluster without any explicit
+"don't delete both" rule. `Params` carries both phases' knobs (`threshold` for Optimize's eligibility,
+`drift_budget` for Select's stop condition); `OptimizerParams`-style defaults live in one frozen model.
+
+Because `auto` re-embeds the reduced prompt, the budget reflects the embedding model's real
+representation of the shortened text. With a non-semantic embedder (the deterministic test backend, which
+hashes the whole string) any edit re-embeds to an unrelated vector, so a faithful test sets a generous
+budget to exercise deletion and the default 1% to exercise the stop condition.
+
+**A future selector — `review`.** The same ranked stack, folded interactively: `review` walks candidates
+from highest confidence down and asks a human to accept or reject each, then returns the reduced
+`Document`. `auto` and `review` are the same phase with different stop logic — automatic budget versus a
+person — which is exactly why Select is its own pluggable phase rather than a branch inside `reduce`.
+
+**The fold primitive — `apply` / `try_apply` (in `core`).** `apply(document, plan)` folds an entire stack
+left and **raises** if an edit would empty a `Section` or the `Document`; `try_apply(document, candidate)`
+applies a single candidate and returns `None` for that same infeasibility instead of raising, so a selector
+can skip rather than abort. Both address targets by stable `id`, so an edit whose targets an earlier edit
+already removed is simply skipped. This is the only place the IR tree is rewritten.
+
+## Extending a phase: scorers, optimizers, and selectors
+
+Score, Optimize, and Select are open sets. Adding a strategy follows one convention for all three, so
+every addition looks the same:
+
+1. **One strategy, one file** in that phase's package (`score/`, `optimize/`, or `select/`).
+2. **Implement the phase `Protocol`.** All live in `core/protocols.py`, alongside the data they
    exchange:
 
    ```python
@@ -369,25 +451,33 @@ addition looks the same:
        def __call__(self, document: Document) -> list[float]: ...
 
    class Optimizer(Protocol):
-       def __call__(self, document: Document, scores: Scores) -> Plan: ...
+       def __call__(self, document: Document, scores: Scores, params: Params) -> Plan: ...
+
+   class Selector(Protocol):
+       def __call__(self, document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document: ...
    ```
 
-3. **Self-register by name** with `@register`. Registration rejects a duplicate name at import time,
-   and an optimizer additionally declares the scorer(s) it consumes — validated against the registry
-   at startup, so an unknown `requires` is a clear error before any work runs, not a `KeyError`
-   mid-pipeline:
+3. **Self-register by name** with `@register_scorer` / `@register_optimizer` / `@register_selector`.
+   Registration rejects a duplicate name at import time, and an optimizer additionally declares the
+   scorer(s) it consumes — validated against the registry at startup, so an unknown `requires` is a clear
+   error before any work runs, not a `KeyError` mid-pipeline:
 
    ```python
    # score/centrality.py
-   @register("centrality")
+   @register_scorer("centrality")
    def centrality(document: Document) -> list[float]:
        ...
 
    # optimize/greedy_pairwise.py
-   @register("greedy_pairwise", requires=("redundancy",))
-   def greedy_pairwise(document: Document, scores: Scores) -> Plan:
+   @register_optimizer("greedy_pairwise", requires=("redundancy",))
+   def greedy_pairwise(document: Document, scores: Scores, params: Params) -> Plan:
        redundancy = scores["redundancy"]
        ...   # return a tuple of Candidate, never a Document
+
+   # select/auto.py
+   @register_selector("auto")
+   def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document:
+       ...   # fold the plan within params.drift_budget; return the reduced Document
    ```
 
 4. **Done.** The CLI resolves `--scorer NAME` / `--optimizer NAME` against the registry; for an
@@ -425,10 +515,11 @@ handful of fixtures — `tests/strategies.py` ships the generators (valid trees,
 malformed ones for negative tests), so the laws are checked against thousands of shapes.
 
 **Layering (`import-linter`).** The dependency rule the layout describes is an `import-linter`
-contract run in CI: `core` imports nothing else in `alexandria`; `represent`, `score`, and `optimize`
-import only `core`; `cli` is a leaf no module imports. A **forbidden contract** also bars `core`,
-`score`, and `optimize` from importing any embedding backend. A cycle or a layering violation fails
-the build — *modularity through contracts* and *library first* cannot quietly rot.
+contract run in CI: `core` imports nothing else in `alexandria`; the four `phases` (`represent`,
+`score`, `optimize`, `select`) import only `core`; `runtime` (`embedding`, `pipeline`) sits above them; `cli` is
+a leaf no module imports. A **forbidden contract** also bars `core`, the `phases`, and `pipeline` from
+importing any embedding backend — only the `embedding` shell may. A cycle or a layering violation
+fails the build — *modularity through contracts* and *library first* cannot quietly rot.
 
 **Functional core, imperative shell.** The embedder is injected into Represent behind an `Embedder`
 Protocol; the concrete model lives only in the shell. Tests pass a deterministic fake, making
@@ -458,11 +549,12 @@ are Hypothesis properties over generated documents and stacks.
 
 The tree is the in-memory view; on disk it flattens to a single **Parquet** table, **one row per
 node** (columns `level` — `document` / `section` / `sentence` — plus `text`, `token_count`,
-`embedding`, `section_header`, `order`, the sentence-level `id`, and the document-level `embedding_model`). Every level's
-`embedding` is stored, because each is a real model embedding that a mean cannot reconstruct; `load`
-regroups the sentence rows by `section_header` in `order` to rebuild the tree, attaches each stored
-`Section` / `Document` embedding, and restores `embedding_model`, so `load(path) -> Document` needs no
-model and `save(Document, path)` / `load(path)` round-trip exactly. Because a `Plan` is plain
+`embedding`, a `parent` id and `order` (which together encode the nesting at any depth), the
+section-level `kind` and `header`, the sentence-level `id`, and the document-level `embedding_model`).
+Every level's `embedding` is stored, because each is a real model embedding that a mean cannot
+reconstruct; `load` rebuilds the tree by linking each node to its `parent` in `order`, attaches each
+stored `Section` / `Document` embedding, and restores `embedding_model`, so `load(path) -> Document`
+needs no model and `save(Document, path)` / `load(path)` round-trip exactly. Because a `Plan` is plain
 serializable data and every `Edit` addresses sentences by their stable `id`, it can be saved beside the
 `Document` and replayed against the reloaded tree — its ids still match — or inverted to undo, without
 re-running an optimizer.
@@ -479,15 +571,16 @@ A few single-purpose verbs, built with [`click`](https://github.com/pallets/clic
 prompt from a `FILE` argument or stdin and writes its result to stdout; diagnostics go to stderr;
 exit `0` on success, `2` on usage error, `1` otherwise.
 
-- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — prompt in, **reduced
-  prompt out**. Runs all three phases end to end and folds the whole `Plan` stack unattended;
-  pass several optimizers and their stacks concatenate into one series. There is no `--scorer` flag because each chosen
-  optimizer declares the scorer(s) it needs. Text in, text out, so it drops straight into a pipe:
-  `alexandria reduce prompt.txt > reduced.txt`. This is the headline path.
-- `alexandria review [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — same pipeline, but
-  **interactive**: it walks the `Plan` stack from highest score down and asks you to accept or reject
-  each drop, then `apply`s only the accepted ones and writes the reduced prompt. This is the
-  human-in-the-loop path; `reduce` is the same flow with every candidate auto-accepted.
+- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D]`
+  — prompt in, **reduced prompt out**. Runs all four phases end to end; the `auto` selector folds the
+  ranked `Plan` highest-confidence-first while the prompt stays within `--drift-budget` (default `0.01`,
+  i.e. 1%) of the original. Pass several optimizers and their stacks concatenate into one series. There is
+  no `--scorer` flag because each chosen optimizer declares the scorer(s) it needs. Text in, text out, so it
+  drops straight into a pipe: `alexandria reduce prompt.txt > reduced.txt`. This is the headline path.
+- `alexandria review [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — same pipeline with the
+  `review` selector: **interactive**, it walks the `Plan` from highest confidence down and asks you to
+  accept or reject each drop, then returns the reduced prompt. `reduce --selector auto` is the same flow
+  with the drift budget accepting candidates instead of a person.
 - `alexandria score [FILE] [--scorer NAME[,NAME...]] [--json]` — prompt in, per-instruction scores out
   (Represent + Score). Run several scorers and the columns are the `Scores` bundle. A human-readable
   table when stdout is a TTY, JSON when piped or `--json`. Usable before any optimizer exists.

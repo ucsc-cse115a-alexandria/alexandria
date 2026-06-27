@@ -8,7 +8,16 @@ license = { text = "MIT"}
 authors = [
   {name = "Masamune William Ishihara", email = "mwishiha@ucsc.edu"}
 ]
-dependencies = []
+dependencies = [
+    "pydantic>=2.9",
+    "numpy>=2.1",
+    "tiktoken>=0.8",
+    "click>=8.1",
+    "sentence-transformers>=3.0",
+]
+
+[project.scripts]
+alexandria = "alexandria.cli:cli"
 
 [dependency-groups]
 dev = [
@@ -16,20 +25,21 @@ dev = [
     "ruff>=0.15.19",
     "pyright>=1.1.411",
     "pytest-cov>=7.1.0",
+    "import-linter>=2.7",
 ]
 
 [tool.uv]
 package = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
-addopts = "--cov --cov-report=term-missing"
+testpaths = ["src", "tests"]
+addopts = "--cov --cov-report=term-missing --import-mode=importlib"
 
 [tool.coverage.run]
 source = ["src/alexandria"]
 branch = true
 relative_files = true
-omit = ["*/__init__.py"]
+omit = ["*/__init__.py", "*_test.py"]
 
 [tool.coverage.report]
 fail_under = 80
@@ -98,6 +108,9 @@ ignore = [
 "tests/**" = ["S101"]
 "*/*_test.py" = ["S101"]
 
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"
@@ -113,4 +126,50 @@ exclude = [
     "dist",
     "__pycache__",
     "migrations",
+]
+
+[tool.importlinter]
+root_package = "alexandria"
+include_external_packages = true
+
+# Test modules are co-located as *_test.py, so they live inside the linted package.
+# A test legitimately crosses layers to build real Document fixtures (it needs
+# represent + the embedding shell), so each crossing test module is exempted here.
+# grimp wildcards replace whole segments only, so the "_test" suffix can't be globbed.
+
+# Layering: higher layers may import lower ones, never the reverse. Modules joined
+# by "|" are independent siblings that may not import each other.
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "alexandria.cli",
+    "alexandria.runtime.embedding | alexandria.runtime.pipeline",
+    "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize | alexandria.phases.select",
+    "alexandria.core",
+]
+ignore_imports = [
+    "alexandria.phases.optimize_test -> alexandria.**",
+    "alexandria.phases.represent_test -> alexandria.**",
+    "alexandria.phases.score_test -> alexandria.**",
+    "alexandria.phases.select_test -> alexandria.**",
+]
+
+# Functional core, imperative shell: only the embedding shell may touch a model.
+[[tool.importlinter.contracts]]
+name = "Embedding backend isolated to the shell"
+type = "forbidden"
+source_modules = [
+    "alexandria.core",
+    "alexandria.phases",
+    "alexandria.runtime.pipeline",
+]
+forbidden_modules = [
+    "sentence_transformers",
+]
+ignore_imports = [
+    "alexandria.phases.optimize_test -> alexandria.**",
+    "alexandria.phases.represent_test -> alexandria.**",
+    "alexandria.phases.score_test -> alexandria.**",
+    "alexandria.phases.select_test -> alexandria.**",
 ]
