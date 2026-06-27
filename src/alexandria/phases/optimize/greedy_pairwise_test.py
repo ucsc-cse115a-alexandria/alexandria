@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alexandria.core.protocols import OptimizerParams
+from alexandria.core.protocols import Params
 from alexandria.phases.optimize.greedy_pairwise import greedy_pairwise
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score
@@ -12,10 +12,11 @@ def test_emits_one_delete_for_a_duplicate_pair() -> None:
     document = represent("repeat me\nrepeat me\nunique line\n", embedder)
     scores = score(document, names=("redundancy",))
 
-    plan = greedy_pairwise(document, scores, embedder, OptimizerParams())
+    plan = greedy_pairwise(document, scores, Params())
 
     assert len(plan) == 1
     assert plan[0].edit.targets in (("s0",), ("s1",))
+    assert plan[0].confidence > 0.99
 
 
 def test_no_candidates_when_all_unique() -> None:
@@ -23,14 +24,16 @@ def test_no_candidates_when_all_unique() -> None:
     document = represent("alpha\nbeta\ngamma\n", embedder)
     scores = score(document, names=("redundancy",))
 
-    assert greedy_pairwise(document, scores, embedder, OptimizerParams()) == ()
+    assert greedy_pairwise(document, scores, Params()) == ()
 
 
-def test_skips_delete_when_drift_exceeds_max_drift() -> None:
+def test_keeps_one_of_three_identical_sentences() -> None:
     embedder = HashEmbedder()
-    document = represent("repeat me\nrepeat me\nunique line\n", embedder)
+    document = represent("dup\ndup\ndup\n", embedder)
     scores = score(document, names=("redundancy",))
 
-    plan = greedy_pairwise(document, scores, embedder, OptimizerParams(max_drift=0.0))
+    plan = greedy_pairwise(document, scores, Params())
 
-    assert plan == ()
+    # Two deletes proposed; one copy must survive (no candidate targets all three).
+    dropped = {target for candidate in plan for target in candidate.edit.targets}
+    assert len(dropped) == 2

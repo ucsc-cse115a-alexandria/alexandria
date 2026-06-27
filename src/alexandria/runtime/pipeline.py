@@ -1,17 +1,17 @@
-"""Library composition of the three phases — what the CLI calls."""
+"""Library composition of the phases — what the CLI calls."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from alexandria.core.registry import required_scorers, scorer_peers
-from alexandria.core.select import apply
 from alexandria.phases.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import DEFAULT_SCORER, score
+from alexandria.phases.select import DEFAULT_SELECTOR, select
 
 if TYPE_CHECKING:
-    from alexandria.core.protocols import Embedder, OptimizerParams
+    from alexandria.core.protocols import Embedder, Params
 
 
 def reduce(
@@ -19,13 +19,14 @@ def reduce(
     embedder: Embedder,
     *,
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
-    params: OptimizerParams | None = None,
+    selector: str = DEFAULT_SELECTOR,
+    params: Params | None = None,
 ) -> str:
-    """Run all three phases end to end and return the reduced prompt text."""
+    """Run represent → score → optimize → select end to end and return the reduced prompt text."""
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, embedder, names=optimizers, params=params)
-    return apply(document, plan).text
+    plan = optimize(document, scores, names=optimizers, params=params)
+    return select(document, plan, embedder, selector, params=params).text
 
 
 def score_report(

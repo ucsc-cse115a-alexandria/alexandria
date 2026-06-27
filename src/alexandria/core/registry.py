@@ -1,4 +1,4 @@
-"""Name-keyed registries for scorers and optimizers; reject dup names, validate requires."""
+"""Name-keyed registries for scorers, optimizers, and selectors; reject dup names, validate requires."""
 
 from __future__ import annotations
 
@@ -7,12 +7,13 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from alexandria.core.protocols import Optimizer, Peers, Scorer
+    from alexandria.core.protocols import Optimizer, Peers, Scorer, Selector
 
 _scorers: dict[str, Scorer] = {}
 _peers: dict[str, Peers | None] = {}
 _optimizers: dict[str, Optimizer] = {}
 _requires: dict[str, tuple[str, ...]] = {}
+_selectors: dict[str, Selector] = {}
 
 
 def register_scorer(name: str, *, peers: Peers | None = None) -> Callable[[Scorer], Scorer]:
@@ -64,3 +65,20 @@ def get_optimizer(name: str) -> Optimizer:
 def required_scorers(name: str) -> tuple[str, ...]:
     get_optimizer(name)
     return _requires[name]
+
+
+def register_selector(name: str) -> Callable[[Selector], Selector]:
+    def decorator(fn: Selector) -> Selector:
+        if name in _selectors:
+            raise ValueError(f"duplicate selector name: {name!r}")
+        _selectors[name] = fn
+        return fn
+
+    return decorator
+
+
+def get_selector(name: str) -> Selector:
+    try:
+        return _selectors[name]
+    except KeyError:
+        raise ValueError(f"unknown selector: {name!r}") from None

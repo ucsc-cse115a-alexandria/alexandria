@@ -8,26 +8,43 @@ from alexandria.core.ir import Document, Node, Section, Sentence, rollup
 from alexandria.core.protocols import Delete
 
 if TYPE_CHECKING:
-    from alexandria.core.protocols import Plan
+    from alexandria.core.protocols import Candidate, Edit, Plan
 
 
 def apply(document: Document, plan: Plan) -> Document:
+    """Apply every candidate in order, raising if an edit would empty the Document or a Section."""
     surviving = {s.id for s in document.sentences}
     for candidate in plan:
-        match candidate.edit:
-            case Delete() as edit:
-                present = tuple(t for t in edit.targets if t in surviving)
-            case _:  # pragma: no cover - unreachable until a second Edit op exists
-                assert_never(candidate.edit)
+        present = _present_targets(candidate.edit, surviving)
         if not present:
             continue
-        remaining = surviving - set(present)
+        remaining = surviving - present
         if not remaining:
             raise ValueError("edit would empty the Document")
         if _empties_a_section(document, remaining):
             raise ValueError("edit would empty a Section")
         surviving = remaining
     return _rebuild(document, surviving)
+
+
+def try_apply(document: Document, candidate: Candidate) -> Document | None:
+    """Apply one candidate, returning None if it would empty the Document or a Section instead of raising."""
+    surviving = {s.id for s in document.sentences}
+    present = _present_targets(candidate.edit, surviving)
+    if not present:
+        return document
+    remaining = surviving - present
+    if not remaining or _empties_a_section(document, remaining):
+        return None
+    return _rebuild(document, remaining)
+
+
+def _present_targets(edit: Edit, surviving: set[str]) -> set[str]:
+    match edit:
+        case Delete() as delete:
+            return {target for target in delete.targets if target in surviving}
+        case _:  # pragma: no cover - unreachable until a second Edit op exists
+            assert_never(edit)
 
 
 def _empties_a_section(document: Document, surviving: set[str]) -> bool:

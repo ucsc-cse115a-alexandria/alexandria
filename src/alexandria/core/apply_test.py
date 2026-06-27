@@ -7,7 +7,7 @@ import pytest
 
 from alexandria.core.ir import Document, Section, SectionKind, Sentence
 from alexandria.core.protocols import Candidate, Delete
-from alexandria.core.select import apply
+from alexandria.core.apply import apply
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

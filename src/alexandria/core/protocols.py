@@ -20,15 +20,15 @@ Scores = dict[str, ScoreVector]
 Peers = Callable[[Document], list[tuple[SentenceId | None, float]]]
 
 Threshold = Annotated[float, Field(ge=0.0, le=1.0)]
-Drift = Annotated[float, Field(ge=0.0)]  # 2.0 == effectively no limit
+Drift = Annotated[float, Field(ge=0.0)]  # cosine distance from the original prompt; 0.01 == 1%
 
 
-class OptimizerParams(BaseModel):
-    """Tuning knobs shared by every optimizer; the single source of truth for their defaults."""
+class Params(BaseModel):
+    """Tuning knobs shared by the optimize and select phases; the single source of truth for defaults."""
 
     model_config = ConfigDict(frozen=True)
     threshold: Threshold = 0.85
-    max_drift: Drift = 2.0
+    drift_budget: Drift = 0.01
 
 
 class Embedder(Protocol):
@@ -63,10 +63,8 @@ class Scorer(Protocol):
 
 
 class Optimizer(Protocol):
-    def __call__(
-        self,
-        document: Document,
-        scores: Scores,
-        embedder: Embedder,
-        params: OptimizerParams,
-    ) -> Plan: ...
+    def __call__(self, document: Document, scores: Scores, params: Params) -> Plan: ...
+
+
+class Selector(Protocol):
+    def __call__(self, document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document: ...

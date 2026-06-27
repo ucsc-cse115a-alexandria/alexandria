@@ -8,13 +8,15 @@ from typing import IO
 
 import click
 
-from alexandria.phases.optimize import DEFAULT_OPTIMIZER, OptimizerParams
+from alexandria.core.protocols import Params
+from alexandria.phases.optimize import DEFAULT_OPTIMIZER
 from alexandria.phases.score import DEFAULT_SCORER
+from alexandria.phases.select import DEFAULT_SELECTOR
 from alexandria.runtime.embedding import DEFAULT_MODEL, DETERMINISTIC, build_embedder
 from alexandria.runtime.pipeline import reduce as reduce_prompt
 from alexandria.runtime.pipeline import score_report
 
-_DEFAULTS = OptimizerParams()
+_DEFAULTS = Params()
 _MODEL_HELP = f"embedding model id, or {DETERMINISTIC!r}"
 
 
@@ -26,19 +28,20 @@ def cli() -> None:
 @cli.command()
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
+@click.option("--selector", default=DEFAULT_SELECTOR, help="selector name")
 @click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
 @click.option(
-    "--max-drift",
+    "--drift-budget",
     type=float,
-    default=_DEFAULTS.max_drift,
-    help="max cosine drift from the original prompt allowed per deletion (2.0 = no limit)",
+    default=_DEFAULTS.drift_budget,
+    help="max cosine drift from the original prompt the reduction may accumulate (0.01 = 1%)",
 )
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
-def reduce(file: IO[str], optimizers: str, threshold: float, max_drift: float, model: str) -> None:
+def reduce(file: IO[str], optimizers: str, selector: str, threshold: float, drift_budget: float, model: str) -> None:
     """Reduce a prompt: prompt in, reduced prompt out."""
     names = tuple(n.strip() for n in optimizers.split(",") if n.strip())
-    params = OptimizerParams(threshold=threshold, max_drift=max_drift)
-    reduced = reduce_prompt(file.read(), build_embedder(model), optimizers=names, params=params)
+    params = Params(threshold=threshold, drift_budget=drift_budget)
+    reduced = reduce_prompt(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
     click.echo(reduced, nl=False)
 
 

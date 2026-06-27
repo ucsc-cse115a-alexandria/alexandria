@@ -8,28 +8,31 @@ from alexandria.core.ir import (
     SentenceId,
     TokenCount,
 )
+from alexandria.core.apply import apply, try_apply
 from alexandria.core.protocols import (
     Candidate,
     Delete,
     Edit,
     Embedder,
     Optimizer,
-    OptimizerParams,
+    Params,
     Peers,
     Plan,
     Scorer,
     Scores,
     ScoreVector,
+    Selector,
 )
 from alexandria.core.registry import (
     get_optimizer,
     get_scorer,
+    get_selector,
     register_optimizer,
     register_scorer,
+    register_selector,
     required_scorers,
     scorer_peers,
 )
-from alexandria.core.select import apply
 from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix, normalize
 
 __all__ = [
@@ -41,7 +44,7 @@ __all__ = [
     "Embedding",
     "Node",
     "Optimizer",
-    "OptimizerParams",
+    "Params",
     "Peers",
     "Plan",
     "ScoreVector",
@@ -49,6 +52,7 @@ __all__ = [
     "Scores",
     "Section",
     "SectionKind",
+    "Selector",
     "Sentence",
     "SentenceId",
     "TokenCount",
@@ -57,9 +61,12 @@ __all__ = [
     "cosine_similarity_matrix",
     "get_optimizer",
     "get_scorer",
+    "get_selector",
     "normalize",
     "register_optimizer",
     "register_scorer",
+    "register_selector",
     "required_scorers",
     "scorer_peers",
+    "try_apply",
 ]
