@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Annotated, Self
+from enum import StrEnum
+from typing import Annotated, Literal, Self
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,6 +22,14 @@ TokenCount = Annotated[int, Field(ge=0)]
 SentenceId = str
 
 
+class SectionKind(StrEnum):
+    """Where a Section came from. The Document is the root, so every Section has one of these."""
+
+    MARKDOWN = "markdown"  # a markdown header
+    XML = "xml"  # an XML tag block
+    PLAIN = "plain"  # body text under no header or tag (a preamble or a structureless prompt)
+
+
 class Encoded(BaseModel):
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
     text: str
@@ -29,21 +38,38 @@ class Encoded(BaseModel):
 
 
 class Sentence(Encoded):
+    node: Literal["sentence"] = "sentence"
     id: SentenceId
 
 
 class Section(Encoded):
+    node: Literal["section"] = "section"
+    kind: SectionKind
     header: str
-    sentences: tuple[Sentence, ...] = Field(min_length=1)
+    children: tuple[Node, ...] = Field(min_length=1)
+
+    @property
+    def sentences(self) -> tuple[Sentence, ...]:
+        """Every descendant Sentence, in document order."""
+        flattened: list[Sentence] = []
+        for child in self.children:
+            if isinstance(child, Sentence):
+                flattened.append(child)
+            else:
+                flattened.extend(child.sentences)
+        return tuple(flattened)
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        if self.text != "".join(s.text for s in self.sentences):
-            raise ValueError("Section.text must equal the concatenation of its sentences")
-        if self.token_count != sum(s.token_count for s in self.sentences):
-            raise ValueError("Section.token_count must equal the sum of its sentences")
-        _check_one_dimension([*self.sentences, self])
+        if self.text != "".join(child.text for child in self.children):
+            raise ValueError("Section.text must equal the concatenation of its children")
+        if self.token_count != sum(child.token_count for child in self.children):
+            raise ValueError("Section.token_count must equal the sum of its children")
+        _check_one_dimension([*self.children, self])
         return self
+
+
+Node = Annotated[Sentence | Section, Field(discriminator="node")]
 
 
 class Document(Encoded):
@@ -65,6 +91,9 @@ class Document(Encoded):
             raise ValueError("every Sentence id must be unique within a Document")
         _check_one_dimension([*self.sections, self])
         return self
+
+
+Section.model_rebuild()
 
 
 def _check_one_dimension(nodes: list[Encoded]) -> None:

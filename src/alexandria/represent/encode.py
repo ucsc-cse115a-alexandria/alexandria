@@ -1,4 +1,4 @@
-"""Tokenize and embed split segments, then assemble the validated Document tree."""
+"""Tokenize and embed a raw section tree, then assemble the validated Document IR."""
 
 from __future__ import annotations
 
@@ -6,41 +6,63 @@ from typing import TYPE_CHECKING
 
 import tiktoken
 
-from alexandria.core.ir import Document, Section, Sentence
+from alexandria.core.ir import Document, Node, Section, Sentence
+from alexandria.represent.split import RawSection, RawSentence
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
+
     from alexandria.core.protocols import Embedder
 
 _ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
-def encode(segments: list[str], embedder: Embedder) -> Document:
-    """Tokenize and embed each segment, then build the single-section Document IR."""
-    vectors = embedder.embed(segments)
-    sentences = tuple(
-        Sentence(
-            id=f"s{i}",
-            text=text,
-            token_count=len(_ENCODING.encode(text)),
-            embedding=vector,
-        )
-        for i, (text, vector) in enumerate(zip(segments, vectors, strict=True))
+def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
+    leaves = _leaf_sentences(sections)
+    vectors = embedder.embed([leaf.text for leaf in leaves])
+    built_sentences = iter(
+        Sentence(id=f"s{i}", text=leaf.text, token_count=len(_ENCODING.encode(leaf.text)), embedding=vector)
+        for i, (leaf, vector) in enumerate(zip(leaves, vectors, strict=True))
     )
-    # The single section's text equals the document's, so embed that span once and share the vector.
-    whole_text = "".join(s.text for s in sentences)
-    whole_vector = embedder.embed([whole_text])[0]
-    token_count = sum(s.token_count for s in sentences)
-    section = Section(
-        header="",
-        sentences=sentences,
-        text=whole_text,
-        token_count=token_count,
-        embedding=whole_vector,
-    )
+    built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
+    text = "".join(section.text for section in built)
     return Document(
         embedding_model=embedder.model_id,
-        sections=(section,),
-        text=whole_text,
-        token_count=token_count,
-        embedding=whole_vector,
+        sections=built,
+        text=text,
+        token_count=sum(section.token_count for section in built),
+        embedding=embedder.embed([text])[0],
     )
+
+
+def _build_section(raw: RawSection, embedder: Embedder, sentences: Iterator[Sentence]) -> Section:
+    children: list[Node] = [
+        next(sentences) if isinstance(child, RawSentence) else _build_section(child, embedder, sentences)
+        for child in raw.children
+    ]
+    kept = tuple(children)
+    text = "".join(child.text for child in kept)
+    return Section(
+        kind=raw.kind,
+        header=raw.header,
+        children=kept,
+        text=text,
+        token_count=sum(child.token_count for child in kept),
+        embedding=embedder.embed([text])[0],
+    )
+
+
+def _leaf_sentences(sections: tuple[RawSection, ...]) -> list[RawSentence]:
+    """Every leaf sentence in document (pre-order) order — the order _build_section consumes them."""
+    leaves: list[RawSentence] = []
+
+    def walk(section: RawSection) -> None:
+        for child in section.children:
+            if isinstance(child, RawSentence):
+                leaves.append(child)
+            else:
+                walk(child)
+
+    for section in sections:
+        walk(section)
+    return leaves

@@ -112,7 +112,7 @@ src/
       select.py         #   apply(Document, edits) folds the edit stack -> (Document, inverse); render diff; meaning-preservation
     represent/          # phase 1 — prompt → Document
       __init__.py       #   represent(prompt, *, embedder=..., reuse=None) -> Document
-      split.py          #   split prompt into sentences under headers / XML blocks
+      split.py          #   group prompt lines into a nested section tree (markdown / xml / plain)
       encode.py         #   tokenize + embed (via injected Embedder) every node, reusing unchanged text
     score/              # phase 2 — strategy package (many scorers → Scores bundle)
       __init__.py       #   score(document, names=...) -> Scores; imports built-ins
@@ -143,6 +143,12 @@ type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # 
 type TokenCount = Annotated[int, Field(ge=0)]
 type SentenceId = str   # stable identity assigned at split; how an Edit names a row across edits
 
+class SectionKind(StrEnum):
+    """Where a Section came from. The Document is the root, so every Section has one of these."""
+    MARKDOWN = "markdown"   # a markdown header
+    XML = "xml"             # an XML tag block
+    PLAIN = "plain"         # body text under no header or tag (a preamble or a structureless prompt)
+
 class Encoded(BaseModel):
     """Shared base: text plus the encodings computed from it, stored at every level."""
     model_config = ConfigDict(frozen=True, arbitrary_types_allowed=True)
@@ -152,21 +158,30 @@ class Encoded(BaseModel):
 
 class Sentence(Encoded):
     """The atomic instruction and keep/drop unit; split no further."""
+    node: Literal["sentence"] = "sentence"   # discriminates a child Sentence from a child Section
     id: SentenceId            # stable handle an Edit addresses; survives Parquet and reuse=
 
 class Section(Encoded):
-    """A markdown header / XML block. Membership is the nesting itself."""
-    header: str                                  # header path / xml tag ("" if top level)
-    sentences: tuple[Sentence, ...] = Field(min_length=1)
+    """A markdown header / XML block / plain run. Membership is the nesting itself; sections nest."""
+    node: Literal["section"] = "section"     # discriminator (mirrors Edit's `op`)
+    kind: SectionKind                            # markdown / xml / plain
+    header: str                                  # markdown: header text, xml: tag name, plain: ""
+    children: tuple[Node, ...] = Field(min_length=1)   # Sentences and sub-Sections, interleaved
+
+    @property
+    def sentences(self) -> tuple[Sentence, ...]:
+        """Every descendant Sentence, recursively, in document order."""
+
+type Node = Annotated[Sentence | Section, Field(discriminator="node")]
 
 class Document(Encoded):
-    """The whole prompt — the apex of the IR."""
+    """The whole prompt — the apex of the IR; its sections are the top level (it is the root)."""
     embedding_model: str                         # id of the model that produced every embedding
     sections: tuple[Section, ...] = Field(min_length=1)
 
     @property
     def sentences(self) -> tuple[Sentence, ...]:
-        """Every section flattened in document order — the row axis for scores."""
+        """Every section's descendants flattened in document order — the row axis for scores."""
         return tuple(s for section in self.sections for s in section.sentences)
 ```
 
@@ -205,11 +220,14 @@ a different model, or another tokenizer can be dropped in later without touching
 
 `represent(prompt) -> Document` builds the IR in two internal steps:
 
-1. **`split`** divides the prompt into sentences grouped under their headers / XML blocks. The split
-   is **lossless**: each `Sentence` keeps its original separators so the pieces re-concatenate into
-   the exact input.
-2. **`encode`** tokenizes each sentence with `tiktoken` and embeds it, then embeds each `Section`'s
-   and the `Document`'s reconstructed `text`, and assembles the validated tree.
+1. **`split`** groups the prompt's lines into a **nested section tree**: a markdown header opens a
+   section that nests by `#` depth, a standalone-line XML tag opens a section that nests by tag
+   stack (the block is a hard boundary), and text under no header or tag becomes a `plain` section
+   (a preamble, or a structureless prompt as one section). The header line and the XML tags stay as
+   `Sentence`s, so the split is **lossless**: concatenating every leaf `Sentence`'s text in document
+   order reproduces the exact input.
+2. **`encode`** tokenizes each sentence with `tiktoken` and embeds it, then embeds every `Section`'s
+   (including nested) and the `Document`'s reconstructed `text`, and assembles the validated tree.
 
 These are sub-steps, not phases — you always run them together to get a `Document`, and only the
 `Document` crosses into Score.
@@ -458,11 +476,12 @@ are Hypothesis properties over generated documents and stacks.
 
 The tree is the in-memory view; on disk it flattens to a single **Parquet** table, **one row per
 node** (columns `level` — `document` / `section` / `sentence` — plus `text`, `token_count`,
-`embedding`, `section_header`, `order`, the sentence-level `id`, and the document-level `embedding_model`). Every level's
-`embedding` is stored, because each is a real model embedding that a mean cannot reconstruct; `load`
-regroups the sentence rows by `section_header` in `order` to rebuild the tree, attaches each stored
-`Section` / `Document` embedding, and restores `embedding_model`, so `load(path) -> Document` needs no
-model and `save(Document, path)` / `load(path)` round-trip exactly. Because a `Plan` is plain
+`embedding`, a `parent` id and `order` (which together encode the nesting at any depth), the
+section-level `kind` and `header`, the sentence-level `id`, and the document-level `embedding_model`).
+Every level's `embedding` is stored, because each is a real model embedding that a mean cannot
+reconstruct; `load` rebuilds the tree by linking each node to its `parent` in `order`, attaches each
+stored `Section` / `Document` embedding, and restores `embedding_model`, so `load(path) -> Document`
+needs no model and `save(Document, path)` / `load(path)` round-trip exactly. Because a `Plan` is plain
 serializable data and every `Edit` addresses sentences by their stable `id`, it can be saved beside the
 `Document` and replayed against the reloaded tree — its ids still match — or inverted to undo, without
 re-running an optimizer.
