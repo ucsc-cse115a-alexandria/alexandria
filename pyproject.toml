@@ -145,7 +145,7 @@ type = "layers"
 layers = [
     "alexandria.cli",
     "alexandria.runtime.embedding | alexandria.runtime.pipeline",
-    "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize",
+    "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize | alexandria.phases.select",
     "alexandria.core",
 ]
 ignore_imports = [
@@ -153,6 +153,7 @@ ignore_imports = [
     "alexandria.phases.represent.represent_test -> alexandria.**",
     "alexandria.phases.score.redundancy_test -> alexandria.**",
     "alexandria.phases.score.score_test -> alexandria.**",
+    "alexandria.phases.select.auto_test -> alexandria.**",
 ]
 
 # Functional core, imperative shell: only the embedding shell may touch a model.
@@ -172,4 +173,5 @@ ignore_imports = [
     "alexandria.phases.represent.represent_test -> alexandria.**",
     "alexandria.phases.score.redundancy_test -> alexandria.**",
     "alexandria.phases.score.score_test -> alexandria.**",
+    "alexandria.phases.select.auto_test -> alexandria.**",
 ]

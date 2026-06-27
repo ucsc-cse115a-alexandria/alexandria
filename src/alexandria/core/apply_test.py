@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
+from alexandria.core.apply import apply
 from alexandria.core.ir import Document, Section, SectionKind, Sentence
 from alexandria.core.protocols import Candidate, Delete
-from alexandria.core.apply import apply
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

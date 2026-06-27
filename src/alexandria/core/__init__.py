@@ -1,3 +1,4 @@
+from alexandria.core.apply import apply, try_apply
 from alexandria.core.ir import (
     Document,
     Embedding,
@@ -8,7 +9,6 @@ from alexandria.core.ir import (
     SentenceId,
     TokenCount,
 )
-from alexandria.core.apply import apply, try_apply
 from alexandria.core.protocols import (
     Candidate,
     Delete,
