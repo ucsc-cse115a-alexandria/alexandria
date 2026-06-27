@@ -13,13 +13,22 @@ if TYPE_CHECKING:
     from alexandria.core.ir import Document
 
 
-@register_scorer("redundancy")
-def redundancy(document: Document) -> list[float]:
-    """Score each sentence by its max cosine similarity to any other sentence."""
+def most_similar(document: Document) -> list[tuple[str | None, float]]:
+    """Each sentence's most-similar peer id and its cosine similarity (None, 0.0 if no peer)."""
     sentences = document.sentences
     if len(sentences) < 2:
-        return [0.0 for _ in sentences]
+        return [(None, 0.0) for _ in sentences]
     embeddings = np.stack([s.embedding for s in sentences])
     similarity = cosine_similarity_matrix(embeddings)
     np.fill_diagonal(similarity, -np.inf)
-    return [float(row.max()) for row in similarity]
+    peers: list[tuple[str | None, float]] = []
+    for row in similarity:
+        peer_index = int(row.argmax())
+        peers.append((sentences[peer_index].id, float(row[peer_index])))
+    return peers
+
+
+@register_scorer("redundancy")
+def redundancy(document: Document) -> list[float]:
+    """Score each sentence by its max cosine similarity to any other sentence."""
+    return [similarity for _, similarity in most_similar(document)]

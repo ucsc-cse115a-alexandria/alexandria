@@ -18,3 +18,4 @@ def test_score_emits_json() -> None:
     result = runner.invoke(cli, ["score", "--model", "deterministic", "--json"], input="dup\ndup\n")
     assert result.exit_code == 0
     assert '"redundancy"' in result.output
+    assert '"most_similar_id"' in result.output

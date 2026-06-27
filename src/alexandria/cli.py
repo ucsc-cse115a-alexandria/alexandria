@@ -10,7 +10,7 @@ import click
 
 from alexandria.embedding import build_embedder
 from alexandria.pipeline import reduce as reduce_prompt
-from alexandria.pipeline import score_prompt
+from alexandria.pipeline import score_report
 
 _DEFAULT_MODEL = "all-MiniLM-L6-v2"
 
@@ -40,16 +40,9 @@ def reduce(file: IO[str], optimizers: str, threshold: float, model: str) -> None
 def score(file: IO[str], scorers: str, model: str, as_json: bool) -> None:
     """Score a prompt: per-instruction scores out."""
     names = tuple(n.strip() for n in scorers.split(",") if n.strip())
-    document, bundle = score_prompt(file.read(), build_embedder(model), scorers=names)
-    rows: list[dict[str, object]] = []
-    for i, sentence in enumerate(document.sentences):
-        row: dict[str, object] = {"id": sentence.id, "text": sentence.text.strip()}
-        for name in names:
-            row[name] = round(bundle[name][i], 4)
-        rows.append(row)
+    rows = score_report(file.read(), build_embedder(model), scorers=names)
     if as_json or not sys.stdout.isatty():
         click.echo(json.dumps(rows, indent=2))
     else:  # pragma: no cover
         for row in rows:
-            joined = "  ".join(f"{name}={row[name]}" for name in names)
-            click.echo(f"{row['id']}  {joined}  {row['text']}")
+            click.echo("  ".join(f"{key}={value}" for key, value in row.items()))
