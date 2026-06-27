@@ -15,14 +15,10 @@ if TYPE_CHECKING:
 
 def _document(texts: list[str]) -> Document:
     vec: NDArray[np.float32] = np.ones(4, dtype=np.float32)
-    sentences = tuple(
-        Sentence(id=f"s{i}", text=t, token_count=1, embedding=vec) for i, t in enumerate(texts)
-    )
+    sentences = tuple(Sentence(id=f"s{i}", text=t, token_count=1, embedding=vec) for i, t in enumerate(texts))
     joined = "".join(texts)
     section = Section(header="", sentences=sentences, text=joined, token_count=len(texts), embedding=vec)
-    return Document(
-        embedding_model="hash-4", sections=(section,), text=joined, token_count=len(texts), embedding=vec
-    )
+    return Document(embedding_model="hash-4", sections=(section,), text=joined, token_count=len(texts), embedding=vec)
 
 
 def _delete(target: str) -> Candidate:
