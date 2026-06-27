@@ -40,6 +40,9 @@ jobs:
       - name: Run Pyright
         run: uv run pyright
 
+      - name: Check import layering
+        run: uv run lint-imports
+
       - name: Run tests
         run: uv run pytest
 
