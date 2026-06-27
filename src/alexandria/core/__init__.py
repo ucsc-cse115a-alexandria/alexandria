@@ -1,4 +1,4 @@
-from alexandria.core.apply import apply, try_apply
+from alexandria.core.apply import try_apply
 from alexandria.core.ir import (
     Document,
     Embedding,
@@ -12,7 +12,6 @@ from alexandria.core.ir import (
 from alexandria.core.protocols import (
     Candidate,
     Delete,
-    Edit,
     Embedder,
     Optimizer,
     Params,
@@ -39,7 +38,6 @@ __all__ = [
     "Candidate",
     "Delete",
     "Document",
-    "Edit",
     "Embedder",
     "Embedding",
     "Node",
@@ -56,7 +54,6 @@ __all__ = [
     "Sentence",
     "SentenceId",
     "TokenCount",
-    "apply",
     "cosine_distance",
     "cosine_similarity_matrix",
     "get_optimizer",

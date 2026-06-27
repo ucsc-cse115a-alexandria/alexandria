@@ -44,12 +44,9 @@ class Delete(BaseModel):
     targets: tuple[SentenceId, ...] = Field(min_length=1)
 
 
-Edit = Delete
-
-
 class Candidate(BaseModel):
     model_config = ConfigDict(frozen=True)
-    edit: Edit
+    edit: Delete
     confidence: float
     source: str
     reason: str

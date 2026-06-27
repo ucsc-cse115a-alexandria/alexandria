@@ -1,4 +1,4 @@
-"""greedy_pairwise: propose dropping the more redundant sentence of each near-duplicate pair."""
+"""Phase 3 — Optimize: propose ranked delete candidates and concatenate named optimizers' plans."""
 
 from __future__ import annotations
 
@@ -6,13 +6,13 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alexandria.core.protocols import Candidate, Delete
-from alexandria.core.registry import register_optimizer
+from alexandria.core.protocols import Candidate, Delete, Params
+from alexandria.core.registry import get_optimizer, register_optimizer
 from alexandria.core.similarity import cosine_similarity_matrix
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
-    from alexandria.core.protocols import Params, Plan, Scores
+    from alexandria.core.protocols import Plan, Scores
 
 DEFAULT_OPTIMIZER = "greedy_pairwise"
 
@@ -56,3 +56,22 @@ def greedy_pairwise(document: Document, scores: Scores, params: Params) -> Plan:
             )
         )
     return tuple(candidates)
+
+
+def optimize(
+    document: Document,
+    scores: Scores,
+    names: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
+    *,
+    params: Params | None = None,
+) -> Plan:
+    """Run each named optimizer and concatenate their candidate stacks into one ordered Plan."""
+    params = params or Params()
+    plan: list[Candidate] = []
+    for name in names:
+        optimizer = get_optimizer(name)
+        plan.extend(optimizer(document, scores, params))
+    return tuple(plan)
+
+
+__all__ = ["DEFAULT_OPTIMIZER", "greedy_pairwise", "optimize"]

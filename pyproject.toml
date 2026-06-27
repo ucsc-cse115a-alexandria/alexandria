@@ -149,11 +149,10 @@ layers = [
     "alexandria.core",
 ]
 ignore_imports = [
-    "alexandria.phases.optimize.greedy_pairwise_test -> alexandria.**",
+    "alexandria.phases.optimize_test -> alexandria.**",
     "alexandria.phases.represent.represent_test -> alexandria.**",
-    "alexandria.phases.score.redundancy_test -> alexandria.**",
-    "alexandria.phases.score.score_test -> alexandria.**",
-    "alexandria.phases.select.auto_test -> alexandria.**",
+    "alexandria.phases.score_test -> alexandria.**",
+    "alexandria.phases.select_test -> alexandria.**",
 ]
 
 # Functional core, imperative shell: only the embedding shell may touch a model.
@@ -169,9 +168,8 @@ forbidden_modules = [
     "sentence_transformers",
 ]
 ignore_imports = [
-    "alexandria.phases.optimize.greedy_pairwise_test -> alexandria.**",
+    "alexandria.phases.optimize_test -> alexandria.**",
     "alexandria.phases.represent.represent_test -> alexandria.**",
-    "alexandria.phases.score.redundancy_test -> alexandria.**",
-    "alexandria.phases.score.score_test -> alexandria.**",
-    "alexandria.phases.select.auto_test -> alexandria.**",
+    "alexandria.phases.score_test -> alexandria.**",
+    "alexandria.phases.select_test -> alexandria.**",
 ]

@@ -9,53 +9,75 @@ if TYPE_CHECKING:
 
     from alexandria.core.protocols import Optimizer, Peers, Scorer, Selector
 
-_scorers: dict[str, Scorer] = {}
+
+class Registry[T]:
+    """Name-keyed registry of phase implementations that rejects duplicate names."""
+
+    def __init__(self, kind: str) -> None:
+        self._kind = kind
+        self._entries: dict[str, T] = {}
+
+    def register(self, name: str) -> Callable[[T], T]:
+        def decorator(fn: T) -> T:
+            if name in self._entries:
+                raise ValueError(f"duplicate {self._kind} name: {name!r}")
+            self._entries[name] = fn
+            return fn
+
+        return decorator
+
+    def get(self, name: str) -> T:
+        try:
+            return self._entries[name]
+        except KeyError:
+            raise ValueError(f"unknown {self._kind}: {name!r}") from None
+
+    def __contains__(self, name: str) -> bool:
+        return name in self._entries
+
+
+_scorers: Registry[Scorer] = Registry("scorer")
+_optimizers: Registry[Optimizer] = Registry("optimizer")
+_selectors: Registry[Selector] = Registry("selector")
 _peers: dict[str, Peers | None] = {}
-_optimizers: dict[str, Optimizer] = {}
 _requires: dict[str, tuple[str, ...]] = {}
-_selectors: dict[str, Selector] = {}
 
 
 def register_scorer(name: str, *, peers: Peers | None = None) -> Callable[[Scorer], Scorer]:
+    base = _scorers.register(name)
+
     def decorator(fn: Scorer) -> Scorer:
-        if name in _scorers:
-            raise ValueError(f"duplicate scorer name: {name!r}")
-        _scorers[name] = fn
+        registered = base(fn)
         _peers[name] = peers
-        return fn
+        return registered
 
     return decorator
 
 
 def register_optimizer(name: str, *, requires: tuple[str, ...] = ()) -> Callable[[Optimizer], Optimizer]:
+    base = _optimizers.register(name)
+
     def decorator(fn: Optimizer) -> Optimizer:
-        if name in _optimizers:
-            raise ValueError(f"duplicate optimizer name: {name!r}")
-        _optimizers[name] = fn
+        registered = base(fn)
         _requires[name] = requires
-        return fn
+        return registered
 
     return decorator
 
 
-def get_scorer(name: str) -> Scorer:
-    try:
-        return _scorers[name]
-    except KeyError:
-        raise ValueError(f"unknown scorer: {name!r}") from None
+register_selector = _selectors.register
+get_scorer = _scorers.get
+get_selector = _selectors.get
 
 
 def scorer_peers(name: str) -> Peers | None:
     """The peer-finder a scorer registered, or None if it produces no peers."""
-    get_scorer(name)  # validates the name exists
+    _scorers.get(name)  # validates the name exists
     return _peers[name]
 
 
 def get_optimizer(name: str) -> Optimizer:
-    try:
-        optimizer = _optimizers[name]
-    except KeyError:
-        raise ValueError(f"unknown optimizer: {name!r}") from None
+    optimizer = _optimizers.get(name)
     missing = [r for r in _requires[name] if r not in _scorers]
     if missing:
         raise ValueError(f"optimizer {name!r} requires unregistered scorers: {missing}")
@@ -65,20 +87,3 @@ def get_optimizer(name: str) -> Optimizer:
 def required_scorers(name: str) -> tuple[str, ...]:
     get_optimizer(name)
     return _requires[name]
-
-
-def register_selector(name: str) -> Callable[[Selector], Selector]:
-    def decorator(fn: Selector) -> Selector:
-        if name in _selectors:
-            raise ValueError(f"duplicate selector name: {name!r}")
-        _selectors[name] = fn
-        return fn
-
-    return decorator
-
-
-def get_selector(name: str) -> Selector:
-    try:
-        return _selectors[name]
-    except KeyError:
-        raise ValueError(f"unknown selector: {name!r}") from None

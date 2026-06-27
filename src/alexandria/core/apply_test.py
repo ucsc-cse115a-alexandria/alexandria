@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import pytest
 
-from alexandria.core.apply import apply
+from alexandria.core.apply import try_apply
 from alexandria.core.ir import Document, Section, SectionKind, Sentence
 from alexandria.core.protocols import Candidate, Delete
 
@@ -34,25 +33,25 @@ def _document(texts: list[str]) -> Document:
     )
 
 
-def _delete(target: str) -> Candidate:
-    return Candidate(edit=Delete(targets=(target,)), confidence=1.0, source="t", reason="r")
+def _delete(*targets: str) -> Candidate:
+    return Candidate(edit=Delete(targets=targets), confidence=1.0, source="t", reason="r")
 
 
-def test_apply_drops_targeted_sentence() -> None:
-    reduced = apply(_document(["a\n", "b\n", "c\n"]), (_delete("s1"),))
+def test_drops_targeted_sentence() -> None:
+    reduced = try_apply(_document(["a\n", "b\n", "c\n"]), _delete("s1"))
+    assert reduced is not None
     assert [s.id for s in reduced.sentences] == ["s0", "s2"]
     assert reduced.text == "a\nc\n"
     assert reduced.token_count == 2
 
 
-def test_apply_skips_already_removed_target() -> None:
-    reduced = apply(_document(["a\n", "b\n", "c\n"]), (_delete("s1"), _delete("s1")))
-    assert [s.id for s in reduced.sentences] == ["s0", "s2"]
+def test_returns_document_unchanged_when_target_already_gone() -> None:
+    document = _document(["a\n", "b\n"])
+    assert try_apply(document, _delete("missing")) is document
 
 
-def test_apply_refuses_to_empty_the_document() -> None:
-    with pytest.raises(ValueError):
-        apply(_document(["only\n"]), (_delete("s0"),))
+def test_returns_none_when_edit_would_empty_the_document() -> None:
+    assert try_apply(_document(["only\n"]), _delete("s0")) is None
 
 
 def _two_section_document() -> Document:
@@ -77,9 +76,8 @@ def _two_section_document() -> Document:
     )
 
 
-def test_apply_refuses_to_empty_a_section() -> None:
-    with pytest.raises(ValueError):
-        apply(_two_section_document(), (_delete("s2"),))
+def test_returns_none_when_edit_would_empty_a_section() -> None:
+    assert try_apply(_two_section_document(), _delete("s2")) is None
 
 
 def _nested_document() -> Document:
@@ -108,13 +106,13 @@ def _nested_document() -> Document:
     )
 
 
-def test_apply_drops_sentence_inside_nested_section() -> None:
-    reduced = apply(_nested_document(), (_delete("s2"),))
+def test_drops_sentence_inside_nested_section() -> None:
+    reduced = try_apply(_nested_document(), _delete("s2"))
+    assert reduced is not None
     assert [s.id for s in reduced.sentences] == ["s0", "s1"]
     assert reduced.text == "# Setup\n## Database\n"
 
 
-def test_apply_refuses_to_empty_a_nested_section() -> None:
+def test_returns_none_when_edit_would_empty_a_nested_section() -> None:
     # s1 and s2 are the only descendants of the nested "Database" section.
-    with pytest.raises(ValueError):
-        apply(_nested_document(), (_delete("s1"), _delete("s2")))
+    assert try_apply(_nested_document(), _delete("s1", "s2")) is None
