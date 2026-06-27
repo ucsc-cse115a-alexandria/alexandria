@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import pytest
+
 from alexandria.core.ir import SectionKind
-from alexandria.phases.represent.split import RawSection, RawSentence, split
+from alexandria.phases.represent import RawSection, RawSentence, represent, split
+from alexandria.runtime.embedding import HashEmbedder
 
 
 def _leaf_text(sections: tuple[RawSection, ...]) -> str:
@@ -101,3 +104,16 @@ def test_preamble_before_first_header_is_plain() -> None:
     sections = split("Read carefully.\n# Goal\nDo Z.\n")
     assert [s.kind for s in sections] == [SectionKind.PLAIN, SectionKind.MARKDOWN]
     assert sections[0].children == (RawSentence("Read carefully.\n"),)
+
+
+def test_represent_builds_a_document() -> None:
+    document = represent("first\nsecond\n", HashEmbedder())
+    assert document.embedding_model == "hash-64"
+    assert [s.id for s in document.sentences] == ["s0", "s1"]
+    assert document.text == "first\nsecond\n"
+    assert document.token_count > 0
+
+
+def test_represent_rejects_an_empty_prompt() -> None:
+    with pytest.raises(ValueError):
+        represent("   \n", HashEmbedder())

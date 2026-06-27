@@ -1,17 +1,26 @@
-"""Split a prompt into a tree of sections grouped under markdown headers and XML tag blocks."""
+"""Phase 1 — Represent: prompt -> Document (split losslessly, then tokenize and embed)."""
 
 from __future__ import annotations
 
 import re
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
-from alexandria.core.ir import SectionKind
+import tiktoken
+
+from alexandria.core.ir import Document, Node, Section, SectionKind, Sentence, rollup
+
+if TYPE_CHECKING:
+    from collections.abc import Iterator
+
+    from alexandria.core.protocols import Embedder
 
 _SEPARATOR = re.compile(r"\n+")
 _MARKDOWN_HEADER = re.compile(r"(#{1,6})\s+\S")
 _XML_OPEN = re.compile(r"<([A-Za-z][\w.-]*)>")
 _XML_CLOSE = re.compile(r"</([A-Za-z][\w.-]*)>")
+_ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
 @dataclass(frozen=True)
@@ -165,3 +174,66 @@ def _segments(prompt: str) -> list[str]:
     if tail:
         segments.append(pending + tail)
     return segments
+
+
+def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
+    """Tokenize and embed a raw section tree, then assemble the validated Document IR."""
+    leaves = _leaf_sentences(sections)
+    vectors = embedder.embed([leaf.text for leaf in leaves])
+    built_sentences = iter(
+        Sentence(id=f"s{i}", text=leaf.text, token_count=len(_ENCODING.encode(leaf.text)), embedding=vector)
+        for i, (leaf, vector) in enumerate(zip(leaves, vectors, strict=True))
+    )
+    built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
+    text, token_count = rollup(built)
+    return Document(
+        embedding_model=embedder.model_id,
+        sections=built,
+        text=text,
+        token_count=token_count,
+        embedding=embedder.embed([text])[0],
+    )
+
+
+def _build_section(raw: RawSection, embedder: Embedder, sentences: Iterator[Sentence]) -> Section:
+    children: list[Node] = [
+        next(sentences) if isinstance(child, RawSentence) else _build_section(child, embedder, sentences)
+        for child in raw.children
+    ]
+    kept = tuple(children)
+    text, token_count = rollup(kept)
+    return Section(
+        kind=raw.kind,
+        header=raw.header,
+        children=kept,
+        text=text,
+        token_count=token_count,
+        embedding=embedder.embed([text])[0],
+    )
+
+
+def _leaf_sentences(sections: tuple[RawSection, ...]) -> list[RawSentence]:
+    """Every leaf sentence in document (pre-order) order — the order _build_section consumes them."""
+    leaves: list[RawSentence] = []
+
+    def walk(section: RawSection) -> None:
+        for child in section.children:
+            if isinstance(child, RawSentence):
+                leaves.append(child)
+            else:
+                walk(child)
+
+    for section in sections:
+        walk(section)
+    return leaves
+
+
+def represent(prompt: str, embedder: Embedder) -> Document:
+    """Build the Document IR: split losslessly, then tokenize and embed every node."""
+    segments = split(prompt)
+    if not segments:
+        raise ValueError("cannot represent an empty prompt")
+    return encode(segments, embedder)
+
+
+__all__ = ["represent"]
