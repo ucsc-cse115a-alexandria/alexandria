@@ -17,6 +17,14 @@ from alexandria.core.protocols import (
     Scores,
     ScoreVector,
 )
+from alexandria.core.registry import (
+    get_optimizer,
+    get_scorer,
+    register_optimizer,
+    register_scorer,
+    required_scorers,
+)
+from alexandria.core.select import apply
 from alexandria.core.similarity import cosine_similarity_matrix
 
 __all__ = [
@@ -35,5 +43,11 @@ __all__ = [
     "Sentence",
     "SentenceId",
     "TokenCount",
+    "apply",
     "cosine_similarity_matrix",
+    "get_optimizer",
+    "get_scorer",
+    "register_optimizer",
+    "register_scorer",
+    "required_scorers",
 ]
