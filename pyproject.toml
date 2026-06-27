@@ -144,15 +144,15 @@ name = "Layered architecture"
 type = "layers"
 layers = [
     "alexandria.cli",
-    "alexandria.embedding | alexandria.pipeline",
-    "alexandria.represent | alexandria.score | alexandria.optimize",
+    "alexandria.runtime.embedding | alexandria.runtime.pipeline",
+    "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize",
     "alexandria.core",
 ]
 ignore_imports = [
-    "alexandria.optimize.greedy_pairwise_test -> alexandria.**",
-    "alexandria.represent.represent_test -> alexandria.**",
-    "alexandria.score.redundancy_test -> alexandria.**",
-    "alexandria.score.score_test -> alexandria.**",
+    "alexandria.phases.optimize.greedy_pairwise_test -> alexandria.**",
+    "alexandria.phases.represent.represent_test -> alexandria.**",
+    "alexandria.phases.score.redundancy_test -> alexandria.**",
+    "alexandria.phases.score.score_test -> alexandria.**",
 ]
 
 # Functional core, imperative shell: only the embedding shell may touch a model.
@@ -161,17 +161,15 @@ name = "Embedding backend isolated to the shell"
 type = "forbidden"
 source_modules = [
     "alexandria.core",
-    "alexandria.represent",
-    "alexandria.score",
-    "alexandria.optimize",
-    "alexandria.pipeline",
+    "alexandria.phases",
+    "alexandria.runtime.pipeline",
 ]
 forbidden_modules = [
     "sentence_transformers",
 ]
 ignore_imports = [
-    "alexandria.optimize.greedy_pairwise_test -> alexandria.**",
-    "alexandria.represent.represent_test -> alexandria.**",
-    "alexandria.score.redundancy_test -> alexandria.**",
-    "alexandria.score.score_test -> alexandria.**",
+    "alexandria.phases.optimize.greedy_pairwise_test -> alexandria.**",
+    "alexandria.phases.represent.represent_test -> alexandria.**",
+    "alexandria.phases.score.redundancy_test -> alexandria.**",
+    "alexandria.phases.score.score_test -> alexandria.**",
 ]

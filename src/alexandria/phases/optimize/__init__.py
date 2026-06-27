@@ -6,8 +6,8 @@ from typing import TYPE_CHECKING
 
 from alexandria.core.protocols import OptimizerParams
 from alexandria.core.registry import get_optimizer
-from alexandria.optimize import greedy_pairwise
-from alexandria.optimize.greedy_pairwise import DEFAULT_OPTIMIZER
+from alexandria.phases.optimize import greedy_pairwise
+from alexandria.phases.optimize.greedy_pairwise import DEFAULT_OPTIMIZER
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document

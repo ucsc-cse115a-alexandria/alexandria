@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from alexandria.core.ir import SectionKind
-from alexandria.represent.split import RawSection, RawSentence, split
+from alexandria.phases.represent.split import RawSection, RawSentence, split
 
 
 def _leaf_text(sections: tuple[RawSection, ...]) -> str:

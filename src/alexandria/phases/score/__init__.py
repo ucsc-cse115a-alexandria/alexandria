@@ -5,8 +5,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from alexandria.core.registry import get_scorer
-from alexandria.score import redundancy
-from alexandria.score.redundancy import DEFAULT_SCORER
+from alexandria.phases.score import redundancy
+from alexandria.phases.score.redundancy import DEFAULT_SCORER
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document

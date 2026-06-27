@@ -8,11 +8,11 @@ from typing import IO
 
 import click
 
-from alexandria.embedding import DEFAULT_MODEL, DETERMINISTIC, build_embedder
-from alexandria.optimize import DEFAULT_OPTIMIZER, OptimizerParams
-from alexandria.pipeline import reduce as reduce_prompt
-from alexandria.pipeline import score_report
-from alexandria.score import DEFAULT_SCORER
+from alexandria.phases.optimize import DEFAULT_OPTIMIZER, OptimizerParams
+from alexandria.phases.score import DEFAULT_SCORER
+from alexandria.runtime.embedding import DEFAULT_MODEL, DETERMINISTIC, build_embedder
+from alexandria.runtime.pipeline import reduce as reduce_prompt
+from alexandria.runtime.pipeline import score_report
 
 _DEFAULTS = OptimizerParams()
 _MODEL_HELP = f"embedding model id, or {DETERMINISTIC!r}"

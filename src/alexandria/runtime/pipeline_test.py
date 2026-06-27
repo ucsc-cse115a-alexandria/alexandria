@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from alexandria.embedding import HashEmbedder
-from alexandria.pipeline import score_report
+from alexandria.runtime.embedding import HashEmbedder
+from alexandria.runtime.pipeline import score_report
 
 
 def test_score_report_adds_the_redundant_peer() -> None:

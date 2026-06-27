@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from alexandria.core.protocols import OptimizerParams
-from alexandria.embedding import HashEmbedder
-from alexandria.optimize.greedy_pairwise import greedy_pairwise
-from alexandria.represent import represent
-from alexandria.score import score
+from alexandria.phases.optimize.greedy_pairwise import greedy_pairwise
+from alexandria.phases.represent import represent
+from alexandria.phases.score import score
+from alexandria.runtime.embedding import HashEmbedder
 
 
 def test_emits_one_delete_for_a_duplicate_pair() -> None:

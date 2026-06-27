@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import tiktoken
 
 from alexandria.core.ir import Document, Node, Section, Sentence, rollup
-from alexandria.represent.split import RawSection, RawSentence
+from alexandria.phases.represent.split import RawSection, RawSentence
 
 if TYPE_CHECKING:
     from collections.abc import Iterator

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from alexandria.embedding import HashEmbedder
-from alexandria.pipeline import reduce
-from alexandria.represent import represent
+from alexandria.phases.represent import represent
+from alexandria.runtime.embedding import HashEmbedder
+from alexandria.runtime.pipeline import reduce
 
 
 def test_reduce_removes_redundant_and_preserves_unique_and_cuts_tokens() -> None:

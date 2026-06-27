@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from alexandria.embedding import HashEmbedder, build_embedder
+from alexandria.runtime.embedding import HashEmbedder, build_embedder
 
 
 def test_identical_text_yields_identical_vector() -> None:

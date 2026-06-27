@@ -5,9 +5,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alexandria.core.registry import register_scorer
-from alexandria.embedding import HashEmbedder
-from alexandria.represent import represent
-from alexandria.score import score
+from alexandria.phases.represent import represent
+from alexandria.phases.score import score
+from alexandria.runtime.embedding import HashEmbedder
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document

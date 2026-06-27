@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from alexandria.embedding import HashEmbedder
-from alexandria.represent import represent
-from alexandria.score.redundancy import most_similar, redundancy
+from alexandria.phases.represent import represent
+from alexandria.phases.score.redundancy import most_similar, redundancy
+from alexandria.runtime.embedding import HashEmbedder
 
 
 def test_duplicate_scores_higher_than_unique() -> None:

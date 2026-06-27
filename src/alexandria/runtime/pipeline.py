@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from alexandria.core.registry import required_scorers, scorer_peers
 from alexandria.core.select import apply
-from alexandria.optimize import DEFAULT_OPTIMIZER, optimize
-from alexandria.represent import represent
-from alexandria.score import DEFAULT_SCORER, score
+from alexandria.phases.optimize import DEFAULT_OPTIMIZER, optimize
+from alexandria.phases.represent import represent
+from alexandria.phases.score import DEFAULT_SCORER, score
 
 if TYPE_CHECKING:
     from alexandria.core.protocols import Embedder, OptimizerParams

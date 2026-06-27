@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.represent.encode import encode
-from alexandria.represent.split import split
+from alexandria.phases.represent.encode import encode
+from alexandria.phases.represent.split import split
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
