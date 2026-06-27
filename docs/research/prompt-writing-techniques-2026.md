@@ -1,222 +1,220 @@
-# Prompt-Writing Techniques from 2026 Papers
+# 2026年論文に基づくプロンプト記述技法
 
-## Overview
+## 概要
 
-This note surveys 2026 research on prompt-writing and prompt-optimization techniques and
-extracts the concrete, reproducible methods that bear directly on Alexandria's goal:
-splitting a long prompt into instructions, encoding them, scoring redundancy, and then
-merging or dropping redundant instructions without losing meaning or task accuracy. The
-question it answers is: *which 2026 techniques tell us how to rewrite, merge, or prune
-instructions in a measurable, label-free way, and how do they validate that the result
-preserves accuracy?* All primary techniques below are drawn from papers whose arXiv v1
-appeared in 2026; two important baselines (GEPA, Textual-Gradients critique) are from
-2025 and are flagged explicitly wherever they appear.
+本ノートは、プロンプトの記述およびプロンプト最適化技法に関する2026年の研究を概観し、
+Alexandriaの目標に直接関わる具体的かつ再現可能な手法を抽出する。すなわち、長いプロンプトを
+複数の指示に分割し、それらをエンコードし、冗長性をスコアリングしたうえで、意味やタスク精度を
+損なうことなく冗長な指示をマージあるいは削除する、という目標である。本ノートが答える問いは
+次のとおりである。*どの2026年技法が、測定可能かつラベル不要な方法で指示を書き換え、マージし、
+あるいは枝刈りする方法を示しているのか。そして、その結果が精度を保持していることをどのように
+検証しているのか。* 以下に挙げる主要技法は、いずれもarXiv v1が2026年に公開された論文に由来する。
+重要なベースラインが2つ（GEPA、Textual-Gradients批判）あるが、これらは2025年のものであり、
+登場箇所ごとに明示的にフラグを付けている。
 
-## Methods
+## 手法
 
-### 1. Modular Prompt Optimization (MPO) — section-local edits with de-duplication
-*Sharma & Henley, arXiv:2601.04055 (Jan 2026).* This is the most directly applicable
-technique. MPO treats a prompt not as one text blob but as a fixed set of semantic
-sections, optimizes each independently, then de-duplicates across sections.
+### 1. Modular Prompt Optimization (MPO) — 重複排除を伴うセクション局所的な編集
+*Sharma & Henley, arXiv:2601.04055 (Jan 2026).* これは最も直接的に応用可能な技法である。
+MPOはプロンプトを一つのテキストの塊としてではなく、固定された意味的セクションの集合として
+扱い、各セクションを独立に最適化したうえで、セクション間で重複排除を行う。
 
-Recipe:
-1. Split the prompt into five fixed sections: **system role, context, task description,
-   constraints, output format**.
-2. For each section independently, run a critic LLM to produce a *section-local textual
-   gradient* — a natural-language critique of just that section — and apply the edit only
-   to that section, keeping the schema fixed.
-3. **Consolidate the updated sections with an explicit de-duplication pass** that removes
-   redundancy *between* components.
-4. Keep the section schema fixed across iterations so structure never drifts.
+手順:
+1. プロンプトを5つの固定セクションに分割する。すなわち **system role, context, task description,
+   constraints, output format** である。
+2. 各セクションについて独立に、critic LLMを実行して*セクション局所的なtextual gradient*
+   — すなわちそのセクションのみに対する自然言語の批評 — を生成し、その編集をそのセクションに
+   のみ適用する。スキーマは固定したままにする。
+3. **コンポーネント*間*の冗長性を取り除く明示的な重複排除パスによって、更新されたセクションを
+   統合する。**
+4. イテレーション全体を通じてセクションスキーマを固定し、構造が決してドリフトしないようにする。
 
-Why it works (per the paper): isolating edits to one section prevents a global rewrite
-from corrupting unrelated parts of the prompt, and the de-dup step removes overlap that
-accumulates when sections are optimized separately. Expect: MPO consistently beats both an
-untuned structured prompt and a monolithic TextGrad baseline on ARC-Challenge and MMLU,
-with LLaMA-3-8B-Instruct and Mistral-7B-Instruct, with no parameter changes.
+なぜ機能するか（論文より）: 編集を一つのセクションに隔離することで、グローバルな書き換えが
+プロンプトの無関係な部分を破壊するのを防ぐ。また、重複排除のステップは、セクションを別々に
+最適化したときに蓄積する重なりを取り除く。期待される効果: MPOは、ARC-ChallengeおよびMMLU上で、
+LLaMA-3-8B-InstructおよびMistral-7B-Instructを用いた場合に、未調整の構造化プロンプトと
+モノリシックなTextGradベースラインの双方を一貫して上回り、しかもパラメータ変更を伴わない。
 
-### 2. Variance-based instruction filtering (p1) — optimize on the few prompts that discriminate
-*Gao et al., arXiv:2604.08801 (Apr 2026).* p1 reframes prompt optimization around *reward
-variance* and shows that using more examples can hurt.
+### 2. 分散ベースの指示フィルタリング (p1) — 弁別力のある少数のプロンプトで最適化する
+*Gao et al., arXiv:2604.08801 (Apr 2026).* p1はプロンプト最適化を*報酬分散*を中心に
+再定式化し、より多くの事例を使うことがかえって有害になりうることを示す。
 
-Recipe:
-1. Decompose reward variance into two parts: **variance among responses** (generation
-   stochasticity) and **variance among system prompts** (actual quality differences).
-2. Optimization only succeeds when system-prompt variance dominates response variance.
-3. Therefore, **filter the evaluation set down to the small subset of user prompts that
-   show the highest variance across candidate system prompts** — these are the ones that
-   discriminate good prompts from bad — and optimize on those only.
+手順:
+1. 報酬分散を2つの成分に分解する。すなわち **応答間の分散**（生成の確率的揺らぎ）と
+   **system prompt間の分散**（実際の品質差）である。
+2. 最適化が成功するのは、system prompt間の分散が応答間の分散を上回る場合に限られる。
+3. したがって、**評価セットを、候補となるsystem prompt間で最も高い分散を示すユーザープロンプトの
+   小さな部分集合へと絞り込む** — これらこそが良いプロンプトと悪いプロンプトを弁別するものである
+   — そして、それらのみで最適化する。
 
-Why it works (per the paper): high-variance prompts maximize the signal that separates a
-good rewrite from a bad one; piling on low-variance prompts dilutes that signal,
-especially on heterogeneous data. Expect: p1 substantially beats training on the full
-dataset and outperforms GEPA on reasoning benchmarks; a system prompt tuned on **just two
-AIME-24 prompts generalized** to other reasoning benchmarks.
+なぜ機能するか（論文より）: 高分散のプロンプトは、良い書き換えと悪い書き換えを分離するシグナルを
+最大化する。低分散のプロンプトを積み重ねると、特に異質なデータ上で、そのシグナルが薄められて
+しまう。期待される効果: p1はデータセット全体での学習を大幅に上回り、推論ベンチマーク上で
+GEPAを凌駕する。**わずか2つのAIME-24プロンプトで調整した**system promptが、他の推論ベンチマークへ
+**汎化した**。
 
-### 3. Structure-aware compression, not blind token dropping (the "compression paradox")
-*Johnson, arXiv:2603.23527 (Mar 2026).* A direct warning for any system that shortens
-prompts by removing tokens.
+### 3. 盲目的なトークン削除ではなく、構造を考慮した圧縮（「圧縮のパラドックス」）
+*Johnson, arXiv:2603.23527 (Mar 2026).* トークンを除去することでプロンプトを短縮する
+あらゆるシステムに対する直接的な警告である。
 
-Recipe / guidance:
-1. Do not assume fewer input tokens means lower cost. Aggressive compression (ratio
-   r≈0.3) can trigger **output-token explosion** that raises total inference cost — the
-   "compression paradox."
-2. The primary moderator of robustness is **prompt structure**, formalized as
-   *instruction survival probability* (Ψ), *not* the model provider. Preserve
-   structurally load-bearing instructions instead of dropping tokens uniformly.
-3. **Validate compression on multiple diverse benchmarks**, never a single one — the same
-   model under the same compression ratio behaved very differently across tasks
-   (DeepSeek: 56x output expansion on MBPP at Ψ≈0.15 vs only 5x on HumanEval at Ψ≈0.72).
-4. Measure real energy/cost directly; token savings overstate actual savings.
+手順 / ガイダンス:
+1. 入力トークンが少なければコストも低い、と仮定してはならない。積極的な圧縮（比率
+   r≈0.3）は、総推論コストを引き上げる**出力トークンの爆発**を引き起こしうる — これが
+   「圧縮のパラドックス」である。
+2. ロバスト性を左右する主要な調整因子は**プロンプト構造**であり、これは*instruction survival
+   probability* (Ψ) として定式化される。モデルプロバイダではない。トークンを一様に削除する
+   のではなく、構造的に荷重を担う指示を保持せよ。
+3. **圧縮は複数の多様なベンチマーク上で検証せよ。**単一のベンチマークで済ませてはならない
+   — 同一モデルが同一の圧縮比の下でも、タスクによって大きく異なる挙動を示した
+   （DeepSeek: MBPP上でΨ≈0.15のとき56倍の出力拡大、対してHumanEval上でΨ≈0.72のときわずか5倍）。
+4. 実際のエネルギー/コストを直接測定せよ。トークン削減量は実際の削減量を過大評価する。
 
-Why it matters for us: it argues *against* uniform token-level pruning and *for* keeping
-whole instructions intact when they carry structure — which aligns with operating at the
-instruction level rather than the token level.
+なぜ我々にとって重要か: これは一様なトークンレベルの枝刈りに*反対*し、構造を担う指示は
+それ全体を無傷で保つこと*に賛成*する論拠である — これはトークンレベルではなく指示レベルで
+動作するという方針と整合する。
 
-### 4. Uncertainty-calibrated optimization (UCPOF / LSFU) — let confidence trigger work
-*Chen, Ju & Qi, arXiv:2603.18009 (Feb 2026).* Uses calibrated first-token confidence to
-decide *when* to spend extra effort on a prompt.
+### 4. 不確実性較正型最適化 (UCPOF / LSFU) — 確信度が作業を起動するに任せる
+*Chen, Ju & Qi, arXiv:2603.18009 (Feb 2026).* 較正された最初のトークンの確信度を用いて、
+プロンプトに追加の労力を*いつ*費やすかを決定する。
 
-Recipe:
-1. Compute **Log-Scale Focal Uncertainty (LSFU)** on the first-token prediction, weighting
-   by label-prior probabilities so that confidence inflated by frequent classes is
-   suppressed and rare long-tail classes are emphasized.
-2. Use LSFU to (a) select high-quality exemplars by first-token confidence, (b) trigger
-   prompt re-optimization only on uncertain samples, and (c) fire retrieval (RAG) only
-   when uncertainty crosses a threshold.
+手順:
+1. 最初のトークン予測に対して **Log-Scale Focal Uncertainty (LSFU)** を計算する。label-prior
+   確率で重み付けすることで、頻出クラスによって水増しされた確信度を抑制し、希少なロングテール
+   クラスを強調する。
+2. LSFUを用いて、(a) 最初のトークンの確信度によって高品質な事例を選択し、(b) 不確実な
+   サンプルに対してのみプロンプトの再最適化を起動し、(c) 不確実性が閾値を越えたときにのみ
+   retrieval (RAG) を発火させる。
 
-Why it works (per the paper): plain entropy treats all classes equally and conflates
-prior-driven confidence with genuine understanding; LSFU removes that bias. Expect:
-+6.03% accuracy over few-shot, +5.75% over always-on RAG, and a **50.66% reduction in
-retrieval triggers** (i.e., same/better accuracy for far less work).
+なぜ機能するか（論文より）: 素朴なエントロピーはすべてのクラスを等しく扱い、事前分布に
+由来する確信度と真の理解とを混同する。LSFUはそのバイアスを取り除く。期待される効果:
+few-shot比で+6.03%の精度、常時ONのRAG比で+5.75%、そして**retrieval起動の50.66%削減**
+（すなわち、はるかに少ない労力で同等以上の精度）。
 
-### 5. Test-driven prompt refinement guidelines for code (specification-completeness)
-*Midolo et al., arXiv:2601.13118 (Jan 2026).* Empirically derived, iterative,
-test-driven rules. (Effect sizes / per-rule pass-rate deltas are reported in the full PDF
-but were not extractable from the landing page; treat the rule list as the reproducible
-artifact and the magnitudes as "improves test pass rate" pending PDF confirmation.)
+### 5. コード向けのテスト駆動プロンプト改善ガイドライン（仕様の完全性）
+*Midolo et al., arXiv:2601.13118 (Jan 2026).* 経験的に導出された、反復的かつ
+テスト駆動のルール。（効果量／ルールごとのpass-rate差は完全版PDFで報告されているが、
+ランディングページからは抽出できなかった。ルール一覧を再現可能な成果物として扱い、
+その大きさはPDFでの確認を待つ「テストpass rateを改善する」程度の扱いとせよ。）
 
-Recipe — refine an instruction by adding, in order of impact:
-1. Explicit **input/output specification** (signatures, expected results).
-2. **Pre- and post-conditions** (constraints, state assumptions).
-3. **Concrete examples** of usage.
-4. **Detail specification**: error handling, edge cases, implementation preferences.
-5. **Ambiguity resolution**: remove vague terminology and unclear requirements.
+手順 — 影響の大きい順に、次を追加して指示を改善する:
+1. 明示的な**入出力仕様**（シグネチャ、期待される結果）。
+2. **事前条件と事後条件**（制約、状態に関する前提）。
+3. 使用法の**具体的な例**。
+4. **詳細仕様**: エラー処理、エッジケース、実装上の選好。
+5. **曖昧性の解消**: 曖昧な用語と不明確な要件を取り除く。
 
-Why it works (per the paper): each item closes an underspecification gap that causes test
-failures; they iterate test-driven until tests pass. Models studied: GPT-4o-mini,
-Llama-3.3, Qwen-2.5, DeepSeek-v2; datasets: HumanEval, MBPP.
+なぜ機能するか（論文より）: 各項目はテスト失敗を引き起こす仕様不足のギャップを一つずつ
+埋める。これらをテストが通るまでテスト駆動で反復する。検証されたモデル: GPT-4o-mini、
+Llama-3.3、Qwen-2.5、DeepSeek-v2。データセット: HumanEval、MBPP。
 
-### 6. Dataset-level instruction optimization (shared instructions, not per-example)
-*Cosma et al., arXiv:2601.13922 (Jan 2026).* Optimizes one shared instruction set across a
-whole dataset rather than per sample, scored by a dedicated interpretability agent.
+### 6. データセットレベルの指示最適化（事例ごとではなく共有された指示）
+*Cosma et al., arXiv:2601.13922 (Jan 2026).* サンプルごとではなく、データセット全体に
+わたって一つの共有された指示セットを最適化し、専用の解釈可能性エージェントによってスコア
+付けする。
 
-Recipe:
-1. A **Proposer** agent suggests instruction/feature definitions.
-2. An **Extractor** agent applies them to text.
-3. An **InterpretabilityScorer** agent rates each definition's interpretability and
-   dataset-level performance, and that feedback drives the next instruction rewrite.
-4. Iterate so the *shared* instruction set improves, not per-example outputs (implemented
-   with DSPy). Effect sizes are not reported in the abstract.
+手順:
+1. **Proposer** エージェントが指示／特徴量の定義を提案する。
+2. **Extractor** エージェントがそれらをテキストに適用する。
+3. **InterpretabilityScorer** エージェントが各定義の解釈可能性とデータセットレベルの性能を
+   評価し、そのフィードバックが次の指示の書き換えを駆動する。
+4. *共有された*指示セットが改善されるように反復する。事例ごとの出力ではない（DSPyで実装）。
+   効果量はアブストラクトでは報告されていない。
 
-## How it is validated
+## 検証方法
 
-- **MPO (2601.04055):** accuracy on ARC-Challenge and MMLU with LLaMA-3-8B-Instruct and
-  Mistral-7B-Instruct; comparison against an untuned structured prompt and TextGrad.
-- **p1 (2604.08801):** reasoning benchmarks (AIME-24 and others); metric is downstream
-  accuracy of the optimized system prompt; cross-benchmark generalization; baselines
-  include GEPA. Core analysis is a variance decomposition of the reward signal.
-- **Compression paradox (2603.23527):** 5,400 API calls across three code benchmarks
-  (HumanEval, MBPP, +1) at fixed compression ratios; metrics are output-expansion factor,
-  instruction-survival probability Ψ, and **direct GPU energy measurement via NVML**.
-- **UCPOF (2603.18009):** classification/understanding tasks; metrics are accuracy gains
-  vs few-shot and vs full RAG, plus retrieval-trigger rate (efficiency). Reports
-  calibration of confidence as the core mechanism.
-- **Code guidelines (2601.13118):** HumanEval/MBPP test pass rates plus a survey of 50
-  developers on guideline usage vs perceived usefulness; iterative test-driven refinement.
-- **Feature discovery (2601.13922):** dataset-level performance and interpretability
-  feedback as the optimization objective; DSPy implementation.
+- **MPO (2601.04055):** LLaMA-3-8B-InstructおよびMistral-7B-Instructを用いた、ARC-Challenge
+  およびMMLU上の精度。未調整の構造化プロンプトおよびTextGradとの比較。
+- **p1 (2604.08801):** 推論ベンチマーク（AIME-24ほか）。指標は最適化されたsystem promptの
+  下流精度。ベンチマーク横断での汎化。ベースラインにはGEPAを含む。中核となる分析は報酬
+  シグナルの分散分解である。
+- **圧縮のパラドックス (2603.23527):** 3つのコードベンチマーク（HumanEval、MBPP、+1）に
+  わたる固定圧縮比での5,400回のAPIコール。指標は出力拡大係数、instruction-survival probability
+  Ψ、そして**NVMLによる直接的なGPUエネルギー測定**。
+- **UCPOF (2603.18009):** 分類／理解タスク。指標はfew-shot比およびフルRAG比での精度向上、
+  加えてretrieval起動率（効率）。中核機構として確信度の較正を報告。
+- **コードガイドライン (2601.13118):** HumanEval/MBPPのテストpass rate、加えてガイドラインの
+  使用状況対知覚される有用性に関する50名の開発者を対象とした調査。反復的なテスト駆動の改善。
+- **特徴量発見 (2601.13922):** 最適化目的としてのデータセットレベル性能および解釈可能性
+  フィードバック。DSPyによる実装。
 
-Common threads: most validate *without per-example human labels* (test cases, calibrated
-confidence, or dataset-level interpretability scores stand in for labels), repeat runs to
-handle LLM stochasticity, and compare against a non-optimized prompt baseline.
+共通する糸口: ほとんどが*事例ごとの人手ラベルなしで*検証している（テストケース、較正された
+確信度、あるいはデータセットレベルの解釈可能性スコアがラベルの代わりを務める）。LLMの確率的
+揺らぎに対処するために実行を繰り返し、最適化されていないプロンプトのベースラインと比較する。
 
-## Relevance to our project
+## 本プロジェクトとの関連
 
-Alexandria splits a prompt into an `InstructionSet`, encodes each instruction, scores
-redundancy, and merges/drops redundant instructions while preserving accuracy. These
-2026 results map onto our phases as follows:
+Alexandriaはプロンプトを`InstructionSet`へと分割し、各指示をエンコードし、冗長性をスコア
+付けし、精度を保持しながら冗長な指示をマージ／削除する。これらの2026年の成果は、我々の
+フェーズに次のように対応する。
 
-- **Merging without intent loss → MPO (2601.04055).** Its explicit *de-duplication across
-  fixed sections* is the closest published analogue to our merge step. Lesson: merge
-  within stable, named groups and run a dedicated de-dup pass, rather than re-writing the
-  whole prompt; this preserves schema and intent. Our redundancy scorer can play the role
-  MPO assigns to the critic LLM's section-local gradient, but operating on instructions
-  instead of sections.
+- **意図を失わないマージ → MPO (2601.04055).** その明示的な*固定セクション間の重複排除*は、
+  我々のマージステップに対する最も近い既発表の類似物である。教訓: プロンプト全体を書き換える
+  のではなく、安定した名前付きのグループ内でマージし、専用の重複排除パスを実行すること。これに
+  よってスキーマと意図が保持される。我々の冗長性スコアラは、MPOがcritic LLMのセクション局所的
+  gradientに割り当てた役割を、セクションではなく指示に対して動作する形で担いうる。
 
-- **Pruning the right way → compression paradox (2603.23527).** Strong evidence *for*
-  operating at the instruction level rather than dropping tokens: structurally important
-  instructions must survive (high Ψ), and uniform compression can backfire by exploding
-  output length and cost. This validates our instruction-granularity design and warns us
-  to protect load-bearing instructions when dropping redundant ones.
+- **正しいやり方での枝刈り → 圧縮のパラドックス (2603.23527).** トークンを削除するのではなく
+  指示レベルで動作すること*に賛成*する強力な証拠である。構造的に重要な指示は生き残らねば
+  ならず（高いΨ）、一様な圧縮は出力長とコストを爆発させることで裏目に出うる。これは我々の
+  指示粒度の設計を裏付け、冗長な指示を削除する際に荷重を担う指示を保護せよと警告する。
 
-- **Cheap accuracy validation → UCPOF/LSFU (2603.18009).** We need a label-free signal
-  that a merge/drop did not hurt the task. Calibrated first-token confidence is a concrete
-  candidate: flag a merge as risky when post-merge confidence drops or uncertainty rises,
-  and only then re-expand or re-test. This gives us a redundancy-vs-accuracy gate without
-  ground-truth labels.
+- **安価な精度検証 → UCPOF/LSFU (2603.18009).** マージ／削除がタスクを損なわなかったことを
+  示すラベル不要なシグナルが必要である。較正された最初のトークンの確信度は具体的な候補である。
+  マージ後に確信度が下がる、あるいは不確実性が上がる場合にそのマージをリスクありと判定し、
+  そのときに限って再展開あるいは再テストする。これにより、正解ラベルなしで冗長性対精度の
+  ゲートが得られる。
 
-- **Choosing what to test merges against → p1 (2604.08801).** When we validate that a
-  reduced `InstructionSet` still works, we should not test on a large uniform sample.
-  Pick the *high-variance* inputs that actually discriminate a good reduction from a
-  damaging one. This makes our accuracy validation both cheaper and more sensitive.
+- **マージを何に対してテストするかの選択 → p1 (2604.08801).** 縮小された`InstructionSet`が
+  なお機能することを検証する際、大きな一様サンプルでテストすべきではない。良い縮小と
+  有害な縮小を実際に弁別する*高分散*の入力を選ぶこと。これにより、我々の精度検証はより安価かつ
+  より鋭敏になる。
 
-- **Rewriting a kept instruction → code guidelines (2601.13118) + feature discovery
-  (2601.13922).** When merging two overlapping instructions into one, the completeness
-  checklist (I/O spec, pre/post-conditions, examples, ambiguity removal) is a reproducible
-  rubric for ensuring the merged instruction still carries the union of both intents. The
-  dataset-level optimization view (optimize one shared instruction set, not per example)
-  matches how a single prompt's instructions should be tuned jointly.
+- **保持した指示の書き換え → コードガイドライン (2601.13118) + 特徴量発見
+  (2601.13922).** 重複する2つの指示を一つにマージする際、完全性チェックリスト（I/O仕様、
+  事前／事後条件、例、曖昧性の除去）は、マージされた指示が依然として両方の意図の和を担って
+  いることを保証するための再現可能なルーブリックである。データセットレベルの最適化の観点
+  （事例ごとではなく一つの共有された指示セットを最適化する）は、単一プロンプトの指示が
+  どのように一体として調整されるべきかと一致する。
 
-Net: the 2026 literature supports instruction-level (not token-level) operation, an
-explicit de-duplication/merge step over a stable structure, variance-based selection of
-validation inputs, and calibrated-confidence as a label-free accuracy guard.
+総じて: 2026年の文献は、（トークンレベルではなく）指示レベルでの動作、安定した構造に対する
+明示的な重複排除／マージのステップ、検証入力の分散ベースの選択、そしてラベル不要な精度の
+番人としての較正された確信度を支持している。
 
-## Related papers
+## 関連論文
 
 - [Sharma & Henley — Modular Prompt Optimization: Optimizing Structured Prompts with
-  Section-Local Textual Gradients (2026)] — splits prompts into five fixed sections,
-  optimizes each with a critic's section-local textual gradient, then de-duplicates across
-  sections; beats untuned + TextGrad on ARC-Challenge/MMLU. **2026.**
+  Section-Local Textual Gradients (2026)] — プロンプトを5つの固定セクションに分割し、各々を
+  criticのセクション局所的textual gradientで最適化し、セクション間で重複排除する。
+  ARC-Challenge/MMLU上で未調整 + TextGradを上回る。**2026.**
   arXiv:2601.04055 — https://arxiv.org/abs/2601.04055
 - [Gao, Wang, Liu, Joachims, Brantley & Sun — p1: Better Prompt Optimization with Fewer
-  Prompts (2026)] — decomposes reward variance and filters to the few high-variance prompts
-  that discriminate prompt quality; outperforms GEPA, generalizes from two AIME-24 prompts.
+  Prompts (2026)] — 報酬分散を分解し、プロンプト品質を弁別する少数の高分散プロンプトへ絞り込む。
+  GEPAを凌駕し、2つのAIME-24プロンプトから汎化する。
   **2026.** arXiv:2604.08801 — https://arxiv.org/abs/2604.08801
 - [Johnson — Compression Method Matters: Benchmark-Dependent Output Dynamics in LLM Prompt
-  Compression (2026)] — documents the "compression paradox"; prompt structure (Ψ), not
-  provider, governs robustness; argues for structure-aware, benchmark-diverse compression.
+  Compression (2026)] — 「圧縮のパラドックス」を記録する。ロバスト性を左右するのはプロバイダ
+  ではなくプロンプト構造（Ψ）であり、構造を考慮しベンチマークを多様化した圧縮を論ずる。
   **2026.** arXiv:2603.23527 — https://arxiv.org/abs/2603.23527
 - [Chen, Ju & Qi — How Confident Is the First Token? An Uncertainty-Calibrated Prompt
-  Optimization Framework (2026)] — Log-Scale Focal Uncertainty on the first token drives
-  exemplar selection and confidence-gated RAG; +6.03% over few-shot, −50.66% retrieval
-  triggers. **2026.** arXiv:2603.18009 — https://arxiv.org/abs/2603.18009
+  Optimization Framework (2026)] — 最初のトークンに対するLog-Scale Focal Uncertaintyが
+  事例選択と確信度ゲート付きRAGを駆動する。few-shot比+6.03%、retrieval起動−50.66%。
+  **2026.** arXiv:2603.18009 — https://arxiv.org/abs/2603.18009
 - [Midolo, Giagnorio, Zampetti, Tufano, Bavota & Di Penta — Guidelines to Prompt LLMs for
-  Code Generation: An Empirical Characterization (2026)] — 10 test-driven prompt-improvement
-  guidelines (I/O spec, pre/post-conditions, examples, detail, ambiguity removal); evaluated
-  on HumanEval/MBPP and with 50 developers. **2026.** arXiv:2601.13118 —
+  Code Generation: An Empirical Characterization (2026)] — 10個のテスト駆動プロンプト改善
+  ガイドライン（I/O仕様、事前／事後条件、例、詳細、曖昧性の除去）。HumanEval/MBPPおよび
+  50名の開発者で評価。**2026.** arXiv:2601.13118 —
   https://arxiv.org/abs/2601.13118
 - [Cosma, Szehr, Kletz, Antonucci & Pelletier — Automatic Prompt Optimization for
-  Dataset-Level Feature Discovery (2026)] — Proposer/Extractor/InterpretabilityScorer agents
-  optimize one shared instruction set at dataset level (DSPy). **2026.** arXiv:2601.13922 —
+  Dataset-Level Feature Discovery (2026)] — Proposer/Extractor/InterpretabilityScorerエージェントが
+  データセットレベルで一つの共有された指示セットを最適化する（DSPy）。**2026.** arXiv:2601.13922 —
   https://arxiv.org/abs/2601.13922
 - [Agrawal et al. — GEPA: Reflective Prompt Evolution Can Outperform Reinforcement Learning
-  (2025)] — **NON-2026 (arXiv v1 July 2025); included only as the standard baseline that the
-  2026 p1 paper compares against.** Genetic-Pareto reflective prompt evolution; beats GRPO by
-  ~6% (up to 20%) with up to 35x fewer rollouts. arXiv:2507.19457 —
+  (2025)] — **NON-2026 (arXiv v1 July 2025); 2026年のp1論文が比較対象とする標準ベースラインとしてのみ
+  収録。** Genetic-Paretoによる反省的プロンプト進化。最大35倍少ないロールアウトで
+  GRPOを約6%（最大20%）上回る。arXiv:2507.19457 —
   https://arxiv.org/abs/2507.19457
 - [Melcer, Chen, Chiang, Garg, Garg & Bock — Textual Gradients are a Flawed Metaphor for
-  Automatic Prompt Optimization (2025)] — **NON-2026 (arXiv v1 Dec 15, 2025); included as
-  context because MPO and other 2026 work build on/critique textual-gradient methods.**
-  Argues the gradient analogy does not explain why these methods work. arXiv:2512.13598 —
+  Automatic Prompt Optimization (2025)] — **NON-2026 (arXiv v1 Dec 15, 2025); MPOおよび他の2026年の
+  研究がtextual-gradient手法の上に構築する／それを批判するため、文脈として収録。**
+  gradientの類推はこれらの手法がなぜ機能するかを説明しないと論ずる。arXiv:2512.13598 —
   https://arxiv.org/abs/2512.13598

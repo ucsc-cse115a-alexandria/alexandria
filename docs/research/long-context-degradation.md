@@ -1,101 +1,32 @@
-# Long-Context and Long-Prompt Degradation
+# 長文脈・長プロンプトにおける性能劣化
 
-## Overview
-This note surveys empirical evidence that LLM quality drops as prompts and
-context grow longer, even when the model stays well inside its advertised
-context window. It answers a question central to Alexandria: is there real,
-measured harm in feeding a model long, instruction-heavy prompts, or is
-"more context is free" a safe assumption? The literature is consistent and
-blunt: longer inputs degrade accuracy, more simultaneous instructions degrade
-adherence, and the harm appears at token counts far below the stated limit.
-Two effects matter for us. First, raw input *length* hurts performance
-independent of content quality. Second, *instruction density* — the number of
-distinct directives packed into one prompt — degrades how reliably each
-instruction is followed. Both are the empirical case for compressing prompts
-and pruning redundant instructions.
+## 概要
+本ノートでは、モデルが公称の文脈窓に十分収まっている場合でも、プロンプトと文脈が長くなるにつれて LLM の品質が低下するという実証的な証拠を概観する。これは Alexandria にとって中心的な問いに答えるものである。すなわち、長く指示の多いプロンプトをモデルに与えることに、実測可能な実害が本当に存在するのか、それとも「文脈は多いほどよい（しかもコストはかからない）」という前提は安全なのか、という問いである。文献の見解は一貫しており、かつ明快である。入力が長いほど精度は劣化し、同時に与える指示が多いほど指示への追従性は劣化し、しかもその害は公称上限をはるかに下回るトークン数で現れる。本プロジェクトにとって重要な効果は二つある。第一に、入力の*長さ*そのものが、内容の質とは独立に性能を損なう。第二に、*指示密度* — 一つのプロンプトに詰め込まれた個別の指示の数 — が、各指示にどれだけ確実に従えるかを劣化させる。いずれもプロンプトの圧縮と冗長な指示の刈り込みを支持する実証的根拠である。
 
-## Methods
-The papers isolate degradation by holding the task fixed and varying only one
-dimension at a time.
+## 手法
+これらの論文は、タスクを固定したうえで一度に一つの次元だけを変化させることで、性能劣化を切り分けている。
 
-- **Positional isolation ("Lost in the Middle", Liu et al. 2023/2024).** Fix
-  the question and the gold evidence, then slide the evidence to different
-  positions inside a long context. Any change in accuracy is attributable to
-  position, not difficulty. The result is a U-shaped curve: accuracy is highest
-  when evidence sits at the start or end and sags in the middle.
-- **Length isolation via padding ("Same Task, More Tokens", Levy et al. 2024).**
-  The FLenQA dataset wraps the *same* reasoning sample in padding of varying
-  length, type, and location. Holding the reasoning constant and only inflating
-  surrounding tokens isolates the effect of length itself.
-- **Length isolation despite perfect retrieval ("Context Length Alone Hurts",
-  Du et al. 2025).** The sharpest control yet. They first guarantee the model
-  can retrieve the needed evidence, then shrink distraction to nothing by
-  replacing irrelevant tokens with whitespace, and finally *mask* irrelevant
-  tokens so attention is forced onto the relevant ones. Degradation survives all
-  three, proving length harms performance even with no retrieval failure and no
-  distractor content.
-- **Instruction-density isolation ("How Many Instructions Can LLMs Follow at
-  Once?", Jaroslawicz et al. 2025).** The IFScale benchmark stacks up to 500
-  verifiable keyword-inclusion instructions onto one business-report task and
-  ramps the count from few to many. Because each instruction is independently
-  checkable, they get a clean adherence-vs-density curve.
+- **位置の切り分け ("Lost in the Middle", Liu et al. 2023/2024)。** 質問と正解の根拠を固定したうえで、その根拠を長い文脈内の異なる位置にスライドさせる。精度の変化はいずれも難易度ではなく位置に起因する。結果は U 字型の曲線となり、根拠が文脈の先頭または末尾にあるときに精度が最も高く、中央に置かれると低下する。
+- **パディングによる長さの切り分け ("Same Task, More Tokens", Levy et al. 2024)。** FLenQA データセットは、*同一の*推論サンプルを長さ・種類・位置の異なるパディングで包む。推論を一定に保ち周囲のトークンだけを膨らませることで、長さそのものの効果を切り分ける。
+- **完全なリトリーバル下でも生じる長さの切り分け ("Context Length Alone Hurts", Du et al. 2025)。** これまでで最も厳密な統制である。まずモデルが必要な根拠を確実に検索できることを保証し、次に無関係なトークンを空白に置き換えて気を散らす要素を皆無にし、最後に無関係なトークンを*マスク*して注意が関連トークンに強制的に向くようにする。これら三つすべてを経ても性能劣化は残存し、リトリーバルの失敗もディストラクタの内容も存在しない場合ですら、長さが性能を損なうことを証明している。
+- **指示密度の切り分け ("How Many Instructions Can LLMs Follow at Once?", Jaroslawicz et al. 2025)。** IFScale ベンチマークは、一つのビジネスレポートタスクに対して検証可能なキーワード包含指示を最大 500 個まで積み上げ、その数を少数から多数へと増やしていく。各指示は独立に検証可能であるため、追従性と密度のきれいな関係曲線が得られる。
 
-## How it is validated
-- **Lost in the Middle** (arXiv:2307.03172; TACL 2024): multi-document QA and
-  key-value retrieval; metric is answer accuracy as a function of gold-evidence
-  position; evaluated across open and closed long-context models.
-- **Same Task, More Tokens** (arXiv:2402.14848; ACL 2024): FLenQA QA-reasoning
-  framework; accuracy versus input length, with the same sample padded to
-  different lengths/types/locations; includes GPT-4. Degradation is measurable
-  by ~3,000 tokens — far below model limits — and is worst when evidence must be
-  integrated from two non-adjacent spans.
-- **Context Length Alone Hurts LLM Performance Despite Perfect Retrieval**
-  (arXiv:2510.05381; Findings of EMNLP 2025): five open and closed models across
-  mathematics, QA, and coding; whitespace-replacement and attention-masking
-  ablations; RULER for the mitigation. Reported degradation of **13.9%–85%**
-  despite perfect retrieval. Their fix — prompting the model to recite the
-  retrieved evidence before solving, turning a long-context task into a short
-  one — recovers up to 4% for GPT-4o on RULER.
-- **How Many Instructions Can LLMs Follow at Once?** (arXiv:2507.11538): IFScale,
-  20 models across seven providers; metric is fraction of instructions satisfied
-  as density rises to 500. Even the best frontier models reach only **68%
-  accuracy at 500 instructions**, with three degradation shapes (threshold,
-  linear, exponential decay) and a measured bias toward following *earlier*
-  instructions over later ones.
+## 検証方法
+- **Lost in the Middle** (arXiv:2307.03172; TACL 2024): 複数文書 QA とキー・バリュー検索を用い、指標は正解根拠の位置の関数としての回答精度であり、オープンおよびクローズドの長文脈モデルにわたって評価している。
+- **Same Task, More Tokens** (arXiv:2402.14848; ACL 2024): FLenQA という QA・推論フレームワークを用い、同一サンプルを異なる長さ・種類・位置にパディングして入力長に対する精度を測定し、GPT-4 を含む。性能劣化は ~3,000 トークン — モデルの上限をはるかに下回る — で測定可能となり、隣接しない二つのスパンから根拠を統合しなければならない場合に最も顕著となる。
+- **Context Length Alone Hurts LLM Performance Despite Perfect Retrieval** (arXiv:2510.05381; Findings of EMNLP 2025): 数学・QA・コーディングにわたるオープンおよびクローズドの 5 モデルを用い、空白置換と注意マスクのアブレーション、緩和策の検証には RULER を用いる。完全なリトリーバルにもかかわらず **13.9%-85%** の性能劣化を報告している。彼らの解決策 — 解く前に検索した根拠をモデルに復唱させ、長文脈タスクを短いタスクへと変換する — は、RULER 上で GPT-4o に対して最大 4% まで回復させる。
+- **How Many Instructions Can LLMs Follow at Once?** (arXiv:2507.11538): IFScale を用い、7 プロバイダにわたる 20 モデルを対象とする。指標は密度を 500 まで上げたときに満たされる指示の割合である。最良のフロンティアモデルですら **500 指示で 68% の精度**にとどまり、三つの劣化形状（閾値型・線形・指数減衰）と、後の指示よりも*前の*指示に従うという測定されたバイアスを示している。
 
-## Relevance to our project
-This body of work is the empirical justification for Alexandria's core bet:
-shrinking a prompt should help, not just save tokens.
+## 本プロジェクトとの関連
+この一連の研究は、Alexandria の中核的な賭け、すなわちプロンプトを縮小することはトークンを節約するだけでなく品質にも寄与するはずだ、という主張に対する実証的な裏付けである。
 
-- **Length itself is a cost.** "Context Length Alone Hurts" shows accuracy falls
-  by double digits purely from input length, even with perfect retrieval and
-  zero distractors. So every redundant sentence we drop from a `Document` (our
-  `Section -> Sentence` IR in `core/ir.py`) is not neutral padding — it is
-  reclaimed accuracy. This validates compression as a quality lever, not only a
-  cost lever.
-- **Redundant instructions are distinct directives.** IFScale shows adherence
-  decays as instruction count grows, with a bias toward earlier instructions.
-  Two sentences that say the same thing in different words are, to the model,
-  two instructions competing for the same budget. Our `redundancy` scorer
-  (`score/redundancy.py`) — which scores each sentence by its maximum cosine
-  similarity to any peer — is exactly the signal needed to find and prune those
-  duplicates. Removing a near-duplicate sentence lowers effective instruction
-  density without losing intent, which the literature predicts should improve
-  following.
-- **Order and position matter.** Lost-in-the-Middle and IFScale's earlier-
-  instruction bias mean our `greedy_pairwise` selection should care not just
-  *which* sentences survive but *where* they land. A shorter, denser prompt also
-  shrinks the "middle" region where evidence gets lost.
-- **Accuracy validation must be label-free but real.** Because the harm is
-  measurable (13.9%–85%), our validation should confirm that a compressed prompt
-  preserves task accuracy. The recite-the-evidence mitigation from Du et al.
-  is essentially manual compression by the model at inference time; Alexandria
-  does the same thing ahead of time and statically. That parallel is a useful
-  sanity check: if reciting only the relevant evidence helps the model, then
-  pre-pruning to only the relevant instructions should too.
+- **長さそのものがコストである。** "Context Length Alone Hurts" は、完全なリトリーバルとゼロのディストラクタの下でも、純粋に入力長だけで精度が二桁低下することを示している。したがって、`Document`（`core/ir.py` における `Section -> Sentence` の中間表現）から削除する冗長な文の一つひとつは、中立的なパディングではなく、取り戻された精度なのである。これは圧縮がコストのレバーであるだけでなく品質のレバーでもあることを裏付ける。
+- **冗長な指示は個別の指示である。** IFScale は、指示数が増えるにつれて追従性が低下し、前の指示へのバイアスがあることを示している。同じことを別の言葉で述べた二つの文は、モデルにとっては同じ予算を奪い合う二つの指示である。本プロジェクトの `redundancy` スコアラー（`score/redundancy.py`）— 各文を、他のいずれかの文に対する最大コサイン類似度でスコアリングする — は、まさにそうした重複を見つけて刈り込むために必要なシグナルである。ほぼ重複する文を取り除くことは、意図を失うことなく実効的な指示密度を下げることになり、文献が予測するとおり追従性を改善するはずである。
+- **順序と位置が重要である。** Lost-in-the-Middle と IFScale の前の指示へのバイアスは、本プロジェクトの `greedy_pairwise` による選択が、*どの*文が残るかだけでなく*どこに*配置されるかにも配慮すべきことを意味する。より短く密度の高いプロンプトは、根拠が失われる「中央」領域も縮小する。
+- **精度の検証はラベルに依らずかつ現実的でなければならない。** その害は測定可能（13.9%-85%）であるため、本プロジェクトの検証は、圧縮したプロンプトがタスク精度を保持していることを確認すべきである。Du et al. の根拠を復唱させる緩和策は、本質的に推論時にモデル自身が手動で行う圧縮である。Alexandria は同じことを事前に静的に行う。この類似性は有用なサニティチェックとなる。すなわち、関連する根拠だけを復唱することがモデルの助けになるのであれば、関連する指示だけにあらかじめ刈り込むこともまた助けになるはずである。
 
-## Related papers
-- [Liu et al. — Lost in the Middle: How Language Models Use Long Contexts (2023/2024)] — Accuracy follows a U-shaped curve over evidence position; models lose information placed in the middle of long contexts. arXiv:2307.03172; TACL 2024. https://arxiv.org/abs/2307.03172
-- [Levy, Jacoby, Goldberg — Same Task, More Tokens: the Impact of Input Length on the Reasoning Performance of Large Language Models (2024)] — Padding the same reasoning sample to greater length degrades accuracy by ~3,000 tokens, worst when integrating non-adjacent evidence. arXiv:2402.14848; ACL 2024. https://arxiv.org/abs/2402.14848
-- [Du et al. — Context Length Alone Hurts LLM Performance Despite Perfect Retrieval (2025)] — Input length alone degrades performance 13.9%–85% even with perfect retrieval and distractors masked out; reciting evidence first recovers up to 4% on RULER. arXiv:2510.05381; Findings of EMNLP 2025. https://arxiv.org/abs/2510.05381
-- [Jaroslawicz et al. — How Many Instructions Can LLMs Follow at Once? (2025)] — IFScale benchmark of up to 500 instructions; best frontier models hit only 68% adherence at max density, with bias toward earlier instructions. arXiv:2507.11538. https://arxiv.org/abs/2507.11538
+## 関連論文
+- [Liu et al. — Lost in the Middle: How Language Models Use Long Contexts (2023/2024)] — 精度は根拠の位置に対して U 字型の曲線を描き、長い文脈の中央に置かれた情報をモデルは見失う。arXiv:2307.03172; TACL 2024. https://arxiv.org/abs/2307.03172
+- [Levy, Jacoby, Goldberg — Same Task, More Tokens: the Impact of Input Length on the Reasoning Performance of Large Language Models (2024)] — 同一の推論サンプルをより長くパディングすると ~3,000 トークンで精度が劣化し、隣接しない根拠を統合する場合に最も顕著となる。arXiv:2402.14848; ACL 2024. https://arxiv.org/abs/2402.14848
+- [Du et al. — Context Length Alone Hurts LLM Performance Despite Perfect Retrieval (2025)] — 完全なリトリーバルとディストラクタをマスクした条件下でも、入力長だけで性能が 13.9%-85% 劣化し、先に根拠を復唱させると RULER 上で最大 4% 回復する。arXiv:2510.05381; Findings of EMNLP 2025. https://arxiv.org/abs/2510.05381
+- [Jaroslawicz et al. — How Many Instructions Can LLMs Follow at Once? (2025)] — 最大 500 指示の IFScale ベンチマーク。最良のフロンティアモデルでも最大密度で 68% の追従率にとどまり、前の指示へのバイアスを示す。arXiv:2507.11538. https://arxiv.org/abs/2507.11538

@@ -1,120 +1,38 @@
-# Prompt Compression and Optimization
+# プロンプト圧縮と最適化
 
-## Overview
-This note surveys recent prompt compression work to answer one question: how do
-state-of-the-art methods shorten long instruction-heavy prompts without losing
-task accuracy, and what does that imply for Alexandria? We cover three concrete
-works spanning the two dominant compression paradigms — token-level pruning
-(LLMLingua-2) and sentence-level relevance filtering (CPC) — plus a 2025
-evaluation framework that measures what compression actually destroys
-(information preservation). Together they frame the trade-off space Alexandria
-operates in: most published methods are query-dependent and need labeled or
-distilled supervision, whereas Alexandria targets label-free, instruction-level
-redundancy removal.
+## 概要
+本ノートは、近年のプロンプト圧縮研究を概観し、次の一つの問いに答えることを目的とする。すなわち、最先端の手法は、タスク精度を損なうことなく、長く命令の多いプロンプトをどのように短縮しているのか、そしてそれが Alexandria にとって何を意味するのか、という問いである。ここでは、二つの主要な圧縮パラダイム — トークン単位の枝刈り（LLMLingua-2）と文単位の関連度フィルタリング（CPC） — にまたがる三つの具体的な研究に加え、圧縮が実際に何を破壊するのかを測定する 2025 年の評価フレームワーク（情報の保存性）を取り上げる。これらを総合すると、Alexandria が置かれているトレードオフ空間が浮かび上がる。すなわち、公開されている手法の多くはクエリ依存であり、ラベル付きまたは蒸留された教師信号を必要とするのに対し、Alexandria はラベル不要かつ命令レベルの冗長性除去を目指している。
 
-## Methods
+## 手法
 
-### LLMLingua-2 — token classification via data distillation (ACL 2024 Findings, arXiv 2403.12968)
-LLMLingua-2 reframes prompt compression as a binary token-classification problem:
-for each token, keep or drop. It first builds an extractive compression dataset by
-prompting GPT-4 to losslessly compress texts (MeetingBank), then distills that
-signal into a small bidirectional Transformer encoder (XLM-RoBERTa-large / mBERT)
-that labels each token keep/drop. This is a deliberate move away from the original
-LLMLingua line, which scored tokens by the *perplexity* assigned by a small causal
-LM (GPT-2 / LLaMA-7B) and dropped low-perplexity tokens under a budget controller.
-The classification approach is task-agnostic and faithful (it can only delete
-original tokens, never hallucinate), runs 3x–6x faster than the perplexity-based
-methods, and delivers 1.6x–2.9x end-to-end latency reduction at 2x–5x compression
-ratios. Key idea: a cheap, bidirectional, distilled classifier replaces an
-expensive unidirectional perplexity estimate.
+### LLMLingua-2 — データ蒸留によるトークン分類（ACL 2024 Findings, arXiv 2403.12968）
+LLMLingua-2 は、プロンプト圧縮を二値のトークン分類問題として捉え直す。各トークンについて、残す（keep）か落とす（drop）かを判定するのである。まず GPT-4 にテキスト（MeetingBank）を可逆的に圧縮させることで抽出型の圧縮データセットを構築し、その信号を小規模な双方向 Transformer エンコーダ（XLM-RoBERTa-large / mBERT）へと蒸留して、各トークンを keep/drop でラベル付けする。これは、小規模な因果 LM（GPT-2 / LLaMA-7B）が割り当てる*パープレキシティ*でトークンをスコアリングし、予算コントローラのもとで低パープレキシティのトークンを落としていた、元来の LLMLingua の系譜から意図的に離れた設計である。この分類アプローチはタスク非依存かつ忠実であり（元のトークンを削除できるだけで、決して幻覚を生成しない）、パープレキシティベースの手法より 3x–6x 高速に動作し、2x–5x の圧縮率において 1.6x–2.9x のエンドツーエンド遅延削減を実現する。核心となる発想は、高価な単方向のパープレキシティ推定を、安価で双方向な蒸留済み分類器で置き換えることである。
 
-### CPC — context-aware sentence encoding (AAAI-25, arXiv 2409.01227)
-CPC (Context-aware Prompt Compression) moves the unit of compression from tokens to
-whole sentences. A custom sentence encoder, trained contrastively on a
-Context-aware Question-Relevance (CQR) dataset of (question, positive sentence,
-negative sentence) triples, produces a relevance score as the cosine similarity
-between the question embedding and each context-sentence embedding. Compression is
-then simply: rank sentences by relevance and drop the least-relevant ones until the
-token budget is met. Because it deletes whole sentences, the compressed prompt stays
-human-readable — unlike token-level LLMLingua output, which is often fragmented.
-CPC reports up to 10.93x faster inference than the best token-level baseline and
-beats LongLLMLingua on long-context benchmarks. Key idea: question-conditioned
-sentence relevance, learned via contrastive embeddings, gives readable
-sentence-granular compression. A 2025 follow-up, TPC (arXiv 2502.13374), removes the
-need for an explicit question by generating a task description with an
-RL-trained task descriptor, making the same sentence-relevance machinery
-task-agnostic.
+### CPC — 文脈を考慮した文エンコーディング（AAAI-25, arXiv 2409.01227）
+CPC（Context-aware Prompt Compression）は、圧縮の単位をトークンから文全体へと移す。(question, positive sentence, negative sentence) の三つ組からなる Context-aware Question-Relevance（CQR）データセット上で対照学習された専用の文エンコーダが、質問の埋め込みと各文脈文の埋め込みとのコサイン類似度として関連度スコアを算出する。圧縮は単純に、文を関連度でランク付けし、トークン予算を満たすまで関連度の低い文から落としていく、というものである。文全体を削除するため、圧縮後のプロンプトは人間にとって可読なまま保たれる — しばしば断片的になるトークン単位の LLMLingua の出力とは異なる。CPC は、最良のトークン単位ベースラインと比べて最大 10.93x 高速な推論を報告しており、長文脈ベンチマークにおいて LongLLMLingua を上回る。核心となる発想は、対照的な埋め込みによって学習された質問条件付きの文関連度が、可読で文粒度の圧縮をもたらす、という点である。2025 年の後続研究 TPC（arXiv 2502.13374）は、RL で学習されたタスク記述器によってタスク記述を生成することで明示的な質問の必要性を取り除き、同じ文関連度の仕組みをタスク非依存にしている。
 
-### Understanding and Improving Information Preservation (EMNLP 2025 Findings, arXiv 2503.19114)
-Rather than proposing a faster compressor, this work builds a holistic evaluation
-framework that scores compression methods on three axes: downstream task
-performance, grounding in the input context, and fine-grained information
-preservation (how many entities, numbers, and proper nouns survive). The central
-finding is that several state-of-the-art soft and hard methods silently drop key
-details, which caps their performance on complex tasks. By controlling
-*compression granularity* in a soft-prompting method, the authors recover up to
-+23% downstream performance, +8 BERTScore points in grounding, and 2.7x more
-entities preserved. Their conclusion: the best effectiveness/compression trade-off
-comes from soft prompting combined with sequence-level compression. Key idea:
-compression quality is not just an accuracy number — it is whether the specific
-facts a task depends on survive the cut.
+### Understanding and Improving Information Preservation（EMNLP 2025 Findings, arXiv 2503.19114）
+この研究は、より高速な圧縮器を提案するのではなく、圧縮手法を三つの軸で評価する包括的な評価フレームワークを構築する。すなわち、下流タスクの性能、入力文脈への接地（grounding）、および細粒度の情報保存（どれだけの実体、数値、固有名詞が残るか）である。中心的な知見は、いくつかの最先端のソフト／ハード手法が重要な詳細を密かに落としており、それが複雑なタスクにおける性能の上限を抑えてしまっている、というものである。ソフトプロンプト手法における*圧縮粒度*を制御することで、著者らは下流性能を最大 +23%、接地において +8 BERTScore ポイント、保存される実体数を 2.7x 回復させている。彼らの結論は、効果と圧縮の最良のトレードオフは、ソフトプロンプトとシーケンスレベルの圧縮を組み合わせたときに得られる、というものである。核心となる発想は、圧縮の品質は単なる精度の数値ではなく、タスクが依存する特定の事実が削除を生き残るかどうかである、という点にある。
 
-## How it is validated
-- **Benchmarks.** LongBench and ZeroSCROLLS are the shared long-context evaluation
-  suites across CPC and LLMLingua-2; LLMLingua-2 adds MeetingBank (in-domain),
-  GSM8K, and BBH for out-of-domain generalization.
-- **Metrics.** Downstream task scores (QA accuracy, summarization quality),
-  compression ratio (tokens kept vs. original), and end-to-end latency / inference
-  speedup. LLMLingua-2 reports 1.6x–2.9x latency reduction at 2x–5x compression;
-  CPC reports up to 10.93x faster inference than the best token-level method.
-- **Baselines.** Methods are compared against each other in a chain: Selective
-  Context and LLMLingua/LongLLMLingua (perplexity / self-information) are the
-  baselines for LLMLingua-2; LongLLMLingua is the baseline CPC and TPC beat on
-  LongBench/ZeroSCROLLS.
-- **Information-level evaluation.** The EMNLP 2025 framework goes beyond aggregate
-  accuracy, adding grounding (BERTScore against source) and entity/number
-  retention counts — measuring *what* is lost, not just *how much* accuracy drops.
+## 検証方法
+- **ベンチマーク。** LongBench と ZeroSCROLLS は、CPC と LLMLingua-2 に共通する長文脈評価スイートである。LLMLingua-2 はさらに、ドメイン内評価として MeetingBank を、ドメイン外汎化のために GSM8K と BBH を加えている。
+- **指標。** 下流タスクのスコア（QA 精度、要約品質）、圧縮率（元と比べて残ったトークン数）、およびエンドツーエンドの遅延／推論の高速化。LLMLingua-2 は 2x–5x の圧縮で 1.6x–2.9x の遅延削減を報告し、CPC は最良のトークン単位手法と比べて最大 10.93x 高速な推論を報告している。
+- **ベースライン。** 各手法は連鎖的に互いと比較される。Selective Context と LLMLingua/LongLLMLingua（パープレキシティ／自己情報量）が LLMLingua-2 のベースラインであり、LongLLMLingua は CPC と TPC が LongBench/ZeroSCROLLS で上回ったベースラインである。
+- **情報レベルの評価。** EMNLP 2025 のフレームワークは集計精度を超え、接地（ソースに対する BERTScore）と実体／数値の保持数を加えている — どれだけ精度が下がるかではなく、*何が*失われるかを測定するのである。
 
-## Relevance to our project
-Alexandria sits in a different corner of this design space, and the contrast is the
-point.
+## 本プロジェクトとの関連
+Alexandria はこの設計空間の異なる一角に位置しており、その対比こそが要点である。
 
-- **Unit of compression.** LLMLingua-2 deletes *tokens*; CPC deletes *sentences*
-  relative to a question. Alexandria deletes/merges *instructions* — the natural
-  unit of an instruction-heavy prompt. Our `InstructionSet` (split → encode → score
-  → greedily merge/drop) is closest in spirit to CPC's sentence-level, readable
-  compression, but our merge step can collapse two redundant instructions into one
-  rather than only dropping.
-- **What we score.** LLMLingua-2 scores *importance* via a GPT-4-distilled
-  classifier; CPC scores *query relevance* via a contrastive encoder. Both require
-  supervision (distilled labels or constructed positive/negative pairs). Alexandria
-  scores *redundancy* — pairwise embedding similarity between instructions — which
-  is **label-free and query-free**. We drop or merge an instruction because another
-  instruction already covers it, not because a model judged it unimportant or
-  irrelevant to a question.
-- **Why label-free fits us.** CPC's relevance is conditioned on a question and TPC
-  needs an RL-trained task descriptor; LLMLingua-2 needs a GPT-4 distillation
-  pipeline. Alexandria deliberately avoids all of that: redundancy among
-  instructions is computable directly from sentence embeddings (the
-  `greedy_pairwise` scorer already in the repo), with no labels, no question, and no
-  teacher LLM. This is the cheapest possible supervision signal and the right one
-  for self-redundant instruction sets.
-- **Accuracy validation.** The EMNLP 2025 information-preservation work is the most
-  directly actionable for us: it warns that aggregate accuracy can stay flat while
-  critical entities/numbers silently vanish. Our validation phase should therefore
-  not only confirm task accuracy is preserved, but check that compression did not
-  drop instructions carrying load-bearing specifics (formats, constraints, named
-  values) — an instruction-level analogue of their entity-retention metric.
-- **Borrowable evaluation harness.** LongBench / ZeroSCROLLS and the
-  compression-ratio-vs-accuracy curve are the field-standard way to report results;
-  we can adopt the same axes (token-reduction ratio on the x-axis, accuracy
-  retention on the y-axis) to make Alexandria comparable to these baselines, while
-  noting our label-free setting.
+- **圧縮の単位。** LLMLingua-2 は*トークン*を削除し、CPC は質問に対して*文*を削除する。Alexandria は*命令*を削除／統合する — これは命令の多いプロンプトにとって自然な単位である。我々の `InstructionSet`（split → encode → score → 貪欲な統合／削除）は、CPC の文レベルかつ可読な圧縮に精神的に最も近いが、我々の統合ステップは二つの冗長な命令を一つに畳み込むことができ、単に削除するだけではない。
+- **何をスコアリングするか。** LLMLingua-2 は GPT-4 で蒸留された分類器によって*重要度*をスコアリングし、CPC は対照エンコーダによって*クエリ関連度*をスコアリングする。いずれも教師信号（蒸留ラベル、または構築された正例／負例ペア）を必要とする。Alexandria は*冗長性* — 命令間のペアワイズな埋め込み類似度 — をスコアリングし、これは**ラベル不要かつクエリ不要**である。我々がある命令を削除または統合するのは、別の命令がすでにそれをカバーしているからであって、モデルがそれを重要でない、あるいは質問に無関係だと判断したからではない。
+- **なぜラベル不要が我々に適合するのか。** CPC の関連度は質問に条件付けられ、TPC は RL で学習されたタスク記述器を必要とし、LLMLingua-2 は GPT-4 の蒸留パイプラインを必要とする。Alexandria はそれらすべてを意図的に避ける。すなわち、命令間の冗長性は文埋め込みから直接計算可能であり（リポジトリにすでにある `greedy_pairwise` スコアラー）、ラベルも質問も教師 LLM も不要である。これは可能な限り最も安価な教師信号であり、自己冗長な命令集合にとって正しい選択である。
+- **精度の検証。** EMNLP 2025 の情報保存性の研究は、我々にとって最も直接的に実行可能な示唆を与える。すなわち、集計精度は横ばいのままでも、重要な実体／数値が密かに消え去りうる、と警告している。したがって我々の検証フェーズは、タスク精度が保存されていることを確認するだけでなく、圧縮が load-bearing な具体的情報（フォーマット、制約、名前付きの値）を担う命令を落としていないかを確認すべきである — これは彼らの実体保持指標の、命令レベルの類似物である。
+- **流用可能な評価ハーネス。** LongBench / ZeroSCROLLS と圧縮率対精度の曲線は、結果を報告するための分野標準の方法である。我々も同じ軸（x 軸にトークン削減率、y 軸に精度保持率）を採用することで、Alexandria をこれらのベースラインと比較可能にできる。ただし我々のラベル不要な設定には留意する必要がある。
 
-## Related papers
-- [Pan, Wu, Jiang et al. — LLMLingua-2: Data Distillation for Efficient and Faithful Task-Agnostic Prompt Compression (2024)] — token-classification compression distilled from GPT-4; 1.6x–2.9x latency cut at 2x–5x ratios. ACL 2024 Findings, arXiv:2403.12968 — https://arxiv.org/abs/2403.12968
-- [Liskavets, Ushakov, Roy et al. — Prompt Compression with Context-Aware Sentence Encoding for Fast and Improved LLM Inference (2024)] — sentence-level, query-relevance compression via a contrastive encoder; readable output, up to 10.93x faster inference. AAAI-25, arXiv:2409.01227 — https://arxiv.org/abs/2409.01227
-- [Łajewska, Hardalov, Aina et al. — Understanding and Improving Information Preservation in Prompt Compression for LLMs (2025)] — evaluation framework measuring downstream accuracy, grounding, and entity retention; +23% downstream, 2.7x more entities preserved via granularity control. EMNLP 2025 Findings, arXiv:2503.19114 — https://arxiv.org/abs/2503.19114
-- [Liskavets, Roy, Ushakov et al. — Task-agnostic Prompt Compression with Context-aware Sentence Embedding and Reward-guided Task Descriptor (2025)] — removes the explicit-question requirement of CPC via an RL-trained task descriptor. arXiv:2502.13374 — https://arxiv.org/abs/2502.13374
-- [Jiang, Wu, Lin et al. — LongLLMLingua: Accelerating and Enhancing LLMs in Long Context Scenarios via Prompt Compression (2023)] — question-aware coarse-to-fine perplexity compression with document reordering; +17.1% over original prompt at 4x fewer tokens. ACL 2024, arXiv:2310.06839 — https://arxiv.org/abs/2310.06839
-- [Li, Liu, Su, Collier — Prompt Compression for Large Language Models: A Survey (2024)] — taxonomy of hard- vs. soft-prompt compression and the key representative methods. NAACL 2025 (Oral), arXiv:2410.12388 — https://arxiv.org/abs/2410.12388
+## 関連論文
+- [Pan, Wu, Jiang et al. — LLMLingua-2: Data Distillation for Efficient and Faithful Task-Agnostic Prompt Compression (2024)] — GPT-4 から蒸留したトークン分類圧縮。2x–5x の圧縮率で 1.6x–2.9x の遅延削減。ACL 2024 Findings, arXiv:2403.12968 — https://arxiv.org/abs/2403.12968
+- [Liskavets, Ushakov, Roy et al. — Prompt Compression with Context-Aware Sentence Encoding for Fast and Improved LLM Inference (2024)] — 対照エンコーダによる文レベルのクエリ関連度圧縮。可読な出力で、最大 10.93x 高速な推論。AAAI-25, arXiv:2409.01227 — https://arxiv.org/abs/2409.01227
+- [Łajewska, Hardalov, Aina et al. — Understanding and Improving Information Preservation in Prompt Compression for LLMs (2025)] — 下流精度、接地、実体保持を測定する評価フレームワーク。粒度制御により下流性能 +23%、保存実体数 2.7x。EMNLP 2025 Findings, arXiv:2503.19114 — https://arxiv.org/abs/2503.19114
+- [Liskavets, Roy, Ushakov et al. — Task-agnostic Prompt Compression with Context-aware Sentence Embedding and Reward-guided Task Descriptor (2025)] — RL で学習されたタスク記述器によって CPC の明示的な質問要件を取り除く。arXiv:2502.13374 — https://arxiv.org/abs/2502.13374
+- [Jiang, Wu, Lin et al. — LongLLMLingua: Accelerating and Enhancing LLMs in Long Context Scenarios via Prompt Compression (2023)] — 文書並べ替えを伴う質問認識型の粗から細へのパープレキシティ圧縮。4x 少ないトークンで元のプロンプトより +17.1%。ACL 2024, arXiv:2310.06839 — https://arxiv.org/abs/2310.06839
+- [Li, Liu, Su, Collier — Prompt Compression for Large Language Models: A Survey (2024)] — ハードプロンプト圧縮とソフトプロンプト圧縮の分類体系と、主要な代表的手法。NAACL 2025 (Oral), arXiv:2410.12388 — https://arxiv.org/abs/2410.12388
