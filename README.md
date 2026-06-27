@@ -2,35 +2,76 @@
 
 [![Coverage badge](https://github.com/ucsc-cse115a-alexandria/alexandria/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
 
-## What Problem Are We Solving?
+Label-free prompt optimization: shorten instruction-heavy prompts while preserving their meaning,
+using sentence embeddings. Alexandria finds which instructions overlap (a redundancy score) and
+drops the redundant ones — no labels, no training, no target output to compare against.
 
-LLM applications often rely on long, instruction-heavy prompts that evolve over time as new requirements are added. These prompts become difficult to maintain and can degrade model performance due to instruction interference and increased context length.
+See [docs/spec.md](docs/spec.md) for the design.
 
-This project aims to automatically compress and simplify prompts while preserving their original meaning.
+## Install
 
-## Project Goals
+Requires Python 3.14 and [uv](https://docs.astral.sh/uv/).
 
-- Develop a label-free prompt optimization method using sentence embeddings
-- Reduce prompt length and token usage
-- Preserve semantic intent and task performance
-- Build an easy-to-use open-source library for prompt optimization
+```bash
+uv sync
+```
 
-## What You'll Be Working On
+## CLI
 
-Depending on your interests, you may work on:
+Each verb reads a prompt from a `FILE` argument or stdin and writes to stdout.
 
-- Implementing prompt parsing and instruction segmentation
-- Building embedding-based instruction similarity and clustering methods
-- Designing algorithms for merging and simplifying redundant instructions
-- Creating evaluation pipelines for token reduction and task performance
-- Developing a simple API and modular architecture
-- Writing documentation, examples, and benchmarks
+`reduce` — prompt in, reduced prompt out:
 
-No prior experience with prompt optimization research is required. Curiosity about AI systems and willingness to learn are more important.
+```bash
+uv run alexandria reduce prompt.txt > reduced.txt
+```
 
-## Tech Stack
+`score` — per-instruction redundancy scores (a table on a terminal, JSON when piped or with `--json`):
 
-- Python
-- PyTorch
-- NumPy
-- Polars
+```bash
+uv run alexandria score prompt.txt --json
+```
+
+By default the embeddings come from `sentence-transformers` (`all-MiniLM-L6-v2`), downloaded on first
+use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder:
+
+```bash
+$ printf 'Be concise.\nBe concise.\nUse examples.\n' | uv run alexandria reduce --model deterministic
+Be concise.
+Use examples.
+```
+
+Options: `reduce` takes `--optimizer` and `--threshold`; both verbs take `--model`.
+
+## Library
+
+The CLI is a thin wrapper; everything is importable.
+
+```python
+from alexandria import reduce
+from alexandria.embedding import build_embedder
+
+embedder = build_embedder("all-MiniLM-L6-v2")
+reduced = reduce("Be concise.\nBe concise.\nUse examples.\n", embedder)
+```
+
+## How it works
+
+Three pure phases over one intermediate representation (`Document` → `Section` → `Sentence`):
+
+1. **Represent** — split the prompt into instructions, tokenize, and embed each one.
+2. **Score** — rate each instruction's redundancy (its cosine similarity to the most similar other).
+3. **Optimize** — drop redundant instructions while preserving meaning, keeping the more
+   load-bearing instruction of each near-duplicate pair.
+
+## Tech stack
+
+Python 3.14 · Pydantic (the validated IR) · sentence-transformers · NumPy · tiktoken · click.
+
+## Development
+
+```bash
+uv run pytest        # tests + coverage
+uv run ruff check .  # lint
+uv run pyright       # types
+```
