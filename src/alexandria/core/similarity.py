@@ -1,5 +1,3 @@
-"""Cosine similarity over stacked embeddings — shared by score and optimize."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -22,5 +20,4 @@ def cosine_similarity_matrix(embeddings: NDArray[np.float32]) -> NDArray[np.floa
 
 
 def cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
-    """Cosine distance (1 - cosine similarity) between two vectors."""
     return 1.0 - float(normalize(a) @ normalize(b))

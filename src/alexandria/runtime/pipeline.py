@@ -1,5 +1,3 @@
-"""Library composition of the phases — what the CLI calls."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

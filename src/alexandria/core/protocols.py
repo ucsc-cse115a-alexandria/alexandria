@@ -1,5 +1,3 @@
-"""Phase contracts (Embedder/Scorer/Optimizer) and the edit data they exchange."""
-
 from __future__ import annotations
 
 from collections.abc import Callable

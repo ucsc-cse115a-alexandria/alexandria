@@ -1,5 +1,3 @@
-"""Phase 2 — Score: rate each sentence's redundancy and run named scorers into a Scores bundle."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

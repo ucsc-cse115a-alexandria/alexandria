@@ -1,5 +1,3 @@
-"""Name-keyed registries for scorers, optimizers, and selectors; reject dup names, validate requires."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -11,8 +9,6 @@ if TYPE_CHECKING:
 
 
 class Registry[T]:
-    """Name-keyed registry of phase implementations that rejects duplicate names."""
-
     def __init__(self, kind: str) -> None:
         self._kind = kind
         self._entries: dict[str, T] = {}
@@ -71,7 +67,6 @@ get_selector = _selectors.get
 
 
 def scorer_peers(name: str) -> Peers | None:
-    """The peer-finder a scorer registered, or None if it produces no peers."""
     _scorers.get(name)  # validates the name exists
     return _peers[name]
 

@@ -1,5 +1,3 @@
-"""Phase 4 — Select: apply candidates under a drift budget, highest-confidence-first."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

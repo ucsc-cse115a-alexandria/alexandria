@@ -1,5 +1,3 @@
-"""Phase 3 — Optimize: propose ranked delete candidates and concatenate named optimizers' plans."""
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING

@@ -1,5 +1,3 @@
-"""The Alexandria CLI: reduce and score verbs. A thin wrapper over the library."""
-
 from __future__ import annotations
 
 import json

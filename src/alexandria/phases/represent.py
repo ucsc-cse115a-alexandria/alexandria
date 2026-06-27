@@ -1,5 +1,3 @@
-"""Phase 1 — Represent: prompt -> Document (split losslessly, then tokenize and embed)."""
-
 from __future__ import annotations
 
 import re
@@ -32,8 +30,6 @@ class RawSentence:
 
 @dataclass(frozen=True)
 class RawSection:
-    """A section before encoding."""
-
     kind: SectionKind
     header: str
     children: tuple[RawSentence | RawSection, ...]
@@ -177,7 +173,6 @@ def _segments(prompt: str) -> list[str]:
 
 
 def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
-    """Tokenize and embed a raw section tree, then assemble the validated Document IR."""
     leaves = _leaf_sentences(sections)
     vectors = embedder.embed([leaf.text for leaf in leaves])
     built_sentences = iter(

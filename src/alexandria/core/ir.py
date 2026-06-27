@@ -26,8 +26,6 @@ SentenceId = str
 
 
 class SectionKind(StrEnum):
-    """Where a Section came from. The Document is the root, so every Section has one of these."""
-
     MARKDOWN = "markdown"  # a markdown header
     XML = "xml"  # an XML tag block
     PLAIN = "plain"  # body text under no header or tag (a preamble or a structureless prompt)
