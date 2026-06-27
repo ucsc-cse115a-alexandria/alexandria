@@ -24,11 +24,19 @@ def cli() -> None:
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--optimizer", "optimizers", default="greedy_pairwise", help="comma-separated optimizer names")
 @click.option("--threshold", type=float, default=0.85, help="redundancy threshold")
+@click.option(
+    "--max-drift",
+    type=float,
+    default=2.0,
+    help="max cosine drift from the original prompt allowed per deletion (2.0 = no limit)",
+)
 @click.option("--model", default=_DEFAULT_MODEL, help="embedding model id, or 'deterministic'")
-def reduce(file: IO[str], optimizers: str, threshold: float, model: str) -> None:
+def reduce(file: IO[str], optimizers: str, threshold: float, max_drift: float, model: str) -> None:
     """Reduce a prompt: prompt in, reduced prompt out."""
     names = tuple(n.strip() for n in optimizers.split(",") if n.strip())
-    reduced = reduce_prompt(file.read(), build_embedder(model), optimizers=names, threshold=threshold)
+    reduced = reduce_prompt(
+        file.read(), build_embedder(model), optimizers=names, threshold=threshold, max_drift=max_drift
+    )
     click.echo(reduced, nl=False)
 
 

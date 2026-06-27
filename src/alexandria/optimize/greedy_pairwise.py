@@ -18,8 +18,16 @@ if TYPE_CHECKING:
 
 
 @register_optimizer("greedy_pairwise", requires=("redundancy",))
-def greedy_pairwise(document: Document, scores: Scores, embedder: Embedder, *, threshold: float) -> Plan:
-    """For each near-duplicate pair, keep the sentence whose removal changes the prompt meaning most."""
+def greedy_pairwise(
+    document: Document,
+    scores: Scores,
+    embedder: Embedder,
+    *,
+    threshold: float,
+    max_drift: float = 2.0,
+) -> Plan:
+    """For each near-duplicate pair, drop the less load-bearing sentence — unless doing so would
+    drift the prompt embedding more than max_drift (cosine distance) from the original prompt."""
     sentences = document.sentences
     redundancy = scores["redundancy"]
     embeddings = np.stack([s.embedding for s in sentences])
@@ -44,7 +52,9 @@ def greedy_pairwise(document: Document, scores: Scores, embedder: Embedder, *, t
         a, b = sentences[i].id, sentences[j].id
         if a not in present or b not in present:
             continue
-        drop = _least_load_bearing(a, b, order, present, text_by_id, base, embedder)
+        drop, drift = _least_load_bearing(a, b, order, present, text_by_id, base, embedder)
+        if drift > max_drift:
+            continue
         present.discard(drop)
         candidates.append(
             Candidate(
@@ -65,13 +75,14 @@ def _least_load_bearing(
     text_by_id: dict[str, str],
     base: NDArray[np.float32],
     embedder: Embedder,
-) -> str:
-    delta_a = _ablation_distance(a, order, present, text_by_id, base, embedder)
-    delta_b = _ablation_distance(b, order, present, text_by_id, base, embedder)
-    return a if delta_a <= delta_b else b
+) -> tuple[str, float]:
+    """Return the sentence whose removal drifts the prompt least, paired with that drift."""
+    drift_a = _drift(a, order, present, text_by_id, base, embedder)
+    drift_b = _drift(b, order, present, text_by_id, base, embedder)
+    return (a, drift_a) if drift_a <= drift_b else (b, drift_b)
 
 
-def _ablation_distance(
+def _drift(
     drop_id: str,
     order: list[str],
     present: set[str],
@@ -79,6 +90,13 @@ def _ablation_distance(
     base: NDArray[np.float32],
     embedder: Embedder,
 ) -> float:
+    """Cosine distance from the original prompt embedding after also dropping drop_id."""
     kept_text = "".join(text_by_id[i] for i in order if i in present and i != drop_id)
     trial = embedder.embed([kept_text])[0]
-    return float(np.linalg.norm(trial - base))
+    return _cosine_distance(trial, base)
+
+
+def _cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
+    a_unit = a / np.clip(np.linalg.norm(a), 1e-12, None)
+    b_unit = b / np.clip(np.linalg.norm(b), 1e-12, None)
+    return 1.0 - float(a_unit @ b_unit)

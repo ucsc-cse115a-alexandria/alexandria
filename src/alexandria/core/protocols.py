@@ -48,4 +48,12 @@ class Scorer(Protocol):
 
 
 class Optimizer(Protocol):
-    def __call__(self, document: Document, scores: Scores, embedder: Embedder, *, threshold: float) -> Plan: ...
+    def __call__(
+        self,
+        document: Document,
+        scores: Scores,
+        embedder: Embedder,
+        *,
+        threshold: float,
+        max_drift: float = 2.0,
+    ) -> Plan: ...

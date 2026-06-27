@@ -41,8 +41,10 @@ def test_duplicate_name_raises() -> None:
 
 def test_optimizer_with_unregistered_requires_raises() -> None:
     @register_optimizer("reg_test_opt", requires=("does_not_exist",))
-    def opt(document: Document, scores: Scores, embedder: Embedder, *, threshold: float) -> Plan:
-        del document, scores, embedder, threshold
+    def opt(
+        document: Document, scores: Scores, embedder: Embedder, *, threshold: float, max_drift: float = 2.0
+    ) -> Plan:
+        del document, scores, embedder, threshold, max_drift
         return ()
 
     assert callable(opt)

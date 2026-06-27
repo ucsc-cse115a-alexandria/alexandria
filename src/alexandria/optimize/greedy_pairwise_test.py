@@ -23,3 +23,13 @@ def test_no_candidates_when_all_unique() -> None:
     scores = score(document, names=("redundancy",))
 
     assert greedy_pairwise(document, scores, embedder, threshold=0.85) == ()
+
+
+def test_skips_delete_when_drift_exceeds_max_drift() -> None:
+    embedder = HashEmbedder()
+    document = represent("repeat me\nrepeat me\nunique line\n", embedder)
+    scores = score(document, names=("redundancy",))
+
+    plan = greedy_pairwise(document, scores, embedder, threshold=0.85, max_drift=0.0)
+
+    assert plan == ()

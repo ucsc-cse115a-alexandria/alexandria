@@ -19,12 +19,13 @@ def optimize(
     names: tuple[str, ...] = ("greedy_pairwise",),
     *,
     threshold: float = 0.85,
+    max_drift: float = 2.0,
 ) -> Plan:
     """Run each named optimizer and concatenate their candidate stacks into one ordered Plan."""
     plan: list[Candidate] = []
     for name in names:
         optimizer = get_optimizer(name)
-        plan.extend(optimizer(document, scores, embedder, threshold=threshold))
+        plan.extend(optimizer(document, scores, embedder, threshold=threshold, max_drift=max_drift))
     return tuple(plan)
 
 

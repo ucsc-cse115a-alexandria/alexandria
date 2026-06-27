@@ -21,11 +21,12 @@ def reduce(
     *,
     optimizers: tuple[str, ...] = ("greedy_pairwise",),
     threshold: float = 0.85,
+    max_drift: float = 2.0,
 ) -> str:
     """Run all three phases end to end and return the reduced prompt text."""
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, embedder, names=optimizers, threshold=threshold)
+    plan = optimize(document, scores, embedder, names=optimizers, threshold=threshold, max_drift=max_drift)
     return apply(document, plan).text
 
 
