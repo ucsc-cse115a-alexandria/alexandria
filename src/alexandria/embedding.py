@@ -7,6 +7,8 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 import numpy as np
 
+from alexandria.core.similarity import normalize
+
 if TYPE_CHECKING:
     from typing import Any
 
@@ -38,7 +40,7 @@ class HashEmbedder:
     def _one(self, text: str) -> NDArray[np.float32]:
         seed = int.from_bytes(hashlib.sha256(text.encode("utf-8")).digest()[:8], "big")
         vector = np.random.default_rng(seed).standard_normal(self._dim).astype(np.float32)
-        return vector / float(np.linalg.norm(vector))
+        return normalize(vector)
 
 
 class SentenceTransformerEmbedder:

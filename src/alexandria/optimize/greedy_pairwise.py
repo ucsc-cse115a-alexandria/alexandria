@@ -8,7 +8,7 @@ import numpy as np
 
 from alexandria.core.protocols import Candidate, Delete
 from alexandria.core.registry import register_optimizer
-from alexandria.core.similarity import cosine_similarity_matrix
+from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -93,10 +93,4 @@ def _drift(
     """Cosine distance from the original prompt embedding after also dropping drop_id."""
     kept_text = "".join(text_by_id[i] for i in order if i in present and i != drop_id)
     trial = embedder.embed([kept_text])[0]
-    return _cosine_distance(trial, base)
-
-
-def _cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
-    a_unit = a / np.clip(np.linalg.norm(a), 1e-12, None)
-    b_unit = b / np.clip(np.linalg.norm(b), 1e-12, None)
-    return 1.0 - float(a_unit @ b_unit)
+    return cosine_distance(trial, base)

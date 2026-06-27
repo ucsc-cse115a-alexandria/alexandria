@@ -27,7 +27,7 @@ from alexandria.core.registry import (
     required_scorers,
 )
 from alexandria.core.select import apply
-from alexandria.core.similarity import cosine_similarity_matrix
+from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix, normalize
 
 __all__ = [
     "Candidate",
@@ -48,9 +48,11 @@ __all__ = [
     "SentenceId",
     "TokenCount",
     "apply",
+    "cosine_distance",
     "cosine_similarity_matrix",
     "get_optimizer",
     "get_scorer",
+    "normalize",
     "register_optimizer",
     "register_scorer",
     "required_scorers",
