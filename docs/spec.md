@@ -97,34 +97,39 @@ with the rest.
 
 ## Project layout
 
-The folder structure is part of the design: it puts each phase in its own place, separates the stable
-contract (`core/`) from the swappable strategies, and makes the plugin convention visible.
+The folder structure is part of the design: every layer is its own folder, so the dependency order is
+visible in the tree — `cli` wraps `runtime`, `runtime` drives the `phases`, and the `phases` build on
+the stable contract in `core/`. It separates that contract from the swappable strategies and makes the
+plugin convention visible.
 
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, apply, Document
-    core/               # the contract — depends on nothing else in alexandria
-      __init__.py       #   re-exports IR / Protocols / registry / apply
+    __init__.py         # public API: represent, score, optimize, apply, reduce, score_report, Document
+    cli.py              # layer 1 — thin wrapper; verbs reduce / score
+    runtime/            # layer 2 — what runs the library at call time
+      embedding.py      #   Embedder implementations; the only place a model is built (imperative shell)
+      pipeline.py       #   compose the three phases end to end — reduce / score_report
+    phases/             # layer 3 — the three pluggable phases; each imports only core
+      represent/        #   phase 1 — prompt → Document
+        __init__.py     #     represent(prompt, embedder) -> Document
+        split.py        #     group prompt lines into a nested section tree (markdown / xml / plain)
+        encode.py       #     tokenize + embed (via injected Embedder) every node
+      score/            #   phase 2 — strategy package (many scorers → Scores bundle)
+        __init__.py     #     score(document, names=...) -> Scores; imports built-ins
+        redundancy.py   #     @register("redundancy")
+        centrality.py   #     (later — a new file, nothing else changes)
+      optimize/         #   phase 3 — strategy package (many optimizers → concatenated Plan stack)
+        __init__.py     #     optimize(document, scores, embedder, names=...) -> Plan
+        greedy_pairwise.py #  @register("greedy_pairwise", requires=("redundancy",))
+        merge.py        #     (later)
+    core/               # layer 4 — the contract; depends on nothing else in alexandria
+      __init__.py       #   re-exports IR / Protocols / registry / apply / similarity
       ir.py             #   Document / Section / Sentence + validation
       protocols.py      #   Scorer/Optimizer/Embedder Protocols + Scores/ScoreVector/SentenceId/Edit/Candidate/Plan
       registry.py       #   @register (rejects dup names) + lookup + requires-check + entry points
-      select.py         #   apply(Document, edits) folds the edit stack -> (Document, inverse); render diff; meaning-preservation
-    represent/          # phase 1 — prompt → Document
-      __init__.py       #   represent(prompt, *, embedder=..., reuse=None) -> Document
-      split.py          #   group prompt lines into a nested section tree (markdown / xml / plain)
-      encode.py         #   tokenize + embed (via injected Embedder) every node, reusing unchanged text
-    score/              # phase 2 — strategy package (many scorers → Scores bundle)
-      __init__.py       #   score(document, names=...) -> Scores; imports built-ins
-      redundancy.py     #   @register("redundancy")
-      centrality.py     #   (later — a new file, nothing else changes)
-    optimize/           # phase 3 — strategy package (many optimizers → concatenated Plan stack)
-      __init__.py       #   optimize(document, scores, names=...) -> Plan; concatenates stacks
-      greedy_pairwise.py#   @register("greedy_pairwise", requires=("redundancy",))
-      merge.py          #   (later)
-    persistence.py      # Parquet save / load
-    cli.py              # invoke the phases; verbs reduce / score / review / benchmark
-benchmark/              # separate concern — measures the pipeline
+      select.py         #   apply(Document, plan) folds the edit stack -> a smaller Document
+      similarity.py     #   cosine helpers shared by score and optimize
 pyproject.toml          # entry points (strategy discovery) + import-linter layering contracts
 tests/                  # mirrors src/alexandria; strategies.py (Hypothesis) + pure-function laws
 ```
@@ -234,7 +239,7 @@ These are sub-steps, not phases — you always run them together to get a `Docum
 
 **Injected embedder.** `encode` never hard-wires a model: it calls an `Embedder` Protocol passed into
 `represent`. Production wires in `sentence-transformers`; tests pass a deterministic fake. This is the
-system's only impure boundary — `core`, `score`, and `optimize` never import a model, a rule the
+system's only impure boundary — `core`, the `phases`, and `pipeline` never import a model, a rule the
 layering linter enforces (see [Invariants & enforcement](#invariants--enforcement)). The model's id
 is stamped onto the `Document` as `embedding_model`.
 
@@ -443,10 +448,11 @@ handful of fixtures — `tests/strategies.py` ships the generators (valid trees,
 malformed ones for negative tests), so the laws are checked against thousands of shapes.
 
 **Layering (`import-linter`).** The dependency rule the layout describes is an `import-linter`
-contract run in CI: `core` imports nothing else in `alexandria`; `represent`, `score`, and `optimize`
-import only `core`; `cli` is a leaf no module imports. A **forbidden contract** also bars `core`,
-`score`, and `optimize` from importing any embedding backend. A cycle or a layering violation fails
-the build — *modularity through contracts* and *library first* cannot quietly rot.
+contract run in CI: `core` imports nothing else in `alexandria`; the three `phases` (`represent`,
+`score`, `optimize`) import only `core`; `runtime` (`embedding`, `pipeline`) sits above them; `cli` is
+a leaf no module imports. A **forbidden contract** also bars `core`, the `phases`, and `pipeline` from
+importing any embedding backend — only the `embedding` shell may. A cycle or a layering violation
+fails the build — *modularity through contracts* and *library first* cannot quietly rot.
 
 **Functional core, imperative shell.** The embedder is injected into Represent behind an `Embedder`
 Protocol; the concrete model lives only in the shell. Tests pass a deterministic fake, making

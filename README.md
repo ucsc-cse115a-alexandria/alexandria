@@ -49,7 +49,7 @@ The CLI is a thin wrapper; everything is importable.
 
 ```python
 from alexandria import reduce
-from alexandria.embedding import build_embedder
+from alexandria.runtime.embedding import build_embedder
 
 embedder = build_embedder("all-MiniLM-L6-v2")
 reduced = reduce("Be concise.\nBe concise.\nUse examples.\n", embedder)
