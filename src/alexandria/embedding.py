@@ -10,6 +10,7 @@ import numpy as np
 from alexandria.core.similarity import normalize
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
     from typing import Any
 
     from numpy.typing import NDArray
@@ -17,6 +18,8 @@ if TYPE_CHECKING:
     from alexandria.core.protocols import Embedder
 
 _DIM = 64
+DEFAULT_MODEL = "all-MiniLM-L6-v2"
+DETERMINISTIC = "deterministic"
 
 
 class _EncodesText(Protocol):
@@ -44,7 +47,7 @@ class HashEmbedder:
 
 
 class SentenceTransformerEmbedder:
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2") -> None:  # pragma: no cover
+    def __init__(self, model_name: str = DEFAULT_MODEL) -> None:  # pragma: no cover
         from sentence_transformers import SentenceTransformer
 
         self._model_name = model_name
@@ -59,7 +62,12 @@ class SentenceTransformerEmbedder:
         return [np.asarray(row, dtype=np.float32) for row in vectors]
 
 
+# Sentinel model names that map to a built-in embedder; any other name is a real model id.
+_FACTORIES: dict[str, Callable[[], Embedder]] = {DETERMINISTIC: HashEmbedder}
+
+
 def build_embedder(model: str) -> Embedder:
-    if model == "deterministic":
-        return HashEmbedder()
+    factory = _FACTORIES.get(model)
+    if factory is not None:
+        return factory()
     return SentenceTransformerEmbedder(model)  # pragma: no cover

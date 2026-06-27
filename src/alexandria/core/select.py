@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, assert_never
 
-from alexandria.core.ir import Document, Node, Section, Sentence
+from alexandria.core.ir import Document, Node, Section, Sentence, rollup
+from alexandria.core.protocols import Delete
 
 if TYPE_CHECKING:
     from alexandria.core.protocols import Plan
@@ -13,7 +14,11 @@ if TYPE_CHECKING:
 def apply(document: Document, plan: Plan) -> Document:
     surviving = {s.id for s in document.sentences}
     for candidate in plan:
-        present = tuple(t for t in candidate.edit.targets if t in surviving)
+        match candidate.edit:
+            case Delete() as edit:
+                present = tuple(t for t in edit.targets if t in surviving)
+            case _:  # pragma: no cover - unreachable until a second Edit op exists
+                assert_never(candidate.edit)
         if not present:
             continue
         remaining = surviving - set(present)
@@ -36,11 +41,12 @@ def _empties_a_section(document: Document, surviving: set[str]) -> bool:
 
 def _rebuild(document: Document, surviving: set[str]) -> Document:
     sections = tuple(_rebuild_section(section, surviving) for section in document.sections)
+    text, token_count = rollup(sections)
     return Document(
         embedding_model=document.embedding_model,
         sections=sections,
-        text="".join(section.text for section in sections),
-        token_count=sum(section.token_count for section in sections),
+        text=text,
+        token_count=token_count,
         embedding=document.embedding,
     )
 
@@ -54,12 +60,13 @@ def _rebuild_section(section: Section, surviving: set[str]) -> Section:
         else:
             kept.append(_rebuild_section(child, surviving))
     children = tuple(kept)
+    text, token_count = rollup(children)
     return Section(
         kind=section.kind,
         header=section.header,
         children=children,
-        text="".join(child.text for child in children),
-        token_count=sum(child.token_count for child in children),
+        text=text,
+        token_count=token_count,
         # embedding is the pre-edit vector; re-embedding needs a model, which core avoids.
         embedding=section.embedding,
     )

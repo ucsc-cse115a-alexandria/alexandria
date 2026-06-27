@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, Self
 
 import numpy as np
 from numpy.typing import NDArray
 from pydantic import BaseModel, ConfigDict, Field, PlainValidator, model_validator
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable, Sequence
 
 
 def _as_vector(value: object) -> NDArray[np.float32]:
@@ -51,25 +54,33 @@ class Section(Encoded):
     @property
     def sentences(self) -> tuple[Sentence, ...]:
         """Every descendant Sentence, in document order."""
-        flattened: list[Sentence] = []
-        for child in self.children:
-            if isinstance(child, Sentence):
-                flattened.append(child)
-            else:
-                flattened.extend(child.sentences)
-        return tuple(flattened)
+        return leaves(self.children)
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        if self.text != "".join(child.text for child in self.children):
-            raise ValueError("Section.text must equal the concatenation of its children")
-        if self.token_count != sum(child.token_count for child in self.children):
-            raise ValueError("Section.token_count must equal the sum of its children")
+        if (self.text, self.token_count) != rollup(self.children):
+            raise ValueError("Section.text/token_count must roll up from its children")
         _check_one_dimension([*self.children, self])
         return self
 
 
 Node = Annotated[Sentence | Section, Field(discriminator="node")]
+
+
+def rollup(children: Sequence[Encoded]) -> tuple[str, int]:
+    """The (text, token_count) a parent must carry: concat of child text, sum of child tokens."""
+    return "".join(child.text for child in children), sum(child.token_count for child in children)
+
+
+def leaves(nodes: Iterable[Node]) -> tuple[Sentence, ...]:
+    """Every descendant Sentence under nodes, in document (pre-order) order."""
+    out: list[Sentence] = []
+    for node in nodes:
+        if isinstance(node, Sentence):
+            out.append(node)
+        else:
+            out.extend(leaves(node.children))
+    return tuple(out)
 
 
 class Document(Encoded):
@@ -78,14 +89,12 @@ class Document(Encoded):
 
     @property
     def sentences(self) -> tuple[Sentence, ...]:
-        return tuple(s for section in self.sections for s in section.sentences)
+        return leaves(self.sections)
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
-        if self.text != "".join(section.text for section in self.sections):
-            raise ValueError("Document.text must equal the concatenation of its sections")
-        if self.token_count != sum(section.token_count for section in self.sections):
-            raise ValueError("Document.token_count must equal the sum of its sections")
+        if (self.text, self.token_count) != rollup(self.sections):
+            raise ValueError("Document.text/token_count must roll up from its sections")
         ids = [s.id for s in self.sentences]
         if len(ids) != len(set(ids)):
             raise ValueError("every Sentence id must be unique within a Document")

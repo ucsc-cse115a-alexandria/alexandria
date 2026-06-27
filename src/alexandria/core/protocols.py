@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal, Protocol
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -14,6 +15,20 @@ if TYPE_CHECKING:
 
 ScoreVector = tuple[float, ...]
 Scores = dict[str, ScoreVector]
+
+# A scorer may also expose, per sentence, its most-similar peer id and that similarity.
+Peers = Callable[[Document], list[tuple[SentenceId | None, float]]]
+
+Threshold = Annotated[float, Field(ge=0.0, le=1.0)]
+Drift = Annotated[float, Field(ge=0.0)]  # 2.0 == effectively no limit
+
+
+class OptimizerParams(BaseModel):
+    """Tuning knobs shared by every optimizer; the single source of truth for their defaults."""
+
+    model_config = ConfigDict(frozen=True)
+    threshold: Threshold = 0.85
+    max_drift: Drift = 2.0
 
 
 class Embedder(Protocol):
@@ -35,7 +50,7 @@ Edit = Delete
 class Candidate(BaseModel):
     model_config = ConfigDict(frozen=True)
     edit: Edit
-    score: float
+    confidence: float
     source: str
     reason: str
 
@@ -53,7 +68,5 @@ class Optimizer(Protocol):
         document: Document,
         scores: Scores,
         embedder: Embedder,
-        *,
-        threshold: float,
-        max_drift: float = 2.0,
+        params: OptimizerParams,
     ) -> Plan: ...

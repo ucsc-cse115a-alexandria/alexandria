@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import tiktoken
 
-from alexandria.core.ir import Document, Node, Section, Sentence
+from alexandria.core.ir import Document, Node, Section, Sentence, rollup
 from alexandria.represent.split import RawSection, RawSentence
 
 if TYPE_CHECKING:
@@ -25,12 +25,12 @@ def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
         for i, (leaf, vector) in enumerate(zip(leaves, vectors, strict=True))
     )
     built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
-    text = "".join(section.text for section in built)
+    text, token_count = rollup(built)
     return Document(
         embedding_model=embedder.model_id,
         sections=built,
         text=text,
-        token_count=sum(section.token_count for section in built),
+        token_count=token_count,
         embedding=embedder.embed([text])[0],
     )
 
@@ -41,13 +41,13 @@ def _build_section(raw: RawSection, embedder: Embedder, sentences: Iterator[Sent
         for child in raw.children
     ]
     kept = tuple(children)
-    text = "".join(child.text for child in kept)
+    text, token_count = rollup(kept)
     return Section(
         kind=raw.kind,
         header=raw.header,
         children=kept,
         text=text,
-        token_count=sum(child.token_count for child in kept),
+        token_count=token_count,
         embedding=embedder.embed([text])[0],
     )
 

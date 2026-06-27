@@ -12,6 +12,8 @@ from alexandria.core.similarity import cosine_similarity_matrix
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
 
+DEFAULT_SCORER = "redundancy"
+
 
 def most_similar(document: Document) -> list[tuple[str | None, float]]:
     """Each sentence's most-similar peer id and its cosine similarity (None, 0.0 if no peer)."""
@@ -28,7 +30,7 @@ def most_similar(document: Document) -> list[tuple[str | None, float]]:
     return peers
 
 
-@register_scorer("redundancy")
+@register_scorer(DEFAULT_SCORER, peers=most_similar)
 def redundancy(document: Document) -> list[float]:
     """Score each sentence by its max cosine similarity to any other sentence."""
     return [similarity for _, similarity in most_similar(document)]

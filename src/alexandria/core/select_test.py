@@ -35,7 +35,7 @@ def _document(texts: list[str]) -> Document:
 
 
 def _delete(target: str) -> Candidate:
-    return Candidate(edit=Delete(targets=(target,)), score=1.0, source="t", reason="r")
+    return Candidate(edit=Delete(targets=(target,)), confidence=1.0, source="t", reason="r")
 
 
 def test_apply_drops_targeted_sentence() -> None:

@@ -14,7 +14,7 @@ from alexandria.core.registry import (
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
-    from alexandria.core.protocols import Embedder, Plan, Scores
+    from alexandria.core.protocols import Embedder, OptimizerParams, Plan, Scores
 
 
 def test_lookup_round_trip() -> None:
@@ -41,10 +41,8 @@ def test_duplicate_name_raises() -> None:
 
 def test_optimizer_with_unregistered_requires_raises() -> None:
     @register_optimizer("reg_test_opt", requires=("does_not_exist",))
-    def opt(
-        document: Document, scores: Scores, embedder: Embedder, *, threshold: float, max_drift: float = 2.0
-    ) -> Plan:
-        del document, scores, embedder, threshold, max_drift
+    def opt(document: Document, scores: Scores, embedder: Embedder, params: OptimizerParams) -> Plan:
+        del document, scores, embedder, params
         return ()
 
     assert callable(opt)

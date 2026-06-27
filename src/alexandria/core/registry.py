@@ -7,18 +7,20 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from alexandria.core.protocols import Optimizer, Scorer
+    from alexandria.core.protocols import Optimizer, Peers, Scorer
 
 _scorers: dict[str, Scorer] = {}
+_peers: dict[str, Peers | None] = {}
 _optimizers: dict[str, Optimizer] = {}
 _requires: dict[str, tuple[str, ...]] = {}
 
 
-def register_scorer(name: str) -> Callable[[Scorer], Scorer]:
+def register_scorer(name: str, *, peers: Peers | None = None) -> Callable[[Scorer], Scorer]:
     def decorator(fn: Scorer) -> Scorer:
         if name in _scorers:
             raise ValueError(f"duplicate scorer name: {name!r}")
         _scorers[name] = fn
+        _peers[name] = peers
         return fn
 
     return decorator
@@ -40,6 +42,12 @@ def get_scorer(name: str) -> Scorer:
         return _scorers[name]
     except KeyError:
         raise ValueError(f"unknown scorer: {name!r}") from None
+
+
+def scorer_peers(name: str) -> Peers | None:
+    """The peer-finder a scorer registered, or None if it produces no peers."""
+    get_scorer(name)  # validates the name exists
+    return _peers[name]
 
 
 def get_optimizer(name: str) -> Optimizer:

@@ -14,20 +14,22 @@ if TYPE_CHECKING:
     from numpy.typing import NDArray
 
     from alexandria.core.ir import Document
-    from alexandria.core.protocols import Embedder, Plan, Scores
+    from alexandria.core.protocols import Embedder, OptimizerParams, Plan, Scores
+
+DEFAULT_OPTIMIZER = "greedy_pairwise"
 
 
-@register_optimizer("greedy_pairwise", requires=("redundancy",))
+@register_optimizer(DEFAULT_OPTIMIZER, requires=("redundancy",))
 def greedy_pairwise(
     document: Document,
     scores: Scores,
     embedder: Embedder,
-    *,
-    threshold: float,
-    max_drift: float = 2.0,
+    params: OptimizerParams,
 ) -> Plan:
     """For each near-duplicate pair, drop the less load-bearing sentence — unless doing so would
     drift the prompt embedding more than max_drift (cosine distance) from the original prompt."""
+    threshold = params.threshold
+    max_drift = params.max_drift
     sentences = document.sentences
     redundancy = scores["redundancy"]
     embeddings = np.stack([s.embedding for s in sentences])
@@ -59,8 +61,8 @@ def greedy_pairwise(
         candidates.append(
             Candidate(
                 edit=Delete(targets=(drop,)),
-                score=sim,
-                source="greedy_pairwise",
+                confidence=sim,
+                source=DEFAULT_OPTIMIZER,
                 reason=f"redundant (cosine {sim:.2f}); kept the more load-bearing instruction",
             )
         )

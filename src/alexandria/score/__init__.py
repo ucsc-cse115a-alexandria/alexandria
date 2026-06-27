@@ -6,13 +6,14 @@ from typing import TYPE_CHECKING
 
 from alexandria.core.registry import get_scorer
 from alexandria.score import redundancy
+from alexandria.score.redundancy import DEFAULT_SCORER
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
     from alexandria.core.protocols import Scores
 
 
-def score(document: Document, names: tuple[str, ...] = ("redundancy",)) -> Scores:
+def score(document: Document, names: tuple[str, ...] = (DEFAULT_SCORER,)) -> Scores:
     """Run each named scorer and validate its vector length against the Document."""
     bundle: dict[str, tuple[float, ...]] = {}
     expected = len(document.sentences)
@@ -24,4 +25,4 @@ def score(document: Document, names: tuple[str, ...] = ("redundancy",)) -> Score
     return bundle
 
 
-__all__ = ["redundancy", "score"]
+__all__ = ["DEFAULT_SCORER", "redundancy", "score"]

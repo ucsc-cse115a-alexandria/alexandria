@@ -14,6 +14,8 @@ from alexandria.core.protocols import (
     Edit,
     Embedder,
     Optimizer,
+    OptimizerParams,
+    Peers,
     Plan,
     Scorer,
     Scores,
@@ -25,6 +27,7 @@ from alexandria.core.registry import (
     register_optimizer,
     register_scorer,
     required_scorers,
+    scorer_peers,
 )
 from alexandria.core.select import apply
 from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix, normalize
@@ -38,6 +41,8 @@ __all__ = [
     "Embedding",
     "Node",
     "Optimizer",
+    "OptimizerParams",
+    "Peers",
     "Plan",
     "ScoreVector",
     "Scorer",
@@ -56,4 +61,5 @@ __all__ = [
     "register_optimizer",
     "register_scorer",
     "required_scorers",
+    "scorer_peers",
 ]

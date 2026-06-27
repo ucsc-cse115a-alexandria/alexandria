@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from dataclasses import dataclass, field
 
 from alexandria.core.ir import SectionKind
@@ -33,15 +34,90 @@ def _new_children() -> list[_Open | RawSentence]:
     return []
 
 
+def _new_sections() -> list[_Open]:
+    return []
+
+
 @dataclass
 class _Open:
     """A section still being built while parsing; frozen into a RawSection at the end."""
 
     kind: SectionKind
     header: str
-    depth: int | None  # markdown header depth (number of '#'); None for xml/plain
-    tag: str | None  # xml tag name to match its closing tag; None for markdown/plain
+    depth: int | None  # markdown header depth (number of '#'); read only by the markdown rule
+    tag: str | None  # xml tag to match its closing tag; read only by the xml rules
     children: list[_Open | RawSentence] = field(default_factory=_new_children)
+
+
+@dataclass
+class _Builder:
+    """The parse state a rule manipulates: the section stack and the completed roots."""
+
+    roots: list[_Open] = field(default_factory=_new_sections)
+    stack: list[_Open] = field(default_factory=_new_sections)
+
+    def open(self, section: _Open) -> None:
+        (self.stack[-1].children if self.stack else self.roots).append(section)
+        self.stack.append(section)
+
+    def append(self, segment: str) -> None:
+        self.stack[-1].children.append(RawSentence(segment))
+
+    def drop_open_plain(self) -> None:
+        if self.stack and self.stack[-1].kind is SectionKind.PLAIN:
+            self.stack.pop()
+
+    def has_open_tag(self, tag: str) -> bool:
+        return any(section.kind is SectionKind.XML and section.tag == tag for section in self.stack)
+
+    def append_plain(self, segment: str) -> None:
+        """The fallback when no rule claims the line: body text under no header or tag."""
+        if not self.stack:
+            self.open(_Open(SectionKind.PLAIN, "", None, None))
+        self.append(segment)
+
+
+# A rule recognizes one line shape, performs its stack action, and reports whether it claimed the
+# line. Adding a SectionKind means adding one rule to _RULES, not editing the split() engine.
+BlockRule = Callable[[str, str, _Builder], bool]
+
+
+def _markdown_rule(line: str, segment: str, builder: _Builder) -> bool:
+    header = _MARKDOWN_HEADER.match(line)
+    if not header:
+        return False
+    depth = len(header.group(1))
+    builder.drop_open_plain()
+    while builder.stack and builder.stack[-1].kind is SectionKind.MARKDOWN and (builder.stack[-1].depth or 0) >= depth:
+        builder.stack.pop()
+    builder.open(_Open(SectionKind.MARKDOWN, line.lstrip("#").strip(), depth, None))
+    builder.append(segment)
+    return True
+
+
+def _xml_open_rule(line: str, segment: str, builder: _Builder) -> bool:
+    opening = _XML_OPEN.fullmatch(line)
+    if not opening:
+        return False
+    builder.drop_open_plain()
+    builder.open(_Open(SectionKind.XML, opening.group(1), None, opening.group(1)))
+    builder.append(segment)
+    return True
+
+
+def _xml_close_rule(line: str, segment: str, builder: _Builder) -> bool:
+    closing = _XML_CLOSE.fullmatch(line)
+    if not (closing and builder.has_open_tag(closing.group(1))):
+        return False
+    tag = closing.group(1)
+    while not (builder.stack[-1].kind is SectionKind.XML and builder.stack[-1].tag == tag):
+        builder.stack.pop()
+    builder.append(segment)
+    builder.stack.pop()
+    return True
+
+
+_RULES: tuple[BlockRule, ...] = (_markdown_rule, _xml_open_rule, _xml_close_rule)
 
 
 def split(prompt: str) -> tuple[RawSection, ...]:
@@ -54,46 +130,16 @@ def split(prompt: str) -> tuple[RawSection, ...]:
     if not prompt.strip():
         return ()
 
-    roots: list[_Open] = []
-    stack: list[_Open] = []
-
-    def open_section(section: _Open) -> None:
-        (stack[-1].children if stack else roots).append(section)
-        stack.append(section)
-
-    def drop_open_plain() -> None:
-        if stack and stack[-1].kind is SectionKind.PLAIN:
-            stack.pop()
-
+    builder = _Builder()
     for segment in _segments(prompt):
         line = segment.strip()
-        if header := _MARKDOWN_HEADER.match(line):
-            depth = len(header.group(1))
-            drop_open_plain()
-            while stack and stack[-1].kind is SectionKind.MARKDOWN and (stack[-1].depth or 0) >= depth:
-                stack.pop()
-            open_section(_Open(SectionKind.MARKDOWN, line.lstrip("#").strip(), depth, None))
-            stack[-1].children.append(RawSentence(segment))
-        elif opening := _XML_OPEN.fullmatch(line):
-            drop_open_plain()
-            open_section(_Open(SectionKind.XML, opening.group(1), None, opening.group(1)))
-            stack[-1].children.append(RawSentence(segment))
-        elif (closing := _XML_CLOSE.fullmatch(line)) and _has_open_tag(stack, closing.group(1)):
-            tag = closing.group(1)
-            while not (stack[-1].kind is SectionKind.XML and stack[-1].tag == tag):
-                stack.pop()
-            stack[-1].children.append(RawSentence(segment))
-            stack.pop()
+        for rule in _RULES:
+            if rule(line, segment, builder):
+                break
         else:
-            if not stack:
-                open_section(_Open(SectionKind.PLAIN, "", None, None))
-            stack[-1].children.append(RawSentence(segment))
+            builder.append_plain(segment)
 
-    return tuple(_freeze(section) for section in roots)
-
-
-def _has_open_tag(stack: list[_Open], tag: str) -> bool:
-    return any(section.kind is SectionKind.XML and section.tag == tag for section in stack)
+    return tuple(_freeze(section) for section in builder.roots)
 
 
 def _freeze(node: _Open) -> RawSection:
