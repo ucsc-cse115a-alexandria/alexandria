@@ -150,7 +150,7 @@ layers = [
 ]
 ignore_imports = [
     "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent.represent_test -> alexandria.**",
+    "alexandria.phases.represent_test -> alexandria.**",
     "alexandria.phases.score_test -> alexandria.**",
     "alexandria.phases.select_test -> alexandria.**",
 ]
@@ -169,7 +169,7 @@ forbidden_modules = [
 ]
 ignore_imports = [
     "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent.represent_test -> alexandria.**",
+    "alexandria.phases.represent_test -> alexandria.**",
     "alexandria.phases.score_test -> alexandria.**",
     "alexandria.phases.select_test -> alexandria.**",
 ]
