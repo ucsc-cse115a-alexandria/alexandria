@@ -5,18 +5,36 @@ Reads the JSON produced by search_skill_repos.py and requires the authenticated 
 """
 
 import argparse
-import base64
 import json
-import shutil
-import subprocess
 import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import tiktoken
+from gh_utils import run_gh
 from pydantic import BaseModel
 
-GH = shutil.which("gh") or "gh"
+RAW_HOST = "https://raw.githubusercontent.com"
+
+RAW_MAX_RETRIES = 3
+RAW_BACKOFF_SECONDS = 1.0
+
+
+def fetch_raw_text(url: str) -> str:
+    """Download `url`, retrying with backoff on transient connection errors."""
+    for attempt in range(RAW_MAX_RETRIES + 1):
+        try:
+            with urllib.request.urlopen(url) as response:
+                return response.read().decode("utf-8", errors="replace")
+        except urllib.error.URLError:
+            if attempt == RAW_MAX_RETRIES:
+                raise
+            time.sleep(RAW_BACKOFF_SECONDS * 2**attempt)
+    raise RuntimeError("unreachable")
 
 
 class RepoTokens(BaseModel):
@@ -28,39 +46,34 @@ class RepoTokens(BaseModel):
     avg_tokens: float
 
 
-def skill_md_blobs(full_name: str) -> list[str]:
-    """Return the git blob SHAs of every SKILL.md in the repo's tree."""
-    result = subprocess.run(
+def skill_md_paths(full_name: str) -> list[str]:
+    """Return the paths of every SKILL.md in the repo's tree (one API call)."""
+    stdout = run_gh(
         [
-            GH,
             "api",
             f"repos/{full_name}/git/trees/HEAD?recursive=1",
             "--jq",
-            '.tree[] | select(.path | endswith("SKILL.md")) | .sha',
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
+            '.tree[] | select(.path | endswith("SKILL.md")) | .path',
+        ]
     )
-    return result.stdout.split()
+    return [line for line in stdout.splitlines() if line]
 
 
-def blob_token_count(full_name: str, sha: str, encoding: tiktoken.Encoding) -> int:
-    """Return the token count of a single git blob."""
-    result = subprocess.run(
-        [GH, "api", f"repos/{full_name}/git/blobs/{sha}", "--jq", ".content"],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    text = base64.b64decode(result.stdout).decode("utf-8", errors="replace")
+def file_token_count(full_name: str, path: str, encoding: tiktoken.Encoding) -> int:
+    """Return the token count of one SKILL.md fetched from raw.githubusercontent.com.
+
+    Raw downloads are not charged against GitHub's REST API rate limit, so the
+    only API call per repo is the single tree lookup in `skill_md_paths`.
+    """
+    url = f"{RAW_HOST}/{full_name}/HEAD/{urllib.parse.quote(path)}"
+    text = fetch_raw_text(url)
     return len(encoding.encode(text))
 
 
 def count_repo(full_name: str, encoding: tiktoken.Encoding) -> RepoTokens:
     """Count tokens for every SKILL.md in a repo and return per-repo statistics."""
-    shas = skill_md_blobs(full_name)
-    counts = [blob_token_count(full_name, sha, encoding) for sha in shas]
+    paths = skill_md_paths(full_name)
+    counts = [file_token_count(full_name, path, encoding) for path in paths]
     total = sum(counts)
     return RepoTokens(
         full_name=full_name,
@@ -80,7 +93,7 @@ def main() -> None:
         help="output JSON file",
     )
     parser.add_argument("--encoding", default="cl100k_base", help="tiktoken encoding name")
-    parser.add_argument("--workers", type=int, default=16, help="concurrent repos")
+    parser.add_argument("--workers", type=int, default=8, help="concurrent repos")
     args = parser.parse_args()
 
     repos = [item["full_name"] for item in json.loads(args.input.read_text(encoding="utf-8"))]
@@ -89,8 +102,8 @@ def main() -> None:
     def safe_count(full_name: str) -> RepoTokens | None:
         try:
             return count_repo(full_name, encoding)
-        except subprocess.CalledProcessError as error:
-            print(f"warning: skipping {full_name}: {error.stderr.strip()}", file=sys.stderr)
+        except (RuntimeError, urllib.error.URLError) as error:
+            print(f"warning: skipping {full_name}: {error}", file=sys.stderr)
             return None
 
     with ThreadPoolExecutor(max_workers=args.workers) as pool:

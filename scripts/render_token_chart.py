@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """Render the per-repo SKILL.md token statistics as a self-contained HTML chart.
 
-Reads the JSON produced by count_skill_tokens.py and embeds the data so the page
-opens directly from the filesystem (no server required).
+Joins the token counts from count_skill_tokens.py with the repository metadata
+from search_skill_repos.py (for star counts) and embeds the merged data so the
+page opens directly from the filesystem (no server required).
 """
 
 import argparse
@@ -20,53 +21,109 @@ TEMPLATE = """<!doctype html>
 <title>SKILL.md Token Distribution</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
-  :root { color-scheme: dark; }
+  :root {
+    color-scheme: light;
+    --bg: #f7f8fa;
+    --card: #ffffff;
+    --border: #e7e9ee;
+    --ink: #1b2430;
+    --muted: #6b7585;
+    --grid: rgba(27, 36, 48, 0.07);
+    --blue: #3b82f6;
+    --violet: #8b5cf6;
+    --teal: #14b8a6;
+    --amber: #f59e0b;
+    --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
+  }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 48px 24px;
+    margin: 0; padding: 56px 24px;
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    background: radial-gradient(circle at 20% 0%, #1b2540 0%, #0b0f1a 60%);
-    color: #e7ecf5; min-height: 100vh;
+    background: var(--bg); color: var(--ink); min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 980px; margin: 0 auto; }
-  h1 { font-size: 1.6rem; font-weight: 650; margin: 0 0 4px; letter-spacing: -0.02em; }
-  .sub { color: #8b96ad; margin: 0 0 32px; font-size: 0.95rem; }
+  .wrap { max-width: 1040px; margin: 0 auto; }
+  h1 { font-size: 1.7rem; font-weight: 680; margin: 0 0 6px; letter-spacing: -0.02em; }
+  .sub { color: var(--muted); margin: 0 0 36px; font-size: 0.95rem; }
   .stats {
-    display: grid; gap: 14px; margin-bottom: 32px;
+    display: grid; gap: 14px; margin-bottom: 36px;
     grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
   }
   .stat {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 14px; padding: 18px 20px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px; box-shadow: var(--shadow);
   }
-  .stat .label { color: #8b96ad; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
-  .stat .value { font-size: 1.55rem; font-weight: 650; margin-top: 6px; font-variant-numeric: tabular-nums; }
+  .stat .label {
+    color: var(--muted); font-size: 0.72rem; text-transform: uppercase;
+    letter-spacing: 0.07em; font-weight: 600;
+  }
+  .stat .value {
+    font-size: 1.55rem; font-weight: 680; margin-top: 8px;
+    font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
+  }
+  .grid2 {
+    display: grid; gap: 24px; margin-bottom: 24px;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  }
   .card {
-    background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08);
-    border-radius: 18px; padding: 24px; margin-bottom: 28px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 18px; padding: 24px 24px 20px; margin-bottom: 24px; box-shadow: var(--shadow);
   }
-  .card h2 { font-size: 1.05rem; font-weight: 600; margin: 0 0 18px; }
+  .card h2 { font-size: 1.02rem; font-weight: 640; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .card .note { color: var(--muted); font-size: 0.84rem; margin: 0 0 16px; }
   canvas { width: 100% !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>SKILL.md Token Distribution</h1>
-  <p class="sub">Average tiktoken count per repository &middot; <span id="enc"></span></p>
+  <p class="sub">Per-repository SKILL.md token statistics &middot; tiktoken <span id="enc"></span></p>
   <div class="stats" id="stats"></div>
-  <div class="card"><h2>Distribution of per-repo average tokens</h2><canvas id="hist"></canvas></div>
-  <div class="card"><h2>Distribution within the 95th percentile</h2><canvas id="hist95"></canvas></div>
-  <div class="card"><h2>Average tokens by repository</h2><canvas id="byRepo"></canvas></div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Stars vs. average tokens</h2>
+      <p class="note">
+        All <span id="nAll"></span> repos &middot; log&ndash;log &middot; Pearson r = <span id="rAll"></span>
+      </p>
+      <canvas id="scatterAll"></canvas>
+    </div>
+    <div class="card">
+      <h2>Stars vs. average tokens (within 95th percentile)</h2>
+      <p class="note"><span id="nP95"></span> repos &middot; linear &middot; Pearson r = <span id="rP95"></span></p>
+      <canvas id="scatterP95"></canvas>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h2>Distribution of average tokens</h2>
+      <p class="note">All repositories</p>
+      <canvas id="hist"></canvas>
+    </div>
+    <div class="card">
+      <h2>Distribution within the 95th percentile</h2>
+      <p class="note">Outliers above the 95th percentile removed</p>
+      <canvas id="hist95"></canvas>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Average tokens by repository</h2>
+    <p class="note">Sorted high to low</p>
+    <canvas id="byRepo"></canvas>
+  </div>
 </div>
 <script>
   const DATA = __DATA__;
   const ENCODING = "__ENCODING__";
 
   const fmt = (n) => Math.round(n).toLocaleString();
-  const grid = "rgba(255,255,255,0.07)";
-  const tick = "#8b96ad";
-  Chart.defaults.color = tick;
+  const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+  const grid = css("--grid");
+  Chart.defaults.color = css("--muted");
   Chart.defaults.font.family = getComputedStyle(document.body).fontFamily;
+  Chart.defaults.font.size = 12;
 
   document.getElementById("enc").textContent = ENCODING;
 
@@ -88,19 +145,71 @@ TEMPLATE = """<!doctype html>
     type: "bar",
     data: {
       labels: hist.labels,
-      datasets: [{ label: "Repositories", data: hist.counts, backgroundColor: color, borderRadius: 6 }],
+      datasets: [{
+        label: "Repositories", data: hist.counts,
+        backgroundColor: color, borderRadius: 6, maxBarThickness: 48,
+      }],
     },
     options: {
+      animation: false,
       plugins: { legend: { display: false } },
       scales: {
-        x: { title: { display: true, text: "avg tokens" }, grid: { color: grid } },
-        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: grid } },
+        x: { title: { display: true, text: "avg tokens" }, grid: { display: false } },
+        y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: grid }, border: { display: false } },
       },
     },
   });
 
-  makeHistogram("hist", DATA.histogram, "#6ea8ff");
-  makeHistogram("hist95", DATA.histogram_p95, "#b69dff");
+  makeHistogram("hist", DATA.histogram, css("--blue"));
+  makeHistogram("hist95", DATA.histogram_p95, css("--violet"));
+
+  const point = (r) => ({ x: r.stars, y: r.avg_tokens, name: r.full_name });
+  const scatterTooltip = {
+    callbacks: {
+      label: (ctx) => `${ctx.raw.name}: ${fmt(ctx.raw.x)}★, ${fmt(ctx.raw.y)} tok`,
+    },
+  };
+
+  const makeScatter = (canvasId, points, color, axisType) => new Chart(document.getElementById(canvasId), {
+    type: "scatter",
+    data: {
+      datasets: [{
+        data: points,
+        backgroundColor: color + "cc",
+        borderColor: color,
+        borderWidth: 1,
+        radius: 4,
+        hoverRadius: 6,
+      }],
+    },
+    options: {
+      animation: false,
+      plugins: { legend: { display: false }, tooltip: scatterTooltip },
+      scales: {
+        x: {
+          type: axisType, title: { display: true, text: "stars" },
+          grid: { color: grid }, border: { display: false },
+        },
+        y: {
+          type: axisType, title: { display: true, text: "avg tokens" },
+          grid: { color: grid }, border: { display: false },
+        },
+      },
+    },
+  });
+
+  const allPoints = DATA.repos.map(point);
+  const p95Points = DATA.repos
+    .filter((r) => r.stars <= DATA.stars_p95 && r.avg_tokens <= DATA.tokens_p95)
+    .map(point);
+
+  document.getElementById("nAll").textContent = fmt(allPoints.length);
+  document.getElementById("nP95").textContent = fmt(p95Points.length);
+  document.getElementById("rAll").textContent = DATA.corr_all.toFixed(2);
+  document.getElementById("rP95").textContent = DATA.corr_p95.toFixed(2);
+
+  makeScatter("scatterAll", allPoints, css("--teal"), "logarithmic");
+  makeScatter("scatterP95", p95Points, css("--amber"), "linear");
 
   const repos = [...DATA.repos].sort((a, b) => b.avg_tokens - a.avg_tokens);
   new Chart(document.getElementById("byRepo"), {
@@ -109,15 +218,16 @@ TEMPLATE = """<!doctype html>
       labels: repos.map((r) => r.full_name),
       datasets: [{
         label: "avg tokens", data: repos.map((r) => r.avg_tokens),
-        backgroundColor: "#7ee0c0", borderRadius: 4,
+        backgroundColor: css("--blue"), borderRadius: 4,
       }],
     },
     options: {
+      animation: false,
       indexAxis: "y",
       plugins: { legend: { display: false } },
       scales: {
-        x: { beginAtZero: true, grid: { color: grid } },
-        y: { ticks: { autoSkip: false, font: { size: 10 } }, grid: { display: false } },
+        x: { beginAtZero: true, grid: { color: grid }, border: { display: false } },
+        y: { ticks: { autoSkip: false, font: { size: 10 } }, grid: { display: false }, border: { display: false } },
       },
     },
   });
@@ -127,13 +237,14 @@ TEMPLATE = """<!doctype html>
 """
 
 
-class RepoTokens(BaseModel):
-    """Per-repo SKILL.md token statistics produced by count_skill_tokens.py."""
+class RepoPoint(BaseModel):
+    """Per-repo SKILL.md token statistics joined with its GitHub star count."""
 
     full_name: str
     skill_md_count: int
     total_tokens: int
     avg_tokens: float
+    stars: int
 
 
 class Histogram(BaseModel):
@@ -157,10 +268,14 @@ class Stats(BaseModel):
 class ChartPayload(BaseModel):
     """Everything the HTML page needs, embedded as a single JSON blob."""
 
-    repos: list[RepoTokens]
+    repos: list[RepoPoint]
     stats: Stats
     histogram: Histogram
     histogram_p95: Histogram
+    stars_p95: float
+    tokens_p95: float
+    corr_all: float
+    corr_p95: float
 
 
 def percentile(values: list[float], pct: float) -> float:
@@ -184,35 +299,62 @@ def histogram(values: list[float], bins: int) -> Histogram:
     return Histogram(labels=labels, counts=counts)
 
 
-def build_payload(repos: list[RepoTokens], bins: int) -> ChartPayload:
-    """Assemble the chart payload: raw repos, summary stats, and full + p95 histograms."""
-    values = [repo.avg_tokens for repo in repos]
-    p95 = percentile(values, 95)
+def load_repos(tokens_path: Path, repos_path: Path) -> list[RepoPoint]:
+    """Join token counts with repository star counts by `full_name`."""
+    stars_by_name = {item["full_name"]: item["stars"] for item in json.loads(repos_path.read_text(encoding="utf-8"))}
+    return [
+        RepoPoint.model_validate({**item, "stars": stars_by_name[item["full_name"]]})
+        for item in json.loads(tokens_path.read_text(encoding="utf-8"))
+    ]
+
+
+def correlation(xs: list[float], ys: list[float]) -> float:
+    """Pearson correlation, returning 0.0 when fewer than two points are given."""
+    if len(xs) < 2:
+        return 0.0
+    return statistics.correlation(xs, ys)
+
+
+def build_payload(repos: list[RepoPoint], bins: int) -> ChartPayload:
+    """Assemble the chart payload: repos, summary stats, histograms, and correlations."""
+    tokens = [repo.avg_tokens for repo in repos]
+    stars = [float(repo.stars) for repo in repos]
+    tokens_p95 = percentile(tokens, 95)
+    stars_p95 = percentile(stars, 95)
     stats = Stats(
-        count=len(values),
-        mean=statistics.mean(values),
-        median=statistics.median(values),
-        min=min(values),
-        max=max(values),
-        p95=p95,
+        count=len(tokens),
+        mean=statistics.mean(tokens),
+        median=statistics.median(tokens),
+        min=min(tokens),
+        max=max(tokens),
+        p95=tokens_p95,
     )
+    within_p95 = [repo for repo in repos if repo.stars <= stars_p95 and repo.avg_tokens <= tokens_p95]
     return ChartPayload(
         repos=repos,
         stats=stats,
-        histogram=histogram(values, bins),
-        histogram_p95=histogram([value for value in values if value <= p95], bins),
+        histogram=histogram(tokens, bins),
+        histogram_p95=histogram([value for value in tokens if value <= tokens_p95], bins),
+        stars_p95=stars_p95,
+        tokens_p95=tokens_p95,
+        corr_all=correlation(stars, tokens),
+        corr_p95=correlation(
+            [float(repo.stars) for repo in within_p95],
+            [repo.avg_tokens for repo in within_p95],
+        ),
     )
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--input", type=Path, default=Path("data/skill_token_counts.json"), help="token counts JSON")
+    parser.add_argument("--repos", type=Path, default=Path("data/skill_repos.json"), help="repository metadata JSON")
     parser.add_argument("--output", type=Path, default=Path("data/skill_token_chart.html"), help="output HTML file")
     parser.add_argument("--bins", type=int, default=20, help="histogram bin count")
     parser.add_argument("--encoding", default="cl100k_base", help="tiktoken encoding label shown in the page")
     args = parser.parse_args()
 
-    repos = [RepoTokens.model_validate(item) for item in json.loads(args.input.read_text(encoding="utf-8"))]
+    repos = load_repos(args.input, args.repos)
     payload = build_payload(repos, args.bins)
 
     html = TEMPLATE.replace("__DATA__", payload.model_dump_json()).replace("__ENCODING__", args.encoding)
