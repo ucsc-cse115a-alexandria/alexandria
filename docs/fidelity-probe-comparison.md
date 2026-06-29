@@ -51,7 +51,7 @@ AUROC 0.5 = no separation, 1.0 = perfect. Cosine **0.260** vs behavioral **0.552
 | MC | format-swap | 0.440 | 0.997 | `Respond in JSON.` → `Respond in YAML.` |
 | MC | topic-change | 0.023 | 0.998 | `Respond in valid JSON.` → `Write a haiku about autumn leaves.` |
 
-## Where they disagree most (the diagnostic cases)
+## Where they disagree most — the diagnostic cases
 
 MC flips that **cosine misses but drift catches** (cosine high, drift high):
 
@@ -80,7 +80,7 @@ Same meaning flip (`respond` → `do not respond`) buried under more shared cont
 | 12 | 0.937 | 0.964 |
 | 19 | 0.952 | 0.824 |
 
-## Speed (warm cache, Apple Silicon arm64)
+## Speed — warm cache, Apple Silicon arm64
 
 - Embedding probe: 23 pairs in 0.53s (23 ms/pair)
 - Behavioral probe (MLX): 23 pairs in 2.56s (111 ms/pair)
