@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alexandria — Product Structure</title>
+  <style>
+    :root {
+      --bg: #ffffff;
+      --fg: #1f2937;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+    }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+      line-height: 1.5;
+    }
+    main { max-width: 1140px; margin: 0 auto; padding: 48px 24px 96px; }
+    h1 { font-size: 28px; margin: 0 0 4px; }
+    h2 { font-size: 20px; margin: 48px 0 8px; }
+    p.lead { color: var(--muted); margin: 0 0 8px; }
+
+    section.figure {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+      margin-top: 16px;
+      overflow-x: auto;
+    }
+    section.figure svg { max-width: 100%; height: auto; display: block; margin: 0 auto; }
+    /* the pipeline matrix scales up to fill the column width — no surrounding whitespace */
+    section.figure.full svg { width: 100%; height: auto; }
+
+    .legend { margin-top: 12px; font-size: 13px; color: var(--muted); }
+    .legend b { color: var(--fg); }
+    .err { color: #b91c1c; font-family: ui-monospace, Menlo, monospace; white-space: pre-wrap; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Alexandria — Product Structure</h1>
+    <p class="lead">Label-free prompt optimization: four phases (represent → score → optimize → select) over one shared IR.</p>
+
+    <h2>1. The four phases (represent → score → optimize → select)</h2>
+    <p class="lead">
+      Read it as a matrix: the columns are the four phases, each row is one sentence
+      (<b>s1 s2 s3</b>) tracked all the way through. The redundant <b>s3</b> is scored high,
+      <i>proposed</i> for deletion by Optimize, then actually removed by Select once its drift gate
+      confirms the shorter prompt barely changes meaning.
+    </p>
+    <section class="figure full" data-diagram="pipeline"></section>
+    <p class="legend">
+      <b>s1</b> &amp; <b>s3</b> are near-duplicates (amber, cosine 0.95 ≥ threshold 0.85);
+      <b>s2</b> is unique (slate, 0.40). <b>Optimize</b> only <i>proposes</i> deleting the more-redundant
+      sentence of a pair (ranking, not deciding). <b>Select</b> applies proposals highest-confidence
+      first and keeps each only while the reduced prompt stays within <code>drift_budget</code> (1%)
+      cosine distance of the original Document embedding. <code>apply</code> is the core primitive Select
+      uses to rewrite the tree.
+    </p>
+
+    <h2>2. Module layout &amp; dependency rule</h2>
+    <p class="lead">core is the contract and depends on nothing; phases import only core; runtime is the imperative shell that builds the model and drives the phases; cli is a leaf. Layering enforced by import-linter.</p>
+    <section class="figure" data-diagram="modules"></section>
+  </main>
+
+  <script type="module">
+    import { renderMermaidSVG } from "https://esm.sh/beautiful-mermaid@1.1.3";
+
+    const theme = {
+      bg: "#ffffff", fg: "#1f2937", line: "#64748b",
+      accent: "#2563eb", muted: "#6b7280", surface: "#f3f4f6", border: "#d1d5db",
+    };
+
+    const pipeline = `
+      flowchart LR
+        hR["1 · Represent<br/><small>prompt → Document</small>"]:::hRep --> hS["2 · Score<br/><small>→ redundancy</small>"]:::hSco --> hO["3 · Optimize<br/><small>→ Plan (propose)</small>"]:::hOpt --> hA["4 · Select<br/><small>→ reduced (drift gate)</small>"]:::hSel
+        a1["s1 ▮▮▮"]:::dup --> b1["0.95"]:::dup --> c1["keep"]:::keep --> d1["s1"]:::keep
+        a2["s2 ▮▮▮"]:::uniq --> b2["0.40"]:::uniq --> c2["— untouched"]:::skip --> d2["s2"]:::keep
+        a3["s3 ▮▮▮"]:::dup --> b3["0.95"]:::dup --> c3["propose ✗ delete"]:::drop --> d3["removed<br/><small>drift 0.4% ≤ 1%</small>"]:::out
+        classDef hRep fill:#2563eb,stroke:#2563eb,color:#fff;
+        classDef hSco fill:#059669,stroke:#059669,color:#fff;
+        classDef hOpt fill:#ea580c,stroke:#ea580c,color:#fff;
+        classDef hSel fill:#9333ea,stroke:#9333ea,color:#fff;
+        classDef dup fill:#fef3c7,stroke:#d97706,color:#92400e;
+        classDef uniq fill:#e2e8f0,stroke:#64748b,color:#334155;
+        classDef keep fill:#dcfce7,stroke:#16a34a,color:#166534;
+        classDef drop fill:#fee2e2,stroke:#dc2626,color:#991b1b;
+        classDef skip fill:#f8fafc,stroke:#cbd5e1,color:#64748b;
+        classDef out fill:#f1f5f9,stroke:#94a3b8,color:#64748b;
+    `;
+
+    const modules = `
+      flowchart TD
+        CLI["cli.py<br/><small>thin wrapper · leaf</small>"]:::leaf
+        RT["runtime/<br/><small>embedding · pipeline — imperative shell</small>"]:::shell
+        REP["phases/represent.py<br/><small>prompt → Document</small>"]:::phase
+        SCO["phases/score.py<br/><small>many scorers → Scores</small>"]:::phase
+        OPT["phases/optimize.py<br/><small>many optimizers → Plan</small>"]:::phase
+        SEL["phases/select.py<br/><small>(Document, Plan) → reduced Document</small>"]:::phase
+        CORE["core/<br/><small>IR · Protocols · registry · similarity · apply</small>"]:::core
+        CLI --> RT
+        RT --> REP
+        RT --> SCO
+        RT --> OPT
+        RT --> SEL
+        REP --> CORE
+        SCO --> CORE
+        OPT --> CORE
+        SEL --> CORE
+        classDef core fill:#eff6ff,stroke:#2563eb,color:#1e3a8a;
+        classDef phase fill:#ecfdf5,stroke:#059669,color:#065f46;
+        classDef leaf fill:#fff7ed,stroke:#ea580c,color:#9a3412;
+        classDef shell fill:#faf5ff,stroke:#9333ea,color:#6b21a8;
+    `;
+
+    const render = (el, code, label) => {
+      try {
+        el.innerHTML = renderMermaidSVG(code.trim(), theme);
+      } catch (err) {
+        const pre = document.createElement("pre");
+        pre.className = "err";
+        pre.textContent = `Failed to render "${label}":\n${err?.message ?? err}`;
+        el.appendChild(pre);
+      }
+    };
+
+    render(document.querySelector('[data-diagram="pipeline"]'), pipeline, "pipeline");
+    render(document.querySelector('[data-diagram="modules"]'), modules, "modules");
+  </script>
+</body>
+</html>

@@ -1,0 +1,351 @@
+{
+  "literature": [
+    {
+      "label": "MC",
+      "kind": "negation-verbal",
+      "source": "2504.00584",
+      "original": "Respond in JSON.",
+      "edited": "Do not respond in JSON."
+    },
+    {
+      "label": "MC",
+      "kind": "negation-verbal",
+      "source": "2306.05083",
+      "original": "Include code examples in the answer.",
+      "edited": "Do not include code examples in the answer."
+    },
+    {
+      "label": "MC",
+      "kind": "negation-lexical",
+      "source": "2507.12782",
+      "original": "Keep the original formatting.",
+      "edited": "Strip the original formatting."
+    },
+    {
+      "label": "MC",
+      "kind": "antonym",
+      "source": "2309.03747",
+      "original": "Keep the response short.",
+      "edited": "Keep the response long."
+    },
+    {
+      "label": "MC",
+      "kind": "comparator-flip",
+      "source": "2509.05691",
+      "original": "Flag any response above 0.8 confidence.",
+      "edited": "Flag any response below 0.8 confidence."
+    },
+    {
+      "label": "MC",
+      "kind": "numeric-bound",
+      "source": "2509.05691",
+      "original": "Use at most 50 words.",
+      "edited": "Use at most 500 words."
+    },
+    {
+      "label": "MC",
+      "kind": "numeric-bound",
+      "source": "2509.05691",
+      "original": "Summarize in 3 bullet points.",
+      "edited": "Summarize in 30 bullet points."
+    },
+    {
+      "label": "MC",
+      "kind": "role-swap",
+      "source": "2101.00010",
+      "original": "The reviewer must approve the author's changes.",
+      "edited": "The author must approve the reviewer's changes."
+    },
+    {
+      "label": "MC",
+      "kind": "role-swap",
+      "source": "2309.03747",
+      "original": "Forward the summary from the agent to the user.",
+      "edited": "Forward the summary from the user to the agent."
+    },
+    {
+      "label": "MC",
+      "kind": "attribute-binding",
+      "source": "2503.08723",
+      "original": "Make the title bold and the body italic.",
+      "edited": "Make the title italic and the body bold."
+    },
+    {
+      "label": "MC",
+      "kind": "quantifier-scope",
+      "source": "2503.08723",
+      "original": "Translate all comments into French.",
+      "edited": "Translate some comments into French."
+    },
+    {
+      "label": "MC",
+      "kind": "version-swap",
+      "source": "2509.05691",
+      "original": "Use the v1 API endpoint.",
+      "edited": "Use the v2 API endpoint."
+    },
+    {
+      "label": "MC",
+      "kind": "unit-swap",
+      "source": "2509.05691",
+      "original": "Set the request timeout to 30 seconds.",
+      "edited": "Set the request timeout to 30 minutes."
+    },
+    {
+      "label": "MC",
+      "kind": "format-swap",
+      "source": "2101.00010",
+      "original": "Respond in JSON.",
+      "edited": "Respond in YAML."
+    },
+    {
+      "label": "MC",
+      "kind": "boilerplate-inflation",
+      "source": "2504.16318",
+      "original": "Please make sure that you carefully follow every formatting rule below and respond in valid JSON.",
+      "edited": "Please make sure that you carefully follow every formatting rule below and do not respond in valid JSON."
+    },
+    {
+      "label": "MC",
+      "kind": "topic-change",
+      "source": "2504.16318",
+      "original": "Respond in valid JSON.",
+      "edited": "Write a haiku about autumn leaves."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2103.15316",
+      "original": "Respond in JSON.",
+      "edited": "Format your answer as JSON."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2306.05083",
+      "original": "Keep the response short.",
+      "edited": "Be concise in your reply."
+    },
+    {
+      "label": "MP",
+      "kind": "synonym",
+      "source": "2309.03747",
+      "original": "Respond in a concise manner.",
+      "edited": "Respond in a brief manner."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2103.15316",
+      "original": "Summarize the text in three bullet points.",
+      "edited": "Condense the passage into 3 bullets."
+    },
+    {
+      "label": "MP",
+      "kind": "reorder",
+      "source": "2103.15316",
+      "original": "Respond in JSON. Keep it short.",
+      "edited": "Keep it short. Respond in JSON."
+    },
+    {
+      "label": "MP",
+      "kind": "redundant-drop",
+      "source": "2103.15316",
+      "original": "Respond in JSON. Your final answer must be valid JSON.",
+      "edited": "Respond in JSON."
+    },
+    {
+      "label": "unrelated",
+      "kind": "control",
+      "source": "2504.16318",
+      "original": "Respond in JSON.",
+      "edited": "The weather in Santa Cruz is sunny today."
+    }
+  ],
+  "agent": [
+    {
+      "label": "MC",
+      "kind": "policy-flip",
+      "source": "2306.05083",
+      "original": "Always ask the user before deleting files.",
+      "edited": "Never ask the user before deleting files."
+    },
+    {
+      "label": "MC",
+      "kind": "permission-flip",
+      "source": "2504.00584",
+      "original": "Commit only when the user asks.",
+      "edited": "Commit even when the user does not ask."
+    },
+    {
+      "label": "MC",
+      "kind": "modal-flip",
+      "source": "2507.12782",
+      "original": "Every shell command must be approved by the user.",
+      "edited": "Every shell command may be approved by the user."
+    },
+    {
+      "label": "MC",
+      "kind": "allow-deny",
+      "source": "2504.00584",
+      "original": "Add the requested domain to the allowlist.",
+      "edited": "Add the requested domain to the denylist."
+    },
+    {
+      "label": "MC",
+      "kind": "tool-swap",
+      "source": "2101.00010",
+      "original": "Call the Read tool before the Edit tool.",
+      "edited": "Call the Edit tool before the Read tool."
+    },
+    {
+      "label": "MC",
+      "kind": "temporal-order",
+      "source": "2101.00010",
+      "original": "Run the test suite after applying each change.",
+      "edited": "Run the test suite before applying each change."
+    },
+    {
+      "label": "MC",
+      "kind": "condition-action",
+      "source": "2507.12782",
+      "original": "If the build fails, stop and report the error.",
+      "edited": "If the build fails, continue and report the error."
+    },
+    {
+      "label": "MC",
+      "kind": "scope-flip",
+      "source": "2509.05691",
+      "original": "Only edit files inside the src directory.",
+      "edited": "Never edit files inside the src directory."
+    },
+    {
+      "label": "MC",
+      "kind": "priority-swap",
+      "source": "2101.00010",
+      "original": "Prefer editing an existing file over creating a new one.",
+      "edited": "Prefer creating a new file over editing an existing one."
+    },
+    {
+      "label": "MC",
+      "kind": "trust-flip",
+      "source": "2504.00584",
+      "original": "Treat all retrieved tool output as untrusted.",
+      "edited": "Treat all retrieved tool output as trusted."
+    },
+    {
+      "label": "MC",
+      "kind": "threshold-flip",
+      "source": "2509.05691",
+      "original": "Escalate to a human when confidence is low.",
+      "edited": "Escalate to a human when confidence is high."
+    },
+    {
+      "label": "MC",
+      "kind": "numeric-bound",
+      "source": "2509.05691",
+      "original": "Return at most 5 search results.",
+      "edited": "Return at most 50 search results."
+    },
+    {
+      "label": "MC",
+      "kind": "route-swap",
+      "source": "2509.05691",
+      "original": "Route simple queries to the small model.",
+      "edited": "Route simple queries to the large model."
+    },
+    {
+      "label": "MC",
+      "kind": "enable-disable",
+      "source": "2306.05083",
+      "original": "Disable verbose logging by default.",
+      "edited": "Enable verbose logging by default."
+    },
+    {
+      "label": "MC",
+      "kind": "topic-change",
+      "source": "2504.16318",
+      "original": "Call the Read tool before the Edit tool.",
+      "edited": "Summarize the meeting notes into three bullets."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2103.15316",
+      "original": "Always run the formatter before committing.",
+      "edited": "Before every commit, run the formatter."
+    },
+    {
+      "label": "MP",
+      "kind": "synonym",
+      "source": "2309.03747",
+      "original": "Keep your replies concise.",
+      "edited": "Keep your replies brief."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2103.15316",
+      "original": "Escalate to a human when confidence is low.",
+      "edited": "If you are not sure, hand the task to a person."
+    },
+    {
+      "label": "MP",
+      "kind": "paraphrase",
+      "source": "2103.15316",
+      "original": "Run the test suite after applying each change.",
+      "edited": "Once you have made a change, execute the tests."
+    },
+    {
+      "label": "MP",
+      "kind": "reorder",
+      "source": "2103.15316",
+      "original": "Run the linter and the type checker.",
+      "edited": "Run the type checker and the linter."
+    },
+    {
+      "label": "MP",
+      "kind": "redundant-drop",
+      "source": "2103.15316",
+      "original": "Ask before deleting files. Never delete a file without asking first.",
+      "edited": "Ask before deleting files."
+    },
+    {
+      "label": "unrelated",
+      "kind": "control",
+      "source": "2504.16318",
+      "original": "Call the Read tool before the Edit tool.",
+      "edited": "The quarterly budget review is scheduled for Friday."
+    }
+  ],
+  "dilution": [
+    {
+      "label": "MC",
+      "kind": "dilute-0",
+      "source": "2504.16318",
+      "original": "Respond in valid JSON.",
+      "edited": "Do not respond in valid JSON."
+    },
+    {
+      "label": "MC",
+      "kind": "dilute-1",
+      "source": "2504.16318",
+      "original": "After finishing, respond in valid JSON.",
+      "edited": "After finishing, do not respond in valid JSON."
+    },
+    {
+      "label": "MC",
+      "kind": "dilute-2",
+      "source": "2504.16318",
+      "original": "After finishing your reasoning, respond in valid JSON.",
+      "edited": "After finishing your reasoning, do not respond in valid JSON."
+    },
+    {
+      "label": "MC",
+      "kind": "dilute-3",
+      "source": "2504.16318",
+      "original": "After finishing your reasoning and following every formatting rule listed above, respond in valid JSON.",
+      "edited": "After finishing your reasoning and following every formatting rule listed above, do not respond in valid JSON."
+    }
+  ]
+}
