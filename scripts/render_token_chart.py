@@ -18,7 +18,7 @@ TEMPLATE = """<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SKILL.md Token Distribution</title>
+<title>SKILL.md Tokens</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <style>
   :root {
@@ -61,57 +61,53 @@ TEMPLATE = """<!doctype html>
     font-size: 1.55rem; font-weight: 680; margin-top: 8px;
     font-variant-numeric: tabular-nums; letter-spacing: -0.01em;
   }
-  .grid2 {
-    display: grid; gap: 24px; margin-bottom: 24px;
-    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  }
   .card {
     background: var(--card); border: 1px solid var(--border);
     border-radius: 18px; padding: 24px 24px 20px; margin-bottom: 24px; box-shadow: var(--shadow);
   }
-  .card h2 { font-size: 1.02rem; font-weight: 640; margin: 0 0 4px; letter-spacing: -0.01em; }
-  .card .note { color: var(--muted); font-size: 0.84rem; margin: 0 0 16px; }
+  .card h2 { font-size: 1.15rem; font-weight: 640; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .card .note { color: var(--muted); font-size: 0.88rem; margin: 0 0 18px; }
+  .chart { position: relative; height: 440px; }
+  .chart.tall { height: 1500px; }
   canvas { width: 100% !important; }
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>SKILL.md Token Distribution</h1>
+  <h1>SKILL.md Tokens</h1>
   <p class="sub">Per-repository SKILL.md token statistics &middot; tiktoken <span id="enc"></span></p>
   <div class="stats" id="stats"></div>
 
-  <div class="grid2">
-    <div class="card">
-      <h2>Stars vs. average tokens</h2>
-      <p class="note">
-        All <span id="nAll"></span> repos &middot; log&ndash;log &middot; Pearson r = <span id="rAll"></span>
-      </p>
-      <canvas id="scatterAll"></canvas>
-    </div>
-    <div class="card">
-      <h2>Stars vs. average tokens (within 95th percentile)</h2>
-      <p class="note"><span id="nP95"></span> repos &middot; linear &middot; Pearson r = <span id="rP95"></span></p>
-      <canvas id="scatterP95"></canvas>
-    </div>
-  </div>
-
-  <div class="grid2">
-    <div class="card">
-      <h2>Distribution of average tokens</h2>
-      <p class="note">All repositories</p>
-      <canvas id="hist"></canvas>
-    </div>
-    <div class="card">
-      <h2>Distribution within the 95th percentile</h2>
-      <p class="note">Outliers above the 95th percentile removed</p>
-      <canvas id="hist95"></canvas>
-    </div>
+  <div class="card">
+    <h2>Stars vs. avg tokens</h2>
+    <p class="note">
+      All <span id="nAll"></span> repos &middot; log&ndash;log &middot; Pearson r = <span id="rAll"></span>
+    </p>
+    <div class="chart"><canvas id="scatterAll"></canvas></div>
   </div>
 
   <div class="card">
-    <h2>Average tokens by repository</h2>
+    <h2>Stars vs. avg tokens (95th percentile)</h2>
+    <p class="note"><span id="nP95"></span> repos &middot; linear &middot; Pearson r = <span id="rP95"></span></p>
+    <div class="chart"><canvas id="scatterP95"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Avg tokens distribution</h2>
+    <p class="note">All repositories</p>
+    <div class="chart"><canvas id="hist"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Avg tokens distribution (95th percentile)</h2>
+    <p class="note">Outliers above the 95th percentile removed</p>
+    <div class="chart"><canvas id="hist95"></canvas></div>
+  </div>
+
+  <div class="card">
+    <h2>Avg tokens by repo</h2>
     <p class="note">Sorted high to low</p>
-    <canvas id="byRepo"></canvas>
+    <div class="chart tall"><canvas id="byRepo"></canvas></div>
   </div>
 </div>
 <script>
@@ -152,6 +148,7 @@ TEMPLATE = """<!doctype html>
     },
     options: {
       animation: false,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false } },
       scales: {
         x: { title: { display: true, text: "avg tokens" }, grid: { display: false } },
@@ -184,6 +181,7 @@ TEMPLATE = """<!doctype html>
     },
     options: {
       animation: false,
+      maintainAspectRatio: false,
       plugins: { legend: { display: false }, tooltip: scatterTooltip },
       scales: {
         x: {
@@ -223,6 +221,7 @@ TEMPLATE = """<!doctype html>
     },
     options: {
       animation: false,
+      maintainAspectRatio: false,
       indexAxis: "y",
       plugins: { legend: { display: false } },
       scales: {
