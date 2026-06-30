@@ -4,7 +4,7 @@
 - **Team:** Alexandria Team
 - **Release:** 1.0
 - **Release date:** 2026-07-21 (end of Sprint 4)
-- **Revision:** 3 (2026-06-29)
+- **Revision:** 4 (2026-06-30)
 
 See [`spec.md`](spec.md) for the design and [`tech-stack.md`](tech-stack.md) for the stack.
 
@@ -36,9 +36,8 @@ Plan.
 
 ### Sprint 1: Shorten a prompt end to end
 
-- **User story** (G1, G3): As an engineer who uses Cursor or Claude Code, I want one CLI command
-  that shortens my agent-instruction file (`AGENT.md` / `CLAUDE.md`) in token count without dropping
-  any instruction, so that I cut cost and avoid the accuracy loss that comes with a bloated prompt.
+- **User story** (G1, G3): As an engineer who uses Cursor or Claude Code, I want a one CLI command
+  that cuts the token count of my agent-instruction file (`AGENT.md` / `CLAUDE.md`) by removing redundant instructions while keeping meaning intact, so that I cut cost and avoid the accuracy loss that comes with a bloated prompt.
 - **Spike**: Survey prompt-optimization work, how token count affects LLM accuracy, and existing
   prompt/agent benchmarks — prepares the Sprint 2 benchmark.
 - **Infrastructure**: Repo scaffold and dependencies; CI running lint, type check, and tests on
@@ -46,10 +45,7 @@ Plan.
 
 ### Sprint 2: Measure the accuracy of a shortened prompt
 
-- **User story** (G2): As that engineer, I want a report that runs my coding agent on a fixed task
-  suite with both the original and the shortened prompt and shows each side's accuracy next to the
-  tokens saved, so that I can see — not just hope — that shortening kept my agent as accurate before
-  I adopt it.
+- **User story** (G2): As that engineer, I want to know whether the shortened prompt keeps my agent just as accurate before I rely on it, so that I'm not trading reliability for a smaller prompt without realizing it.
 - **Spike**: Pick an evaluation task with published prompts and ground truth so accuracy is
   measurable, and design label-by-construction edit pairs the benchmark cannot leak on.
 - **Infrastructure**: A benchmark runner that executes an agent on a prompt, records its outputs,
@@ -57,20 +53,13 @@ Plan.
 
 ### Sprint 3: Push accuracy higher with more strategies
 
-- **User story** (G1, G2): As that engineer, I want the command to compress harder while the
-  benchmark still shows my agent is as accurate — by trying several compression strategies and
-  keeping the one that scores best for my prompt — so that I save more tokens without giving up
-  accuracy or hand-picking a method.
+- **User story** (G1, G2): As that engineer, I want the command to compress harder while the benchmark still shows my agent is as accurate — by combining multiple compression strategies into one pass and keeping only the edits the benchmark backs up — so that I save more tokens without giving up accuracy or hand-picking a method.
 - **Spike**: Explore packaging and distribution options (PyPI, pipx) — prepares the Sprint 4 release.
-- **Infrastructure**: A strategy-comparison harness that scores each strategy on the benchmark and
-  selects the best for a given prompt.
+- **Infrastructure**: Support for running multiple optimizers together, concatenating their proposed edits into one ranked stack for Select to fold.
 
 ### Sprint 4: Confirm the gain and ship
 
-- **User story** (G3): As a developer, I want to use Alexandria as both a CLI and a Python library —
-  with a README, examples, and the benchmark numbers for the default strategy — so that I can drop
-  verified prompt compression into my own scripts and pipelines and know the accuracy and cost I am
-  getting.
+- **User story** (G3): I want to use Alexandria as both a CLI and a Python library, with clear setup docs so I can get going quickly, so that I can drop verified prompt compression into my own scripts and pipelines and know the accuracy and cost I am getting.
 - **Infrastructure**: Re-run the benchmark on the chosen default strategy to confirm its
   accuracy/compression numbers, then package and publish the CLI so it installs in one command.
 
