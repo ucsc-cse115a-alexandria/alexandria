@@ -1,71 +1,63 @@
 # Sprint 2 Plan
 
-**Product:** Alexandria
+**Product:** Alexandria ·
 **Team:** Alexandria ·
 **Sprint completion date:** Tue, Jul 7, 2026 ·
-**Revision:** 1.0 (2026-07-02)
+**Revision:** 2.0 (2026-07-02)
 
 ## Goal
 
-Let a CLI user trust and control the compression: prove a shortened prompt keeps their agent just as
-accurate, cut more tokens while meaning stays intact, and give them CLI controls to steer the
-accuracy/cost trade-off. Most of the sprint is the benchmark, dataset, and scripts that make this
-possible.
-
-> Scope note: the release plan frames Sprint 2 as G2 (behavioral accuracy) only. This plan also
-> delivers G1 (more token savings) and G3 (CLI controls). If the team commits to all of it, revise
-> [`release-plan.md`](release-plan.md) alongside this plan.
+Give an engineer two things they can act on: proof that a shortened prompt keeps their coding agent
+just as accurate as the original (on a benchmark that cannot leak), and CLI options to steer the
+accuracy/cost trade-off when they would rather spend a little accuracy for a cheaper API bill. Most
+of the sprint builds the benchmark, leak-proof dataset, and runner behind the proof.
 
 ## Task listing (by user story, priority order)
 
-Highest priority at the top. User stories are written from the perspective of the person using the
-CLI. Estimates are ideal hours (each task ≤ 6h) and are the Product Owner's starting proposal; the
-team finalizes them via planning poker at the planning meeting.
+This sprint carries **two** pieces of user-facing value — the user stories below — plus the
+technical-value and spike work they stand on. The user stories are written from the perspective of
+the person who runs Alexandria on their own prompt, not from ours. Everything that delivers no direct
+value to that person is listed separately under [Enabling work](#enabling-work-not-user-stories),
+tagged with the kind of value it delivers (Customer, Business, Technical, Refactoring, or a research
+spike — see the "Multiple Aspects of Value" framing in the planning guide).
 
-### User story 1: Trust that a shortened prompt stays accurate (G2) — highest priority
+Highest priority at the top. Estimates are ideal hours (each task ≤ 6h) and are the Product Owner's
+starting proposal; the team finalizes them via planning poker at the planning meeting.
 
-> As an engineer who compresses my `CLAUDE.md` / `AGENT.md` with Alexandria, I want proof that the
-> shortened prompt keeps my agent just as accurate, so that I can rely on it without secretly trading
-> reliability for a smaller prompt.
+### User story 1 — Trust that a shortened prompt stays accurate (G2 · Customer/User value · Priority 1)
 
-- Before/after accuracy report: run the original vs. compressed prompt through the benchmark runner
-  and publish the accuracy delta so a user can see performance is preserved (4h)
-- Document the trust evidence in the user-facing docs / README (2h)
+> As an engineer who compresses my `CLAUDE.md` / `AGENT.md` with Alexandria, I want to see proof that
+> the shortened prompt keeps my coding agent just as accurate as the original, so that I can switch to
+> the smaller prompt without quietly trading reliability for a lower token bill.
+
+- Run the original prompt and its Alexandria-compressed version through the benchmark runner and
+  publish the accuracy delta, so the user can see for themselves that performance is preserved (4h)
+- Write that result into the user-facing README / docs as the trust evidence a user reads before
+  they adopt compression (2h)
 
 **Total for user story 1: 6 hours**
 
-### User story 2: Save more tokens without losing meaning (G1)
+### User story 2 — Steer the accuracy/cost trade-off (G3 · Customer/User value · Priority 2)
 
-> As that engineer, I want Alexandria to remove as many tokens as possible while the meaning stays
-> intact, so that I cut more cost without giving up quality.
+> As an engineer building an LLM application, I want CLI options to cap how hard Alexandria compresses
+> my prompt — hold similarity above a floor I set, or hit a token budget — and see the token savings I
+> get, so that I can push compression as far as my cost target needs, even when I am willing to spend
+> a little accuracy for a cheaper API bill.
 
-- Baseline: run the current reducer over the fidelity dataset and record token reduction at the
-  ≥ 99% similarity gate (3h)
-- Improve the scorer / optimizer / selector to raise token reduction at the same ≥ 99% gate,
-  iterating against that metric (6h)
-- Regression guard: add a test/experiment that fails if fidelity drops below 99% on the dataset (3h)
-
-**Total for user story 2: 12 hours**
-
-### User story 3: Steer and see the compression (G3) — lowest priority
-
-> As that engineer, I want to cap how far the prompt is compressed — keep overall similarity ≥ 99%,
-> or hit a target token count — and see the token savings, so that I control the accuracy/cost
-> trade-off I get.
-
-- Add a `--min-similarity` option (e.g. `0.99`) to `reduce`/`select` so reduction stops before it
-  crosses the fidelity floor (4h)
+- Add a `--min-similarity` option (e.g. `0.99`) to `reduce` so reduction stops before it crosses the
+  similarity floor the user sets (4h) — depends on the compression fidelity check in Enabler C
 - Add a `--max-tokens N` option so reduction targets a token budget (4h)
 - Add token counting to the CLI: report tokens before/after and the reduction percentage (3h)
 
-**Total for user story 3: 11 hours**
+**Total for user story 2: 11 hours**
 
-## Infrastructure & spike tasks (not tied to a user story)
+## Enabling work (not user stories)
 
-These deliver no direct CLI-user value on their own, but they are what US1–US3 stand on. Sequence
-them early. Listed in the priority order given for the sprint.
+These items deliver no value to the user on their own, but User Story 1 cannot exist without them.
+Each is an imperative backlog item tagged with the kind of value it delivers. Sequence them before
+US1; they are listed in priority order.
 
-### Benchmark: prove an `A → A'` compression preserves performance (enables US1)
+### Enabler A — Choose a benchmark that cannot leak (Spike / Technical value · Priority 3)
 
 Acceptance criteria for the chosen benchmark:
 
@@ -79,16 +71,23 @@ Acceptance criteria for the chosen benchmark:
 
 - [spike] Survey candidate benchmarks that clear the must-have bar (≥ 20 citations or ≥ 100 stars);
   record each in a research note per [docs/research/TEMPLATE.md](research/TEMPLATE.md) (4h)
-- [spike] Hypothesis-based analysis: rate each candidate against every acceptance criterion above
-  and pick the optimal base benchmark, documenting the rationale (5h)
-- Verify length-sensitivity on the chosen benchmark: inflate its prompt to 2× redundant length
-  (inflation script below) and confirm the score drops — this is what lets the benchmark detect a
-  bad compression (4h)
-- Benchmark runner: run a fixed subset, execute the agent per prompt, score against ground truth,
-  and record each experiment (config, tokens, cost, score) to a results file; enforce the
-  ≤ 10 min / ≤ $1 budget (6h)
+- [spike] Hypothesis-based analysis: rate each candidate against every acceptance criterion above and
+  pick the base benchmark, documenting the rationale (5h)
 
-### Fidelity dataset & scripts (enables US2 and US3)
+**Total for Enabler A: 9 hours**
+
+### Enabler B — Benchmark runner (Technical value · Priority 4)
+
+- Benchmark runner: run a fixed subset, execute the agent per prompt, score against ground truth, and
+  record each experiment (config, tokens, cost, score) to a results file; enforce the
+  ≤ 10 min / ≤ $1 budget (6h)
+- Verify length-sensitivity on the chosen benchmark: inflate its prompt to 2× redundant length
+  (inflation script in Enabler C) and confirm the score drops — this is what lets the benchmark
+  detect a bad compression (4h)
+
+**Total for Enabler B: 10 hours**
+
+### Enabler C — Leak-proof fidelity dataset (Technical value · Priority 5)
 
 - Skill-corpus download script: fetch the SKILL.md of the top-N (≤ 100) skill repos into a local
   corpus, building on [`scripts/search_skill_repos.py`](../scripts/search_skill_repos.py) and its
@@ -97,36 +96,52 @@ Acceptance criteria for the chosen benchmark:
   restatements that carry no new instruction (6h)
 - Dataset generator: take the top-10 skills and emit 1.2×, 1.5×, 2×, and 10× inflated variants as a
   versioned, label-by-construction dataset the benchmark cannot leak on (4h)
-- Compression-only fidelity metric: for a reduced prompt, compute overall cosine similarity to the
-  original plus token reduction, and define the ≥ 99% similarity check (4h)
+- Compression fidelity check: for a compressed prompt, compute cosine similarity to the original plus
+  token reduction, and use the ≥ 99% similarity gate to validate that each dataset variant preserves
+  meaning (4h)
 
-**Total for infrastructure & spike: 38 hours**
+**Total for Enabler C: 19 hours**
 
 ## Capacity sanity check
 
 - Team of 4, one-week sprint, with the Jul 3 holiday reducing capacity. At a conservative
   8–12 ideal hours/person/week, realistic capacity is roughly **32–44 ideal hours**.
-- Everything above totals **67 hours** — over capacity. The team must trim at the planning meeting.
-  Recommended commitment order: benchmark infrastructure (unblocks everything) → fidelity dataset &
-  scripts → US1 → US2 → US3. Cut from the bottom (US3 first, then US2's improvement iteration) until
-  the committed total fits capacity; the rest returns to the product backlog for Sprint 3.
-- Dependencies: US1 needs the benchmark runner; the length-sensitivity check needs the inflation
-  script; US2 needs the dataset and fidelity metric. Sequence the infrastructure tasks early so the
-  user stories are not blocked.
+- Everything above totals **55 hours** — well over that band. The team trims at the planning meeting.
+- Recommended commitment order: **Enabler A → Enabler B → US1** (25h) delivers a real proof on the
+  chosen benchmark, then **US2** (11h) gives users the CLI controls. That core is 36h and fits the top
+  of capacity. Add **Enabler C** as capacity allows.
+- Recommended trim order if over capacity, mostly within Enabler C: drop the corpus download script
+  (hand-pick ~10 skills instead), then the 10× variant — but keep the compression fidelity check,
+  since US2's `--min-similarity` depends on it. Returned work goes to the product backlog for Sprint 3.
+- Dependencies: US1 needs the benchmark runner (Enabler B) and at least a small dataset; the
+  length-sensitivity check needs the inflation script (Enabler C); US2's `--min-similarity` needs the
+  compression fidelity check (Enabler C). Sequence the enablers first so the user stories are not
+  blocked.
+
+## Deferred to the product backlog
+
+The [release plan](release-plan.md) scopes Sprint 2 to accuracy measurement (G2). This plan also
+pulls the CLI controls (G3) forward as US2, since they deliver direct user value on their own — so the
+release plan should be revised to move G3 into Sprint 2. Improving the compression itself stays out:
+
+- **G1 — save more tokens:** improve the scorer / optimizer / selector to raise token reduction at the
+  fidelity gate → Sprint 3.
 
 ## Team roles
 
 - Masa Ishihara: Product Owner
-- Matthew Zerner:
-- Virinchi Chintala:
+- Matthew Zerner: _(TBD)_
+- Virinchi Chintala: _(TBD)_
 - Marc Dylan Tan: Scrum Master
 
 ## Initial task assignment
 
-- Masa Ishihara:
-- Matthew Zerner:
-- Virinchi Chintala:
-- Marc Dylan Tan:
+_(Proposal — team members sign up for their own work at the planning meeting.)_
+
+- Masa Ishihara: US2, add the CLI compression options (`--min-similarity` / `--max-tokens` / token counting)
+- Matthew Zerner: Enabler C, skill-corpus download script
+- Virinchi Chintala: US1, before/after accuracy experiment (original vs. compressed)
+- Marc Dylan Tan: Enabler A / B, benchmark selection and runner
 
 ## Initial burnup chart
 
