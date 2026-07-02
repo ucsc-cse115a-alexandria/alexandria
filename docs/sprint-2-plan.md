@@ -7,22 +7,18 @@
 
 ## Goal
 
-Give an engineer two things they can act on: proof that a shortened prompt keeps their coding agent
-just as accurate as the original (on a benchmark that cannot leak), and CLI options to steer the
-accuracy/cost trade-off when they would rather spend a little accuracy for a cheaper API bill. Most
-of the sprint builds the benchmark, leak-proof dataset, and runner behind the proof.
+Show that a prompt Alexandria shortened keeps the agent as accurate as the original, measured on a
+benchmark that can't leak. Add CLI options so a user can trade some accuracy for lower cost when they
+want to. Most of the sprint is the benchmark, dataset, and runner that make the proof possible.
 
 ## Task listing (by user story, priority order)
 
-This sprint carries **two** pieces of user-facing value — the user stories below — plus the
-technical-value and spike work they stand on. The user stories are written from the perspective of
-the person who runs Alexandria on their own prompt, not from ours. Everything that delivers no direct
-value to that person is listed separately under [Enabling work](#enabling-work-not-user-stories),
-tagged with the kind of value it delivers (Customer, Business, Technical, Refactoring, or a research
-spike — see the "Multiple Aspects of Value" framing in the planning guide).
+Two user stories carry this sprint's user value; the rest is the technical work they depend on.
+Stories are written from the user's point of view, not ours. Work with no direct user value sits
+under [Enabling work](#enabling-work-not-user-stories), tagged by the kind of value it delivers.
 
-Highest priority at the top. Estimates are ideal hours (each task ≤ 6h) and are the Product Owner's
-starting proposal; the team finalizes them via planning poker at the planning meeting.
+Highest priority first. Estimates are ideal hours (each task ≤ 6h) — the Product Owner's proposal,
+finalized by planning poker.
 
 ### User story 1 — Trust that a shortened prompt stays accurate (G2 · Customer/User value · Priority 1)
 
@@ -153,4 +149,8 @@ _(TBD)_
 
 ## Scrum times
 
-_(TBD)_
+Three weekly scrum meetings (daily-scrum equivalent):
+
+- **Monday, 5:30pm** — right after the TA meeting with Scott (5:00–5:30pm). TA/tutor present.
+- **Thursday, 5:15pm** — right after the TA meeting with Scott (4:45–5:15pm). TA/tutor present.
+- **Saturday, 5:00pm** — team only.
