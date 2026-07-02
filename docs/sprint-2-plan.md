@@ -50,9 +50,9 @@ proposal, and the team finalizes them by planning poker at the meeting.
 
 ## Enabling work (not user stories)
 
-These items deliver no value to the user on their own, but User Story 1 cannot exist without them.
-Each is an imperative backlog item tagged with the kind of value it delivers. Do them before US1;
-they are listed in priority order.
+These items deliver no value to the user on their own, but the user stories cannot land without them.
+Each is an imperative backlog item tagged with the kind of value it delivers. Do them first; they are
+listed in priority order.
 
 ### Enabler A: Choose a benchmark that cannot leak (Spike / Technical value · Priority 3)
 
