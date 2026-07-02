@@ -126,8 +126,6 @@ release plan should be revised to move G3 into Sprint 2. Improving the compressi
 
 ## Initial task assignment
 
-_(Proposal. Team members sign up for their own work at the planning meeting.)_
-
 - Masa Ishihara: Enabler C (split library from CLI), then US2's CLI compression options
 - Matthew Zerner: Enabler B, skill-corpus download script
 - Virinchi Chintala: US1, before/after accuracy experiment (original vs. compressed)
