@@ -35,11 +35,11 @@ proof rests on.
 > spend a little accuracy for a cheaper API bill.
 
 - Add a `--min-similarity` option (e.g. `0.99`) to `reduce` so reduction stops before it crosses the
-  similarity floor the user sets (4h). Depends on the compression fidelity check in Enabler B.
-- Add a `--max-tokens N` option so reduction targets a token budget (4h)
-- Add token counting to the CLI: report tokens before and after, plus the reduction percentage (3h)
+  similarity floor the user sets (2h). Depends on the compression fidelity check in Enabler B.
+- Add a `--max-tokens N` option so reduction targets a token budget (2h)
+- Add token counting to the CLI: report tokens before and after, plus the reduction percentage (2h)
 
-**Total for user story 2: 11 hours**
+**Total for user story 2: 6 hours**
 
 ## Enabling work (not user stories)
 
@@ -60,11 +60,12 @@ Acceptance criteria for the chosen benchmark:
   - The benchmark bundles multiple prompts.
 
 - [spike] Survey candidate benchmarks that clear the must-have bar (20+ citations or 100+ stars) and
-  record each in a research note per [docs/research/TEMPLATE.md](research/TEMPLATE.md) (4h)
-- [spike] Rate each candidate against every acceptance criterion above, pick the base benchmark, and
-  write down the rationale (5h)
+  record each in a research note per [docs/research/TEMPLATE.md](research/TEMPLATE.md) (6h)
+- [spike] Rate each candidate against every acceptance criterion above and shortlist the strongest (4h)
+- [spike] Run a small trial on the top candidate to confirm the time/cost budget and that its score
+  drops on an inflated prompt, then pick the base benchmark and write down the rationale (4h)
 
-**Total for Enabler A: 9 hours**
+**Total for Enabler A: 14 hours**
 
 ### Enabler B: Leak-proof fidelity dataset (Technical value · Priority 4)
 
@@ -81,12 +82,29 @@ Acceptance criteria for the chosen benchmark:
 
 **Total for Enabler B: 19 hours**
 
+### Enabler C: Split the library from the CLI (Refactoring · Priority 5)
+
+Today `cli.py` wires up internals directly: it builds the embedder and picks the default scorer,
+optimizer, and selector. Move that wiring behind the library so the CLI only parses arguments and
+calls the public API. Land this before US2 so the new options sit on the thin CLI layer.
+
+- Widen the public API so `reduce()` and `score_report()` take plain options (model, `min_similarity`,
+  `max_tokens`) and build the embedder and defaults themselves, leaving callers no internals to wire
+  up (4h)
+- Move the CLI into its own `alexandria/cli/` package that imports only `alexandria`'s public API, and
+  drop its direct imports of `core` / `phases` / `runtime` (3h)
+- Add an import contract (or test) that fails if the CLI package reaches into `core` / `phases` /
+  `runtime`, locking the seam (2h)
+
+**Total for Enabler C: 9 hours**
+
 ## Capacity sanity check
 
 - Team of 4, one-week sprint, with the Jul 3 holiday cutting into capacity: roughly **32 to 44 ideal
   hours** at 8 to 12 per person.
-- The four items total **45 hours**, just over the band. Commit in priority order: Enabler A → US1
-  (15h) proves accuracy, then US2 (11h) adds the CLI controls, then Enabler B as capacity allows.
+- The five items total **54 hours**, over the band. Commit in priority order: Enabler A → US1 (20h)
+  proves accuracy, then Enabler C → US2 (15h) splits out the library and adds the CLI controls on top,
+  then Enabler B as capacity allows.
 - If Enabler B is cut, keep its compression fidelity check, which US2's `--min-similarity` needs, and
   push the rest to Sprint 3.
 
@@ -110,7 +128,7 @@ release plan should be revised to move G3 into Sprint 2. Improving the compressi
 
 _(Proposal. Team members sign up for their own work at the planning meeting.)_
 
-- Masa Ishihara: US2, add the CLI compression options (`--min-similarity` / `--max-tokens` / token counting)
+- Masa Ishihara: Enabler C (split library from CLI), then US2's CLI compression options
 - Matthew Zerner: Enabler B, skill-corpus download script
 - Virinchi Chintala: US1, before/after accuracy experiment (original vs. compressed)
 - Marc Dylan Tan: Enabler A, benchmark selection
