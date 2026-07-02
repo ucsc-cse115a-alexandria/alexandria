@@ -14,13 +14,6 @@ proof rests on.
 
 ## Task listing (by user story, priority order)
 
-Two user stories carry this sprint's user value; the rest is the technical work they depend on. The
-stories are written from the user's point of view, not ours. Work with no direct user value sits
-under [Enabling work](#enabling-work-not-user-stories), tagged by the kind of value it delivers.
-
-Highest priority first. Estimates are ideal hours (each task ≤ 6h). They are the Product Owner's
-proposal, and the team finalizes them by planning poker at the meeting.
-
 ### User story 1: Trust that a shortened prompt stays accurate (G2 · Customer/User value · Priority 1)
 
 > As an engineer who compresses my `CLAUDE.md` / `AGENT.md` with Alexandria, I want to see proof that
