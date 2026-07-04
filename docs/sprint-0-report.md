@@ -41,13 +41,13 @@ None this sprint. The current process worked well, so we have nothing we want to
 - User stories / day: 0.14
 - Ideal work hours / day: 2.3
 
-### Sprint 1 burnup chart
+### Sprint 0 burnup chart
 
-![Sprint 1 Burnup — Alexandria](sprint-1-burnup.png)
+![Sprint 0 Burnup — Alexandria](sprint-0-burnup.png)
 
 ```mermaid
 xychart-beta
-    title "Sprint 1 Burnup — Alexandria"
+    title "Sprint 0 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
     y-axis "Ideal hours" 0 --> 16
     line [16, 16, 16, 16, 16, 16, 16]
