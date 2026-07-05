@@ -142,7 +142,8 @@
     <p class="lead">
       A long prompt flows left to right through the four phases —
       <b>represent → score → optimize → select</b> — and comes out reduced. The dashed
-      <b>reduce</b> loop is the one-call entry point that runs all four end to end.
+      <b>reduce</b> loop is the one-call entry point that runs all four end to end —
+      no setup needed, a default embedder is built on first use.
     </p>
     <section class="figure">
       <div class="pipeline">
@@ -180,7 +181,7 @@
               </g>
             </svg>
             </div>
-            <div class="desc">Split into instructions, count tokens, embed each one (and parents).</div>
+            <div class="desc">Split into sections and sentences, count tokens, embed each one (and parents).</div>
           </div>
 
           <div class="stage s-sco">
@@ -194,12 +195,12 @@
               <div class="bar"><span>Sₙ</span><i style="width:76%"></i><b>0.76</b></div>
             </div>
             </div>
-            <div class="desc">Rate every instruction. First scorer: redundancy (max pairwise similarity).</div>
+            <div class="desc">Rate every sentence. First scorer: redundancy (max pairwise similarity).</div>
           </div>
 
           <div class="stage s-opt">
             <div class="hd"><span class="badge">3</span><h3>Optimize</h3></div>
-            <div class="io">Scores → Plan (edit stack)</div>
+            <div class="io">Scores → Plan (candidates)</div>
             <div class="body">
             <div class="edits">
               <div class="edit"><span>1 · Delete S₄</span><b>0.94</b></div>
@@ -208,7 +209,7 @@
               <div class="dots">⋮</div>
             </div>
             </div>
-            <div class="desc">Propose and rank edits (candidates) with confidence. Return a Plan (stack).</div>
+            <div class="desc">Propose edits (candidates), each with a confidence. Return them as a Plan.</div>
           </div>
 
           <div class="stage s-sel">
@@ -230,7 +231,7 @@
               </g>
             </svg>
             </div>
-            <div class="desc">Apply candidates in order while staying within the drift budget (e.g. 1%).</div>
+            <div class="desc">Apply candidates highest-confidence-first while staying within the drift budget (default 0.01).</div>
           </div>
         </div>
 
@@ -312,7 +313,7 @@
           <div class="cell ph-cell ph-rep">
             <div class="hd"><div class="pnm">represent.py</div><div class="phase">Phase 1</div></div>
             <div class="io">prompt → Document</div>
-            <ul><li>split into sections</li><li>tiktoken + injected Embedder</li></ul>
+            <ul><li>sections + sentences</li><li>tiktoken + Embedder (injected or default)</li></ul>
           </div>
           <div class="hsep"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h10M8 2l4 4-4 4"/></svg></div>
           <div class="cell ph-cell ph-sco">
@@ -344,7 +345,7 @@
         <div class="band b-ut">
           <div class="cell ut-cell">
             <div class="nm">utils/embedders.py</div>
-            <div class="ds">Embedder implementations (only place that builds a model)</div>
+            <div class="ds">SentenceTransformer + hash Embedders, default_embedder (only place that builds a model)</div>
           </div>
         </div>
 

@@ -75,7 +75,7 @@ gate — which is exactly where v1 used embedding cosine and v2 uses decoder JSD
 Five touch points. Everything else (IR, `apply`, `redundancy`, `greedy_pairwise`, all invariants,
 Parquet) is untouched. New strategies are **new files**, per spec.md's "one strategy, one file" rule.
 
-**1. `core/protocols.py` — a second impure boundary, beside `Embedder`.**
+**1. `ir/contracts.py` — a second impure boundary, beside `Embedder`.**
 
 ```python
 type Signature = NDArray[np.float32]          # (probe_len, top_k+1): per-position top-k logprobs + tail
@@ -100,16 +100,16 @@ chosen optimizer asks for it:
 (prefix length). **The default `max_behavioral_drift` has no literature constant** — it must be
 calibrated (see Evaluation); ship it flagged as provisional, not authoritative.
 
-**2. `core/divergence.py` — new, pure.** `token_jsd(a, b)` and
+**2. `ir/divergence.py` — new, pure.** `token_jsd(a, b)` and
 `max_token_jsd(sig_a, sig_b, *, tail="uniform")` over arrays. No model in the loop, so it is tested
 on hand-written distributions exactly like `similarity.py`.
 
-**3. `runtime/decoding.py` — new, the only place a generative model is built.** `build_decoder(model)`
+**3. `utils/decoding.py` — new, the only place a generative model is built.** `build_decoder(model)`
 returning a `Decoder`, plus a deterministic `HashDecoder` fake so the whole pipeline stays a pure
 function under test (the v1 `HashEmbedder` pattern). The `import-linter` forbidden contract extends:
-`core`, the `phases`, and `pipeline` may not import a generative backend — only this shell may.
+`ir`, `ops`, and `cli` may not import a generative backend — only this shell may.
 
-**4. `phases/optimize/behavioral_pairwise.py` — new, one file.** Same candidate ranking as
+**4. `ops/features/optimize/behavioral_pairwise.py` — new, one file.** Same candidate ranking as
 `greedy_pairwise` (redundant pairs, sorted by similarity), but the drop-safety guard swaps cosine
 drift for behavioral drift:
 
@@ -160,7 +160,7 @@ to aspirational:
 
 ## Stretch: a behavioral redundancy scorer
 
-`phases/score/behavioral_redundancy.py` (one file) makes **Tier 1 itself** behavioral: a sentence is
+`ops/features/score/behavioral_redundancy.py` (one file) makes **Tier 1 itself** behavioral: a sentence is
 redundant iff the model still predicts the probe ≈ as well without it — pointwise mutual information
 between a sentence and the rest, computed from the LM (Padmakumar & He, PMI summarization
 [2102.06272]). Or estimate it in constant passes with ContextCite. A genuine unclaimed variant:

@@ -17,7 +17,7 @@ Scoped to what the team can learn in a five-week course and to what the pipeline
 | Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
 | Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |
 | Plugin discovery | Python entry points | One registry discovers built-in **and** third-party scorers/optimizers by name; adding one never edits Alexandria. |
-| CLI | [`click`](https://github.com/pallets/click) | Verbs `reduce` / `score` / `review` / `benchmark`; text in, text out, `--json` for machine-readable scores. |
+| CLI | [`click`](https://github.com/pallets/click) | Verbs `represent` / `score` / `optimize` / `select` / `reduce`; text in, text out, `--json` for machine-readable output. |
 | Quality gates | `ruff`, `pyright` (strict), `pytest` + `pytest-cov` | Configured in `pyproject.toml`; coverage gated at 80%. |
 | CI | GitHub Actions | Runs lint + types + tests. |
 
