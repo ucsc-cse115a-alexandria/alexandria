@@ -7,9 +7,9 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
+from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Candidate, Delete, Scores
 from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
-from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

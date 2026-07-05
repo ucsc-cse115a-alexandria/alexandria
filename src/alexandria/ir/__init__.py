@@ -23,7 +23,6 @@ from alexandria.ir.document import (
     SentenceId,
     TokenCount,
 )
-from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.registry import (
     get_optimizer,
     get_scorer,
@@ -40,7 +39,6 @@ __all__ = [
     "Candidate",
     "Delete",
     "Document",
-    "DocumentEnvelope",
     "Edit",
     "Embedder",
     "Embedding",
@@ -49,8 +47,6 @@ __all__ = [
     "Params",
     "Peers",
     "Plan",
-    "PlanEnvelope",
-    "ScoredEnvelope",
     "Scorer",
     "Scores",
     "Section",

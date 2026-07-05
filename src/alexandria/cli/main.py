@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import click
 from pydantic import ValidationError
 
+from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Params
-from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER
 from alexandria.ops.features.optimize import optimize as optimize_phase
 from alexandria.ops.features.represent import represent as represent_phase
