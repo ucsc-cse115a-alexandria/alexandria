@@ -45,10 +45,12 @@ uv run alexandria represent < prompt.txt | uv run alexandria score --table
 `reduce --json` and `select --json` emit a summary (`text`, `applied`, `source_tokens`, `reduced_tokens`).
 
 By default the embeddings come from `sentence-transformers` (`all-MiniLM-L6-v2`), downloaded on first
-use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder:
+use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder. Because
+that embedder re-embeds edited text to an unrelated vector, an offline run needs a generous
+`--drift-budget` to accept deletions (a semantic model dedupes within the default budget):
 
 ```bash
-$ printf 'Be concise.\nBe concise.\nUse examples.\n' | uv run alexandria reduce --model deterministic
+$ printf 'Be concise.\nBe concise.\nUse examples.\n' | uv run alexandria reduce --model deterministic --drift-budget 2.0
 Be concise.
 Use examples.
 ```
@@ -58,14 +60,25 @@ Use examples.
 
 ## Library
 
-The CLI is a thin wrapper; everything is importable. `reduce` runs all four phases end to end:
+The CLI is a thin wrapper; everything is importable. `reduce` runs all four phases end to end and
+needs no setup — the default `all-MiniLM-L6-v2` model is downloaded and built on first use:
 
 ```python
-from alexandria import reduce
-from alexandria.runtime.embedding import build_embedder
+import alexandria
 
-embedder = build_embedder("all-MiniLM-L6-v2")
-reduced = reduce("Be concise.\nBe concise.\nUse examples.\n", embedder)
+result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n")
+print(result.text)
+```
+
+See `examples/reduce_prompt.py` for a runnable sample.
+
+For an offline, deterministic run (tests, CI), pass an embedder explicitly:
+
+```python
+import alexandria
+from alexandria.utils.embedders import HashEmbedder
+
+result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n", HashEmbedder())
 ```
 
 Each CLI verb maps to a function of the same name, so you can also compose the phases directly —
@@ -73,9 +86,9 @@ the same `represent` → `score` → `optimize` → `select` pipeline as the Uni
 
 ```python
 from alexandria import represent, score, optimize, select
-from alexandria.runtime.embedding import build_embedder
+from alexandria.utils.embedders import default_embedder
 
-embedder = build_embedder("all-MiniLM-L6-v2")
+embedder = default_embedder()
 document = represent("Be concise.\nBe concise.\nUse examples.\n", embedder)
 scores = score(document)
 plan = optimize(document, scores)

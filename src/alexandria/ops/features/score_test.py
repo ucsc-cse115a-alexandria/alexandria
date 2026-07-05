@@ -6,7 +6,7 @@ import pytest
 
 from alexandria.ir.registry import register_scorer
 from alexandria.ops.features.represent import represent
-from alexandria.ops.features.score import most_similar, redundancy, score
+from alexandria.ops.features.score import most_similar, redundancy, score, score_rows
 from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
@@ -50,3 +50,13 @@ def test_score_rejects_a_wrong_length_vector() -> None:
     document = represent("a\nb\n", HashEmbedder())
     with pytest.raises(ValueError):
         score(document, names=("wrong_length_probe",))
+
+
+def test_score_rows_shape_and_peer_columns() -> None:
+    document = represent("alpha beta\nalpha beta\n", HashEmbedder())
+    bundle = score(document)
+    rows = score_rows(document, bundle, ("redundancy",))
+    assert len(rows) == len(document.sentences)
+    first = rows[0]
+    assert set(first) == {"id", "text", "redundancy", "most_similar_id", "most_similar_text"}
+    assert first["most_similar_id"] == rows[1]["id"]
