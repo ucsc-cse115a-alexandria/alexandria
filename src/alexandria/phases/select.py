@@ -2,14 +2,14 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.core.apply import try_apply
-from alexandria.core.protocols import Candidate, Params, Selection
-from alexandria.core.registry import get_selector, register_selector
-from alexandria.core.similarity import cosine_distance
+from alexandria.ir.apply import try_apply
+from alexandria.ir.contracts import Candidate, Params, Selection
+from alexandria.ir.registry import get_selector, register_selector
+from alexandria.ir.similarity import cosine_distance
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
-    from alexandria.core.protocols import Embedder, Plan
+    from alexandria.ir.contracts import Embedder, Plan
+    from alexandria.ir.document import Document
 
 DEFAULT_SELECTOR = "auto"
 

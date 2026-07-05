@@ -4,9 +4,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alexandria.core.apply import try_apply
-from alexandria.core.ir import Document, Section, SectionKind, Sentence, SentenceId
-from alexandria.core.protocols import Candidate, Delete
+from alexandria.ir.apply import try_apply
+from alexandria.ir.contracts import Candidate, Delete
+from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

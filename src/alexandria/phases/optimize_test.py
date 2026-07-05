@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from alexandria.core.protocols import Params
+from alexandria.ir.contracts import Params
 from alexandria.phases.optimize import greedy_pairwise, optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score

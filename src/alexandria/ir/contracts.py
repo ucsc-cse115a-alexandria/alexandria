@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from alexandria.core.ir import Document, SentenceId
+from alexandria.ir.document import Document, SentenceId
 
 if TYPE_CHECKING:
     import numpy as np

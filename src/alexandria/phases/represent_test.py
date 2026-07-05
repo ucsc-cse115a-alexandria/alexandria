@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pytest
 
-from alexandria.core.ir import SectionKind
+from alexandria.ir.document import SectionKind
 from alexandria.phases.represent import RawSection, RawSentence, represent, split
 from alexandria.runtime.embedding import HashEmbedder
 

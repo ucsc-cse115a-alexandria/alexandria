@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 import click
 from pydantic import ValidationError
 
-from alexandria.core.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.core.protocols import Params
+from alexandria.ir.contracts import Params
+from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.phases.optimize import DEFAULT_OPTIMIZER
 from alexandria.phases.optimize import optimize as optimize_phase
 from alexandria.phases.represent import represent as represent_phase
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import IO
 
-    from alexandria.core.protocols import Plan
+    from alexandria.ir.contracts import Plan
 
 _DEFAULTS = Params()
 _MODEL_HELP = f"embedding model id, or {DETERMINISTIC!r}"

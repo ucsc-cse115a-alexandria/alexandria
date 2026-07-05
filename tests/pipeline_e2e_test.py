@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alexandria.core.protocols import Params
+from alexandria.ir.contracts import Params
 from alexandria.phases.represent import represent
 from alexandria.runtime.embedding import HashEmbedder
 from alexandria.runtime.pipeline import reduce

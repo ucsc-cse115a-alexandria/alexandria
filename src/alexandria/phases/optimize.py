@@ -2,13 +2,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.core.protocols import Candidate, Delete, Params
-from alexandria.core.registry import get_optimizer, register_optimizer, required_scorers
-from alexandria.core.similarity import similarity_matrix_for
+from alexandria.ir.contracts import Candidate, Delete, Params
+from alexandria.ir.registry import get_optimizer, register_optimizer, required_scorers
+from alexandria.ir.similarity import similarity_matrix_for
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
-    from alexandria.core.protocols import Plan, Scores
+    from alexandria.ir.contracts import Plan, Scores
+    from alexandria.ir.document import Document
 
 DEFAULT_OPTIMIZER = "greedy_pairwise"
 

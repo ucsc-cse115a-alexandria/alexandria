@@ -4,16 +4,16 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.core.ir import Document
-from alexandria.core.protocols import Plan
-from alexandria.core.registry import required_scorers, scorer_peers
+from alexandria.ir.contracts import Plan
+from alexandria.ir.document import Document
+from alexandria.ir.registry import required_scorers, scorer_peers
 from alexandria.phases.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import DEFAULT_SCORER, score
 from alexandria.phases.select import DEFAULT_SELECTOR, select
 
 if TYPE_CHECKING:
-    from alexandria.core.protocols import Embedder, Params, Scores
+    from alexandria.ir.contracts import Embedder, Params, Scores
 
 
 class ReduceResult(BaseModel):

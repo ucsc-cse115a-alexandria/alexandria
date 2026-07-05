@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 from click.testing import CliRunner
 
 from alexandria.cli import cli
-from alexandria.core.envelope import DocumentEnvelope, PlanEnvelope
-from alexandria.core.protocols import Params
-from alexandria.core.registry import register_scorer
+from alexandria.ir.contracts import Params
+from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope
+from alexandria.ir.registry import register_scorer
 from alexandria.phases.represent import represent
 from alexandria.runtime.embedding import HashEmbedder
 from alexandria.runtime.pipeline import reduce
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
+    from alexandria.ir.document import Document
 
 
 def _constant_scorer(document: Document) -> list[float]:

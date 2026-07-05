@@ -8,7 +8,7 @@ import numpy as np
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from alexandria.core.ir import Document
+    from alexandria.ir.document import Document
 
 
 def normalize(vectors: NDArray[np.float32]) -> NDArray[np.float32]:

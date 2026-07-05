@@ -1,6 +1,6 @@
 """Alexandria — label-free prompt optimization."""
 
-from alexandria.core import Document
+from alexandria.ir import Document
 from alexandria.phases.optimize import optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score

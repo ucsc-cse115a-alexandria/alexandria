@@ -1,16 +1,5 @@
-from alexandria.core.apply import try_apply
-from alexandria.core.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.core.ir import (
-    Document,
-    Embedding,
-    Node,
-    Section,
-    SectionKind,
-    Sentence,
-    SentenceId,
-    TokenCount,
-)
-from alexandria.core.protocols import (
+from alexandria.ir.apply import try_apply
+from alexandria.ir.contracts import (
     Candidate,
     Delete,
     Edit,
@@ -24,7 +13,18 @@ from alexandria.core.protocols import (
     Selection,
     Selector,
 )
-from alexandria.core.registry import (
+from alexandria.ir.document import (
+    Document,
+    Embedding,
+    Node,
+    Section,
+    SectionKind,
+    Sentence,
+    SentenceId,
+    TokenCount,
+)
+from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
+from alexandria.ir.registry import (
     get_optimizer,
     get_scorer,
     get_selector,
@@ -34,7 +34,7 @@ from alexandria.core.registry import (
     required_scorers,
     scorer_peers,
 )
-from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix, normalize
+from alexandria.ir.similarity import cosine_distance, cosine_similarity_matrix, normalize
 
 __all__ = [
     "Candidate",

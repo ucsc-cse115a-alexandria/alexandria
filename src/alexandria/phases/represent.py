@@ -9,12 +9,12 @@ from typing import TYPE_CHECKING
 
 import tiktoken
 
-from alexandria.core.ir import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
+from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from alexandria.core.protocols import Embedder
+    from alexandria.ir.contracts import Embedder
 
 _SEPARATOR = re.compile(r"\n+")
 _MARKDOWN_HEADER = re.compile(r"(#{1,6})\s+\S")

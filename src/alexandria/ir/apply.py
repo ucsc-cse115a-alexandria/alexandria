@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.core.ir import Document, Node, Section, Sentence, rollup
+from alexandria.ir.document import Document, Node, Section, Sentence, rollup
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import SentenceId
-    from alexandria.core.protocols import Candidate
+    from alexandria.ir.contracts import Candidate
+    from alexandria.ir.document import SentenceId
 
 
 def try_apply(document: Document, candidate: Candidate) -> Document | None:
@@ -63,6 +63,6 @@ def _rebuild_section(section: Section, surviving: set[SentenceId]) -> Section:
         children=children,
         text=text,
         token_count=token_count,
-        # embedding is the pre-edit vector; re-embedding needs a model, which core avoids.
+        # embedding is the pre-edit vector; re-embedding needs a model, which ir avoids.
         embedding=section.embedding,
     )

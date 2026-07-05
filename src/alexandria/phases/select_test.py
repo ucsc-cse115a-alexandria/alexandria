@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 import pytest
 
-from alexandria.core.protocols import Candidate, Delete, Params
+from alexandria.ir.contracts import Candidate, Delete, Params
 from alexandria.phases.optimize import optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score

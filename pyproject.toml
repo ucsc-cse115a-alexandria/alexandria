@@ -149,7 +149,7 @@ layers = [
     "alexandria.cli",
     "alexandria.runtime.embedding | alexandria.runtime.pipeline",
     "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize | alexandria.phases.select",
-    "alexandria.core",
+    "alexandria.ir",
 ]
 ignore_imports = [
     "alexandria.phases.optimize_test -> alexandria.**",
@@ -158,21 +158,17 @@ ignore_imports = [
     "alexandria.phases.select_test -> alexandria.**",
 ]
 
-# Functional core, imperative shell: only the embedding shell may touch a model.
+# Functional core, imperative shell: only the embedding shell may import
+# sentence_transformers directly; chains through it are expected.
 [[tool.importlinter.contracts]]
 name = "Embedding backend isolated to the shell"
 type = "forbidden"
 source_modules = [
-    "alexandria.core",
+    "alexandria.ir",
     "alexandria.phases",
     "alexandria.runtime.pipeline",
 ]
 forbidden_modules = [
     "sentence_transformers",
 ]
-ignore_imports = [
-    "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent_test -> alexandria.**",
-    "alexandria.phases.score_test -> alexandria.**",
-    "alexandria.phases.select_test -> alexandria.**",
-]
+allow_indirect_imports = true

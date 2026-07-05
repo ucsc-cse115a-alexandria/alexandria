@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 
 import numpy as np
 
-from alexandria.core.similarity import normalize
+from alexandria.ir.similarity import normalize
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from alexandria.core.protocols import Embedder
+    from alexandria.ir.contracts import Embedder
 
 _DIM = 64
 DEFAULT_MODEL = "all-MiniLM-L6-v2"

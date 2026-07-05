@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from alexandria.core.protocols import Optimizer, Peers, Scorer, Selector
+    from alexandria.ir.contracts import Optimizer, Peers, Scorer, Selector
 
 
 class Registry[T]:

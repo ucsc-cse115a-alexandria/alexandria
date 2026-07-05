@@ -3,8 +3,8 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from alexandria.core.ir import Document, Section, SectionKind, Sentence, SentenceId
-from alexandria.core.similarity import (
+from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
+from alexandria.ir.similarity import (
     cosine_distance,
     cosine_similarity_matrix,
     normalize,

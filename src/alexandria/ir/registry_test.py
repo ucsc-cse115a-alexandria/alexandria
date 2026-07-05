@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alexandria.core.protocols import Selection
-from alexandria.core.registry import (
+from alexandria.ir.contracts import Selection
+from alexandria.ir.registry import (
     get_optimizer,
     get_scorer,
     get_selector,
@@ -16,8 +16,8 @@ from alexandria.core.registry import (
 )
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
-    from alexandria.core.protocols import Embedder, Params, Plan, Scores
+    from alexandria.ir.contracts import Embedder, Params, Plan, Scores
+    from alexandria.ir.document import Document
 
 
 def test_lookup_round_trip() -> None:

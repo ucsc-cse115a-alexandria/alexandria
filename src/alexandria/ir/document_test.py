@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 from pydantic import ValidationError
 
-from alexandria.core.ir import Document, Section, SectionKind, Sentence, SentenceId
+from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

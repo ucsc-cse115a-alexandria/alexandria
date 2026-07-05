@@ -4,13 +4,13 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alexandria.core.registry import register_scorer
+from alexandria.ir.registry import register_scorer
 from alexandria.phases.represent import represent
 from alexandria.phases.score import most_similar, redundancy, score
 from alexandria.runtime.embedding import HashEmbedder
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
+    from alexandria.ir.document import Document
 
 
 def test_duplicate_scores_higher_than_unique() -> None:

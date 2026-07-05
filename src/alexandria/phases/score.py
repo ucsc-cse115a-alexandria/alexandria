@@ -4,12 +4,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alexandria.core.registry import get_scorer, register_scorer
-from alexandria.core.similarity import similarity_matrix_for
+from alexandria.ir.registry import get_scorer, register_scorer
+from alexandria.ir.similarity import similarity_matrix_for
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document, SentenceId
-    from alexandria.core.protocols import Scores
+    from alexandria.ir.contracts import Scores
+    from alexandria.ir.document import Document, SentenceId
 
 DEFAULT_SCORER = "redundancy"
 
