@@ -2,22 +2,22 @@
 
 
 
-| Name                                |    Stmts |     Miss |   Branch |   BrPart |     Cover |   Missing |
-|------------------------------------ | -------: | -------: | -------: | -------: | --------: | --------: |
-| src/alexandria/\_\_main\_\_.py      |        1 |        1 |        0 |        0 |      0.0% |         1 |
-| src/alexandria/cli.py               |       38 |        0 |        0 |        0 |    100.0% |           |
-| src/alexandria/core/apply.py        |       32 |        0 |       12 |        0 |    100.0% |           |
-| src/alexandria/core/ir.py           |       70 |        3 |       14 |        3 |     92.9% |19, 95, 109 |
-| src/alexandria/core/protocols.py    |       35 |        0 |       10 |        6 |     86.7% |34-\>36, 34-\>exit, 36-\>exit, 57-\>exit, 61-\>exit, 65-\>exit |
-| src/alexandria/core/registry.py     |       54 |        0 |        4 |        0 |    100.0% |           |
-| src/alexandria/core/similarity.py   |       11 |        0 |        0 |        0 |    100.0% |           |
-| src/alexandria/phases/optimize.py   |       36 |        1 |        8 |        1 |     95.5% |        42 |
-| src/alexandria/phases/represent.py  |      138 |        1 |       36 |        1 |     98.9% |       219 |
-| src/alexandria/phases/score.py      |       31 |        0 |        8 |        0 |    100.0% |           |
-| src/alexandria/phases/select.py     |       23 |        1 |        6 |        1 |     93.1% |        26 |
-| src/alexandria/runtime/embedding.py |       28 |        0 |        2 |        1 |     96.7% | 26-\>exit |
-| src/alexandria/runtime/pipeline.py  |       32 |        0 |        6 |        1 |     97.4% |   45-\>49 |
-| **TOTAL**                           |  **529** |    **7** |  **106** |   **14** | **96.7%** |           |
+| Name                                     |    Stmts |     Miss |   Branch |   BrPart |     Cover |   Missing |
+|----------------------------------------- | -------: | -------: | -------: | -------: | --------: | --------: |
+| src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
+| src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
+| src/alexandria/cli/main.py               |       92 |        0 |        8 |        0 |    100.0% |           |
+| src/alexandria/ir/contracts.py           |       39 |        0 |       10 |        6 |     87.8% |33-\>35, 33-\>exit, 35-\>exit, 60-\>exit, 64-\>exit, 76-\>exit |
+| src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
+| src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
+| src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
+| src/alexandria/ops/features/optimize.py  |       36 |        0 |       10 |        0 |    100.0% |           |
+| src/alexandria/ops/features/represent.py |      151 |        1 |       38 |        1 |     98.9% |       237 |
+| src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
+| src/alexandria/ops/features/select.py    |       28 |        1 |        8 |        1 |     94.4% |        27 |
+| src/alexandria/ops/pipe.py               |       37 |        0 |        0 |        0 |    100.0% |           |
+| src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
+| **TOTAL**                                |  **658** |    **6** |  **120** |   **13** | **97.6%** |           |
 
 
 ## Setup coverage badge
