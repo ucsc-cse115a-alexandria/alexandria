@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.ir.apply import try_apply
 from alexandria.ir.contracts import Candidate, Params, Selection
 from alexandria.ir.registry import get_selector, register_selector
 from alexandria.ir.similarity import cosine_distance
@@ -22,7 +21,7 @@ def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> 
     current = document
     applied: list[Candidate] = []
     for candidate in sorted(plan, key=lambda candidate: candidate.confidence, reverse=True):
-        trial = try_apply(current, candidate)
+        trial = current.apply(candidate)
         if trial is None or trial is current:
             continue
         drift = cosine_distance(embedder.embed([trial.text])[0], base)

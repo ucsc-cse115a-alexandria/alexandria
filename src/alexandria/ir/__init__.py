@@ -1,4 +1,3 @@
-from alexandria.ir.apply import try_apply
 from alexandria.ir.contracts import (
     Candidate,
     Delete,
@@ -67,5 +66,4 @@ __all__ = [
     "register_selector",
     "required_scorers",
     "scorer_peers",
-    "try_apply",
 ]
