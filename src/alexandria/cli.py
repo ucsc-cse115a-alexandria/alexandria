@@ -9,13 +9,13 @@ from pydantic import ValidationError
 
 from alexandria.ir.contracts import Params
 from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.phases.optimize import DEFAULT_OPTIMIZER
-from alexandria.phases.optimize import optimize as optimize_phase
-from alexandria.phases.represent import represent as represent_phase
-from alexandria.phases.score import DEFAULT_SCORER
-from alexandria.phases.score import score as score_phase
-from alexandria.phases.select import DEFAULT_SELECTOR
-from alexandria.phases.select import select as select_phase
+from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER
+from alexandria.ops.features.optimize import optimize as optimize_phase
+from alexandria.ops.features.represent import represent as represent_phase
+from alexandria.ops.features.score import DEFAULT_SCORER
+from alexandria.ops.features.score import score as score_phase
+from alexandria.ops.features.select import DEFAULT_SELECTOR
+from alexandria.ops.features.select import select as select_phase
 from alexandria.runtime.pipeline import reduce as reduce_prompt
 from alexandria.runtime.pipeline import score_rows
 from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder

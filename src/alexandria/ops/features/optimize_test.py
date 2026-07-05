@@ -3,9 +3,9 @@ from __future__ import annotations
 import pytest
 
 from alexandria.ir.contracts import Params
-from alexandria.phases.optimize import greedy_pairwise, optimize
-from alexandria.phases.represent import represent
-from alexandria.phases.score import score
+from alexandria.ops.features.optimize import greedy_pairwise, optimize
+from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import score
 from alexandria.utils.embedders import HashEmbedder
 
 

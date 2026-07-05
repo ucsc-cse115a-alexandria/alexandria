@@ -6,10 +6,10 @@ import numpy as np
 import pytest
 
 from alexandria.ir.contracts import Candidate, Delete, Params
-from alexandria.phases.optimize import optimize
-from alexandria.phases.represent import represent
-from alexandria.phases.score import score
-from alexandria.phases.select import select
+from alexandria.ops.features.optimize import optimize
+from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import score
+from alexandria.ops.features.select import select
 from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:

@@ -7,10 +7,10 @@ from pydantic import BaseModel, ConfigDict
 from alexandria.ir.contracts import Plan
 from alexandria.ir.document import Document
 from alexandria.ir.registry import required_scorers, scorer_peers
-from alexandria.phases.optimize import DEFAULT_OPTIMIZER, optimize
-from alexandria.phases.represent import represent
-from alexandria.phases.score import DEFAULT_SCORER, score
-from alexandria.phases.select import DEFAULT_SELECTOR, select
+from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
+from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import DEFAULT_SCORER, score
+from alexandria.ops.features.select import DEFAULT_SELECTOR, select
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, Params, Scores

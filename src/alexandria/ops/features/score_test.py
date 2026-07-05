@@ -5,8 +5,8 @@ from typing import TYPE_CHECKING
 import pytest
 
 from alexandria.ir.registry import register_scorer
-from alexandria.phases.represent import represent
-from alexandria.phases.score import most_similar, redundancy, score
+from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import most_similar, redundancy, score
 from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:

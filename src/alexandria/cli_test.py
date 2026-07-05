@@ -9,7 +9,7 @@ from alexandria.cli import cli
 from alexandria.ir.contracts import Params
 from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope
 from alexandria.ir.registry import register_scorer
-from alexandria.phases.represent import represent
+from alexandria.ops.features.represent import represent
 from alexandria.runtime.pipeline import reduce
 from alexandria.utils.embedders import HashEmbedder
 
