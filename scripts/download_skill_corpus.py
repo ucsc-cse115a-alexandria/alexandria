@@ -9,10 +9,8 @@ Requires:
 import argparse
 import json
 import subprocess
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from urllib.parse import quote
-
 
 GH = "gh"
 
@@ -28,11 +26,7 @@ def run_gh(args: list[str]) -> str:
     )
 
     if result.returncode != 0:
-        raise RuntimeError(
-            f"gh command failed:\n"
-            f"gh {' '.join(args)}\n\n"
-            f"STDERR:\n{result.stderr}"
-        )
+        raise RuntimeError(f"gh command failed:\ngh {' '.join(args)}\n\nSTDERR:\n{result.stderr}")
 
     return result.stdout
 
@@ -44,10 +38,12 @@ def safe_repo_dir(full_name: str) -> str:
 
 def get_repo_tree(full_name: str) -> list[dict]:
     """Return recursive file tree for a GitHub repository."""
-    stdout = run_gh([
-        "api",
-        f"repos/{full_name}/git/trees/HEAD?recursive=1",
-    ])
+    stdout = run_gh(
+        [
+            "api",
+            f"repos/{full_name}/git/trees/HEAD?recursive=1",
+        ]
+    )
     payload = json.loads(stdout)
     return payload.get("tree", [])
 
@@ -63,12 +59,14 @@ def is_agent_input_file(path: str) -> bool:
 
 
 def download_file(full_name: str, source_path: str) -> str:
-    return run_gh([
-        "api",
-        "-H",
-        "Accept: application/vnd.github.raw",
-        f"repos/{full_name}/contents/{source_path}",
-    ])
+    return run_gh(
+        [
+            "api",
+            "-H",
+            "Accept: application/vnd.github.raw",
+            f"repos/{full_name}/contents/{source_path}",
+        ]
+    )
 
 
 def write_skill_file(
@@ -132,17 +130,13 @@ def main() -> None:
             all_skill_paths = [
                 item["path"]
                 for item in tree
-                if item.get("type") == "blob"
-                and is_agent_input_file(item.get("path", ""))
+                if item.get("type") == "blob" and is_agent_input_file(item.get("path", ""))
             ]
 
             skill_paths = all_skill_paths[: args.max_files_per_repo]
 
             if len(all_skill_paths) > args.max_files_per_repo:
-                print(
-                    f"  Found {len(all_skill_paths)} SKILL.md files; "
-                    f"downloading first {args.max_files_per_repo}"
-                )
+                print(f"  Found {len(all_skill_paths)} SKILL.md files; downloading first {args.max_files_per_repo}")
             else:
                 print(f"  Found {len(skill_paths)} SKILL.md file(s)")
 
@@ -156,32 +150,38 @@ def main() -> None:
                         content,
                     )
 
-                    manifest.append({
-                        "repo": full_name,
-                        "repo_url": repo.get("url", ""),
-                        "stars": repo.get("stars"),
-                        "description": repo.get("description", ""),
-                        "source_path": source_path,
-                        "local_path": str(local_path).replace("\\", "/"),
-                        "downloaded_at": datetime.now(timezone.utc).isoformat(),
-                        "repo_skill_file_count": len(all_skill_paths),
-                        "downloaded_from_repo": len(skill_paths),
-                        "truncated": len(all_skill_paths) > args.max_files_per_repo,
-                    })
+                    manifest.append(
+                        {
+                            "repo": full_name,
+                            "repo_url": repo.get("url", ""),
+                            "stars": repo.get("stars"),
+                            "description": repo.get("description", ""),
+                            "source_path": source_path,
+                            "local_path": str(local_path).replace("\\", "/"),
+                            "downloaded_at": datetime.now(UTC).isoformat(),
+                            "repo_skill_file_count": len(all_skill_paths),
+                            "downloaded_from_repo": len(skill_paths),
+                            "truncated": len(all_skill_paths) > args.max_files_per_repo,
+                        }
+                    )
 
                 except Exception as exc:
-                    errors.append({
-                        "repo": full_name,
-                        "source_path": source_path,
-                        "error": str(exc),
-                    })
+                    errors.append(
+                        {
+                            "repo": full_name,
+                            "source_path": source_path,
+                            "error": str(exc),
+                        }
+                    )
                     print(f"  ERROR downloading {source_path}: {exc}")
 
         except Exception as exc:
-            errors.append({
-                "repo": full_name,
-                "error": str(exc),
-            })
+            errors.append(
+                {
+                    "repo": full_name,
+                    "error": str(exc),
+                }
+            )
             print(f"  ERROR scanning repo: {exc}")
 
     args.manifest.parent.mkdir(parents=True, exist_ok=True)
