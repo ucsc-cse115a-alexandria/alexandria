@@ -1,1 +1,0 @@
-skill contents not used for this test
