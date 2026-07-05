@@ -135,7 +135,10 @@ exclude = [
 root_package = "alexandria"
 include_external_packages = true
 
-# Layering: higher layers may import lower ones, never the reverse.
+# ir is the shared contract every layer may import. Among cli/ops/utils, imports must be
+# adjacent-only (cli -> ops -> utils); the layers type cannot express that, so it only forbids
+# reverse imports. The forbidden contract below closes the one gap it leaves: cli skipping over
+# ops straight into utils.
 [[tool.importlinter.contracts]]
 name = "Layered architecture"
 type = "layers"
@@ -145,6 +148,15 @@ layers = [
     "alexandria.utils",
     "alexandria.ir",
 ]
+
+# cli -> ops -> utils chains are legitimate, so indirect imports are allowed; only a direct
+# cli -> utils import (skipping ops) is forbidden.
+[[tool.importlinter.contracts]]
+name = "CLI reaches utils only through ops"
+type = "forbidden"
+source_modules = ["alexandria.cli"]
+forbidden_modules = ["alexandria.utils"]
+allow_indirect_imports = true
 
 # Pipe may import features to compose them, never the reverse.
 [[tool.importlinter.contracts]]

@@ -9,9 +9,9 @@ from alexandria.cli import cli
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope
 from alexandria.ir.contracts import Params
 from alexandria.ir.registry import register_scorer
+from alexandria.ops import DETERMINISTIC, build_embedder
 from alexandria.ops.features.represent import represent
 from alexandria.ops.pipe import reduce
-from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
     from alexandria.ir.document import Document
@@ -34,7 +34,7 @@ def test_phase_verbs_pipe_to_the_same_text_as_reduce() -> None:
     reduced = runner.invoke(cli, ["select", "--model", "deterministic", "--drift-budget", "2.0"], input=plan.output)
 
     assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
-    expected = reduce(prompt, HashEmbedder(), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
     assert reduced.output == expected.text
 
 
@@ -58,7 +58,7 @@ def test_select_json_reports_the_reduction_summary() -> None:
 
 def test_score_emits_a_scored_envelope_by_default() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
 
     result = runner.invoke(cli, ["score"], input=document)
 
@@ -69,7 +69,7 @@ def test_score_emits_a_scored_envelope_by_default() -> None:
 
 def test_score_table_prints_a_human_report() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
 
     result = runner.invoke(cli, ["score", "--table"], input=document)
 
@@ -79,10 +79,11 @@ def test_score_table_prints_a_human_report() -> None:
 
 
 def test_select_reports_a_model_mismatch_cleanly() -> None:
-    document = represent("a\nb\n", HashEmbedder(dim=32))  # model_id 'hash-32'
-    envelope = PlanEnvelope(document=document, plan=()).model_dump_json()
+    document = represent("a\nb\n", build_embedder(DETERMINISTIC))  # model_id 'hash-64'
+    payload = json.loads(PlanEnvelope(document=document, plan=()).model_dump_json())
+    payload["document"]["embedding_model"] = "hash-32"  # a document built by a different embedder
 
-    result = CliRunner().invoke(cli, ["select", "--model", "deterministic"], input=envelope)  # 'hash-64'
+    result = CliRunner().invoke(cli, ["select", "--model", "deterministic"], input=json.dumps(payload))  # 'hash-64'
 
     assert result.exit_code == 1
     assert "does not match" in result.output
@@ -106,7 +107,7 @@ def test_optimize_rejects_an_unknown_schema_version_cleanly() -> None:
 
 def test_optimize_reports_a_missing_required_scorer_cleanly() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
     scored = runner.invoke(cli, ["score", "--scorer", "cli_test_constant"], input=document)
 
     result = runner.invoke(cli, ["optimize"], input=scored.output)
