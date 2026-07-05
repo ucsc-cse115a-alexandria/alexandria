@@ -22,7 +22,6 @@ _MODEL_HELP = f"embedding model id, or {DETERMINISTIC!r}"
 def cli() -> None:
     """Alexandria — label-free prompt optimization."""
 
-
 @cli.command()
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
@@ -34,11 +33,35 @@ def cli() -> None:
     default=_DEFAULTS.drift_budget,
     help="max cosine drift from the original prompt the reduction may accumulate (0.01 = 1%)",
 )
+@click.option(
+    "--min-similarity",
+    type=float,
+    default=None,
+    help="Stop reduction before dropping below this similarity floor (e.g., 0.99). Mutually exclusive with --drift-budget.",
+)
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
-def reduce(file: IO[str], optimizers: str, selector: str, threshold: float, drift_budget: float, model: str) -> None:
+def reduce(
+    file: IO[str],
+    optimizers: str,
+    selector: str,
+    threshold: float,
+    drift_budget: float,
+    min_similarity: float | None,
+    model: str
+) -> None:
     """Reduce a prompt: prompt in, reduced prompt out."""
+    
+    # NEW: Validate mutually exclusive options
+    # We check if min_similarity was provided AND if drift_budget was altered from its default
+    if min_similarity is not None and drift_budget != _DEFAULTS.drift_budget:
+        raise click.UsageError("Options --min-similarity and --drift-budget are mutually exclusive.")
+
     names = tuple(n.strip() for n in optimizers.split(",") if n.strip())
-    params = Params(threshold=threshold, drift_budget=drift_budget)
+    
+    # Convert min-similarity to drift budget, or fall back to drift_budget
+    final_drift_budget = (1.0 - min_similarity) if min_similarity is not None else drift_budget
+    
+    params = Params(threshold=threshold, drift_budget=final_drift_budget)
     reduced = reduce_prompt(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
     click.echo(reduced, nl=False)
 
