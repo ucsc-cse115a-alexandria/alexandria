@@ -16,9 +16,9 @@ from alexandria.phases.score import DEFAULT_SCORER
 from alexandria.phases.score import score as score_phase
 from alexandria.phases.select import DEFAULT_SELECTOR
 from alexandria.phases.select import select as select_phase
-from alexandria.runtime.embedding import DEFAULT_MODEL, DETERMINISTIC, build_embedder
 from alexandria.runtime.pipeline import reduce as reduce_prompt
 from alexandria.runtime.pipeline import score_rows
+from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder
 
 if TYPE_CHECKING:
     from collections.abc import Generator

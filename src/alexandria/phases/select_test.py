@@ -10,7 +10,7 @@ from alexandria.phases.optimize import optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score
 from alexandria.phases.select import select
-from alexandria.runtime.embedding import HashEmbedder
+from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray

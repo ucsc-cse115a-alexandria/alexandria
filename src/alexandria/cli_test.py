@@ -10,8 +10,8 @@ from alexandria.ir.contracts import Params
 from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope
 from alexandria.ir.registry import register_scorer
 from alexandria.phases.represent import represent
-from alexandria.runtime.embedding import HashEmbedder
 from alexandria.runtime.pipeline import reduce
+from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
     from alexandria.ir.document import Document

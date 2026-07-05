@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from alexandria.ir.contracts import Params
 from alexandria.phases.represent import represent
-from alexandria.runtime.embedding import HashEmbedder
 from alexandria.runtime.pipeline import reduce
+from alexandria.utils.embedders import HashEmbedder
 
 
 def test_reduce_removes_redundant_and_preserves_unique_and_cuts_tokens() -> None:

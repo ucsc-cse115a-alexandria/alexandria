@@ -6,7 +6,7 @@ from alexandria.ir.contracts import Params
 from alexandria.phases.optimize import greedy_pairwise, optimize
 from alexandria.phases.represent import represent
 from alexandria.phases.score import score
-from alexandria.runtime.embedding import HashEmbedder
+from alexandria.utils.embedders import HashEmbedder
 
 
 def test_emits_one_delete_for_a_duplicate_pair() -> None:

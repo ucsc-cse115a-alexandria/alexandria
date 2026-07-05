@@ -4,7 +4,7 @@ import pytest
 
 from alexandria.ir.document import SectionKind
 from alexandria.phases.represent import RawSection, RawSentence, represent, split
-from alexandria.runtime.embedding import HashEmbedder
+from alexandria.utils.embedders import HashEmbedder
 
 
 def _leaf_text(sections: tuple[RawSection, ...]) -> str:

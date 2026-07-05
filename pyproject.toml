@@ -147,13 +147,13 @@ name = "Layered architecture"
 type = "layers"
 layers = [
     "alexandria.cli",
-    "alexandria.runtime.embedding | alexandria.runtime.pipeline",
+    "alexandria.runtime.pipeline",
     "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize | alexandria.phases.select",
+    "alexandria.utils",
     "alexandria.ir",
 ]
 ignore_imports = [
     "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent_test -> alexandria.**",
     "alexandria.phases.score_test -> alexandria.**",
     "alexandria.phases.select_test -> alexandria.**",
 ]
