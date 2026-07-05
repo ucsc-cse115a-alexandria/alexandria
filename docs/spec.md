@@ -121,7 +121,7 @@ src/
       envelope.py       #   the JSON wire envelopes between piped verbs (schema_version=1)
     ops/                # layer 2 — the library body
       pipe.py           #   compose the four features end to end — reduce / score_report
-      features/         #   the four pluggable features; each imports only ir
+      features/         #   the four pluggable features; each imports ir, plus utils only for the default embedder
         represent.py    #     phase 1 — prompt → Document (split + tiktoken + injected Embedder)
         score.py        #     phase 2 — @register_scorer("redundancy"); score(...) -> Scores, score_rows
         optimize.py     #     phase 3 — @register_optimizer("greedy_pairwise", requires=("redundancy",))
@@ -514,15 +514,18 @@ exactly, embeddings included. These are **Hypothesis** properties over generated
 handful of fixtures — `tests/strategies.py` ships the generators (valid trees, plus deliberately
 malformed ones for negative tests), so the laws are checked against thousands of shapes.
 
-**Layering (`import-linter`).** The dependency rule the layout describes is enforced by four
-`import-linter` contracts run in CI: (1) *Layered architecture* — `cli` over `ops` over `utils` over
-`ir`, higher layers importing lower ones and never the reverse, so `ir` imports nothing else in
-`alexandria`; (2) *Pipe composes features* — within `ops`, `pipe` may import the four `features` to
-compose them, never the reverse; (3) *Features are independent* — the four features (`represent`,
-`score`, `optimize`, `select`) may not import each other, so shared types live in `ir.contracts`; and
-(4) *Embedding backend isolated to the shell* — a **forbidden** contract barring `ir`, `ops`, and `cli`
-from importing `sentence_transformers`, so only the `utils.embedders` shell builds a model. A cycle or a
-layering violation fails the build — *modularity through contracts* and *library first* cannot quietly rot.
+**Layering (`import-linter`).** The dependency rule the layout describes is enforced by five
+`import-linter` contracts run in CI: (1) *Layered architecture* — `ir` is the shared contract every
+layer may import; among `cli`, `ops`, and `utils`, imports are adjacent-only (`cli` → `ops` → `utils`),
+and the layers type forbids the reverse so `ir` imports nothing else in `alexandria`; (2) *CLI reaches
+utils only through ops* — a **forbidden** contract closing the one gap the layers type cannot express,
+barring `cli` from importing `utils` directly while indirect `cli` → `ops` → `utils` chains stay legal;
+(3) *Pipe composes features* — within `ops`, `pipe` may import the four `features` to compose them,
+never the reverse; (4) *Features are independent* — the four features (`represent`, `score`, `optimize`,
+`select`) may not import each other, so shared types live in `ir.contracts`; and (5) *Embedding backend
+isolated to the shell* — a **forbidden** contract barring `ir`, `ops`, and `cli` from importing
+`sentence_transformers`, so only the `utils.embedders` shell builds a model. A cycle or a layering
+violation fails the build — *modularity through contracts* and *library first* cannot quietly rot.
 
 **Functional core, imperative shell.** The embedder is injected into Represent behind an `Embedder`
 Protocol; the concrete model lives only in the shell. Tests pass a deterministic fake, making

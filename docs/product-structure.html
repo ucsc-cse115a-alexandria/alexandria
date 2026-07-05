@@ -118,9 +118,17 @@
 
     .co-head { text-align: center; font-weight: 700; color: var(--purple-ink); font-size: 13.5px; }
     .co-head span { color: var(--muted); font-weight: 400; }
-    .co-row { display: flex; gap: 12px; }
-    .co-cell { flex: 1 1 0; min-width: 0; border-color: var(--purple); }
+    .co-cell { min-width: 0; border-color: var(--purple); }
     .co-cell .nm { color: var(--purple-ink); }
+
+    /* foundation pair: utils (narrow) and ir (wide) side by side */
+    .leg-stack { display: flex; flex-direction: column; gap: 16px; }
+    .leg-stack .leg { flex: 1 1 0; }
+    .foundation { display: flex; align-items: stretch; gap: 4px; }
+    .ut-band { flex: 1 1 0; }
+    .ir-band { flex: 2.5 1 0; }
+    .co-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .foundation-conn { justify-content: space-around; }
 
     /* horizontal connectors between sibling cells */
     .hsep { align-self: center; flex: 0 0 14px; color: #475569; }
@@ -251,9 +259,11 @@
 
     <h2>2. Architecture (layers)</h2>
     <p class="lead">
-      Four layers, each depending only on the one below it: the <b>cli</b> is a thin wrapper over
-      <b>ops</b> (the <b>pipe</b> that composes the four pluggable <b>features</b>), which build on the
-      <b>utils</b> shell and the stable <b>ir</b> contract. Layering is enforced by four import-linter contracts.
+      The <b>cli</b> is a thin wrapper over <b>ops</b>, which composes the four pluggable
+      <b>features</b> on top of the <b>utils</b> shell. <b>utils</b> (imperative shell) and
+      <b>ir</b> (pure shared contract) form the foundation pair at the bottom — and <b>ir</b>
+      may be imported from every layer while depending on nothing else in alexandria. Layering
+      is enforced by five import-linter contracts.
     </p>
     <section class="figure">
       <div class="arch">
@@ -293,7 +303,7 @@
           </div>
           <div class="cell rt-cell">
             <div class="nm">features/</div>
-            <div class="ds">The four pluggable features (each imports only ir) ↓</div>
+            <div class="ds">The four pluggable features (each imports ir, plus utils only for the default embedder) ↓</div>
           </div>
           <div class="conn down">
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
@@ -307,7 +317,7 @@
         <div class="leg l-rt">
           <div class="nm">ops/features/</div>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02z"/></svg>
-          <div class="ds">The four swappable features the pipe composes, each importing only ir</div>
+          <div class="ds">The four swappable features the pipe composes, each importing ir, plus utils only for the default embedder</div>
         </div>
         <div class="band b-rt">
           <div class="cell ph-cell ph-rep">
@@ -333,42 +343,46 @@
             <div class="io">Plan → Document</div>
             <ul><li>auto</li><li>… (more selectors)</li></ul>
           </div>
-        </div>
-
-        <!-- row 3: Utils -->
-        <div class="leg l-ut">
-          <div class="num">3</div>
-          <div class="nm">Utils <span>(Shell)</span></div>
-          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
-          <div class="ds">The imperative shell — the only impure boundary</div>
-        </div>
-        <div class="band b-ut">
-          <div class="cell ut-cell">
-            <div class="nm">utils/embedders.py</div>
-            <div class="ds">SentenceTransformer + hash Embedders, default_embedder (only place that builds a model)</div>
+          <div class="conn down foundation-conn">
+            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
+            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
+            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
           </div>
         </div>
 
-        <!-- row 4: IR -->
-        <div class="leg l-co">
-          <div class="num">4</div>
-          <div class="nm">IR <span>(Contract)</span></div>
-          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-          <div class="ds">The stable contract — IR, protocols, registry, similarity</div>
-        </div>
-        <div class="band b-co">
-          <div class="co-head">ir/ <span>(Stable Contract — depends on nothing else in alexandria)</span></div>
-          <div class="conn up">
-            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
-            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
-            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
-            <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
+        <!-- row 3+4: Utils + IR foundation pair (side by side) -->
+        <div class="leg-stack">
+          <div class="leg l-ut">
+            <div class="num">3</div>
+            <div class="nm">Utils <span>(Shell)</span></div>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+            <div class="ds">The imperative shell — the only impure boundary</div>
           </div>
-          <div class="co-row">
-            <div class="cell co-cell"><div class="nm">ir/document.py</div><div class="ds">Document / Section / Sentence + Document.apply (validated IR)</div></div>
-            <div class="cell co-cell"><div class="nm">ir/contracts.py</div><div class="ds">Scorer / Optimizer / Selector / Embedder Protocols, types</div></div>
-            <div class="cell co-cell"><div class="nm">ir/registry.py</div><div class="ds">@register_* lookup, requires-check</div></div>
-            <div class="cell co-cell"><div class="nm">ir/similarity.py</div><div class="ds">cosine similarity utilities</div></div>
+          <div class="leg l-co">
+            <div class="num">4</div>
+            <div class="nm">IR <span>(Contract)</span></div>
+            <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
+            <div class="ds">The pure shared contract — importable from every layer</div>
+          </div>
+        </div>
+        <div class="foundation">
+          <div class="band b-ut ut-band">
+            <div class="cell ut-cell">
+              <div class="nm">utils/embedders.py</div>
+              <div class="ds">SentenceTransformer + hash Embedders, default_embedder (only place that builds a model)</div>
+            </div>
+          </div>
+          <div class="hsep">
+            <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2l4 5-4 5M1 7h16"/></svg>
+          </div>
+          <div class="band b-co ir-band">
+            <div class="co-head">ir/ <span>(Shared Contract — importable from every layer, depends on nothing else in alexandria)</span></div>
+            <div class="co-grid">
+              <div class="cell co-cell"><div class="nm">ir/document.py</div><div class="ds">Document / Section / Sentence + Document.apply (validated IR)</div></div>
+              <div class="cell co-cell"><div class="nm">ir/contracts.py</div><div class="ds">Scorer / Optimizer / Selector / Embedder Protocols, types</div></div>
+              <div class="cell co-cell"><div class="nm">ir/registry.py</div><div class="ds">@register_* lookup, requires-check</div></div>
+              <div class="cell co-cell"><div class="nm">ir/similarity.py</div><div class="ds">cosine similarity utilities</div></div>
+            </div>
           </div>
         </div>
 
