@@ -25,7 +25,13 @@ def run_gh(args: list[str]) -> str:
     treated as empty results.
     """
     for attempt in range(MAX_RETRIES + 1):
-        result = subprocess.run([GH, *args], capture_output=True, text=True)
+        result = subprocess.run(
+            [GH, *args],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
         if result.returncode == 0:
             return result.stdout
         if attempt == MAX_RETRIES or not _is_rate_limited(result.stderr):
