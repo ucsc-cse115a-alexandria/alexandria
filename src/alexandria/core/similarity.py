@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from functools import lru_cache
 from typing import TYPE_CHECKING
 
 import numpy as np
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
+
+    from alexandria.core.ir import Document
 
 
 def normalize(vectors: NDArray[np.float32]) -> NDArray[np.float32]:
@@ -21,3 +24,20 @@ def cosine_similarity_matrix(embeddings: NDArray[np.float32]) -> NDArray[np.floa
 
 def cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
     return 1.0 - float(normalize(a) @ normalize(b))
+
+
+@lru_cache(maxsize=16)
+def _similarity_matrix(data: bytes, shape: tuple[int, ...]) -> NDArray[np.float32]:
+    embeddings = np.frombuffer(data, dtype=np.float32).reshape(shape)
+    matrix = cosine_similarity_matrix(embeddings)
+    matrix.setflags(write=False)  # shared across callers; guard against accidental in-place edits
+    return matrix
+
+
+def similarity_matrix_for(document: Document) -> NDArray[np.float32]:
+    """The sentence-by-sentence cosine similarity matrix, memoized by the document's embeddings.
+
+    The returned matrix is read-only; copy it before any in-place mutation.
+    """
+    embeddings = np.stack([sentence.embedding for sentence in document.sentences])
+    return _similarity_matrix(embeddings.tobytes(), embeddings.shape)

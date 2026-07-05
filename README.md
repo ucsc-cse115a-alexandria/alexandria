@@ -18,19 +18,31 @@ uv sync
 
 ## CLI
 
-Each verb reads a prompt from a `FILE` argument or stdin and writes to stdout.
+Each verb reads from a `FILE` argument or stdin and writes to stdout; diagnostics go to stderr.
 
-`reduce` — prompt in, reduced prompt out:
+`reduce` runs all four phases end to end — prompt in, reduced prompt out:
 
 ```bash
 uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
-`score` — per-instruction redundancy scores (a table on a terminal, JSON when piped or with `--json`):
+The four phases are also separate verbs that compose over a Unix pipe. Each carries the data the next
+one needs as a self-contained JSON envelope (`represent` → `score` → `optimize` → `select`):
 
 ```bash
-uv run alexandria score prompt.txt --json
+uv run alexandria represent < prompt.txt \
+  | uv run alexandria score \
+  | uv run alexandria optimize \
+  | uv run alexandria select > reduced.txt
 ```
+
+`score --table` prints a per-instruction redundancy report instead of a `ScoredEnvelope`:
+
+```bash
+uv run alexandria represent < prompt.txt | uv run alexandria score --table
+```
+
+`reduce --json` and `select --json` emit a summary (`text`, `applied`, `source_tokens`, `reduced_tokens`).
 
 By default the embeddings come from `sentence-transformers` (`all-MiniLM-L6-v2`), downloaded on first
 use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder:
@@ -41,11 +53,12 @@ Be concise.
 Use examples.
 ```
 
-Options: `reduce` takes `--optimizer` and `--threshold`; both verbs take `--model`.
+`represent`, `select`, and `reduce` take `--model`; `optimize` and `reduce` take `--threshold`;
+`select` and `reduce` take `--drift-budget`. Envelopes are JSON today (`schema_version=1`).
 
 ## Library
 
-The CLI is a thin wrapper; everything is importable.
+The CLI is a thin wrapper; everything is importable. `reduce` runs all four phases end to end:
 
 ```python
 from alexandria import reduce
@@ -53,6 +66,21 @@ from alexandria.runtime.embedding import build_embedder
 
 embedder = build_embedder("all-MiniLM-L6-v2")
 reduced = reduce("Be concise.\nBe concise.\nUse examples.\n", embedder)
+```
+
+Each CLI verb maps to a function of the same name, so you can also compose the phases directly —
+the same `represent` → `score` → `optimize` → `select` pipeline as the Unix pipe above:
+
+```python
+from alexandria import represent, score, optimize, select
+from alexandria.runtime.embedding import build_embedder
+
+embedder = build_embedder("all-MiniLM-L6-v2")
+document = represent("Be concise.\nBe concise.\nUse examples.\n", embedder)
+scores = score(document)
+plan = optimize(document, scores)
+selection = select(document, plan, embedder)
+reduced = selection.document.text
 ```
 
 ## How it works

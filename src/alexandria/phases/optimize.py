@@ -2,11 +2,9 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-import numpy as np
-
 from alexandria.core.protocols import Candidate, Delete, Params
-from alexandria.core.registry import get_optimizer, register_optimizer
-from alexandria.core.similarity import cosine_similarity_matrix
+from alexandria.core.registry import get_optimizer, register_optimizer, required_scorers
+from alexandria.core.similarity import similarity_matrix_for
 
 if TYPE_CHECKING:
     from alexandria.core.ir import Document
@@ -24,8 +22,7 @@ def greedy_pairwise(document: Document, scores: Scores, params: Params) -> Plan:
     threshold = params.threshold
     sentences = document.sentences
     redundancy = scores["redundancy"]
-    embeddings = np.stack([s.embedding for s in sentences])
-    similarity = cosine_similarity_matrix(embeddings)
+    similarity = similarity_matrix_for(document)
 
     pairs = [
         (float(similarity[i, j]), i, j)
@@ -38,12 +35,10 @@ def greedy_pairwise(document: Document, scores: Scores, params: Params) -> Plan:
     present = {s.id for s in sentences}
     candidates: list[Candidate] = []
     for sim, i, j in pairs:
-        if redundancy[i] < threshold or redundancy[j] < threshold:
-            continue
         a, b = sentences[i].id, sentences[j].id
         if a not in present or b not in present:
             continue
-        drop = a if redundancy[i] >= redundancy[j] else b
+        drop = a if redundancy[a] >= redundancy[b] else b
         present.discard(drop)
         candidates.append(
             Candidate(
@@ -63,8 +58,18 @@ def optimize(
     *,
     params: Params | None = None,
 ) -> Plan:
-    """Run each named optimizer and concatenate their candidate stacks into one ordered Plan."""
+    """Run each named optimizer and concatenate their candidate stacks into one ordered Plan.
+
+    Raises ValueError if any optimizer's required scorers are absent from `scores`, so a
+    mispiped `score ... | optimize` fails at the boundary instead of raising a raw KeyError deeper in.
+    """
     params = params or Params()
+    for name in names:
+        missing = [scorer for scorer in required_scorers(name) if scorer not in scores]
+        if missing:
+            raise ValueError(
+                f"optimizer {name!r} requires scorer(s) {missing} absent from the input scores {sorted(scores)}"
+            )
     plan: list[Candidate] = []
     for name in names:
         optimizer = get_optimizer(name)

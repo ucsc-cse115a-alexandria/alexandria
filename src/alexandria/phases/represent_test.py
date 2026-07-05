@@ -109,7 +109,9 @@ def test_preamble_before_first_header_is_plain() -> None:
 def test_represent_builds_a_document() -> None:
     document = represent("first\nsecond\n", HashEmbedder())
     assert document.embedding_model == "hash-64"
-    assert [s.id for s in document.sentences] == ["s0", "s1"]
+    ids = [s.id for s in document.sentences]
+    assert len(set(ids)) == 2
+    assert all(sid.startswith("s") for sid in ids)
     assert document.text == "first\nsecond\n"
     assert document.token_count > 0
 
@@ -117,3 +119,24 @@ def test_represent_builds_a_document() -> None:
 def test_represent_rejects_an_empty_prompt() -> None:
     with pytest.raises(ValueError):
         represent("   \n", HashEmbedder())
+
+
+def test_ids_are_stable_across_re_represent() -> None:
+    prompt = "Do X.\nDo Y.\nDo Z.\n"
+    first = [s.id for s in represent(prompt, HashEmbedder()).sentences]
+    second = [s.id for s in represent(prompt, HashEmbedder()).sentences]
+    assert first == second
+
+
+def test_editing_one_line_leaves_other_ids_unchanged() -> None:
+    before = {s.text: s.id for s in represent("Do X.\nDo Y.\nDo Z.\n", HashEmbedder()).sentences}
+    after = {s.text: s.id for s in represent("Do X.\nEDITED.\nDo Z.\n", HashEmbedder()).sentences}
+    assert after["Do X.\n"] == before["Do X.\n"]
+    assert after["Do Z.\n"] == before["Do Z.\n"]
+    assert after["EDITED.\n"] != before["Do Y.\n"]
+
+
+def test_identical_lines_get_unique_deterministic_ids() -> None:
+    ids = [s.id for s in represent("same\nsame\nsame\n", HashEmbedder()).sentences]
+    assert len(set(ids)) == 3
+    assert ids == [ids[0], f"{ids[0]}-2", f"{ids[0]}-3"]

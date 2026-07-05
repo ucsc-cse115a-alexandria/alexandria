@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, NewType, Self
 
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel, ConfigDict, Field, PlainValidator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PlainValidator, field_serializer, model_validator
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
@@ -22,7 +22,7 @@ def _as_vector(value: object) -> NDArray[np.float32]:
 
 Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]
 TokenCount = Annotated[int, Field(ge=0)]
-SentenceId = str
+SentenceId = NewType("SentenceId", str)
 
 
 class SectionKind(StrEnum):
@@ -36,6 +36,11 @@ class Encoded(BaseModel):
     text: str
     token_count: TokenCount
     embedding: Embedding
+
+    @field_serializer("embedding", when_used="json")
+    def _serialize_embedding(self, embedding: NDArray[np.float32]) -> list[float]:
+        """Emit the vector as a JSON float list; float32 widens to double and narrows back exactly."""
+        return embedding.tolist()
 
 
 class Sentence(Encoded):

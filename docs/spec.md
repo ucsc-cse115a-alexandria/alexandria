@@ -159,7 +159,7 @@ columns cannot drift out of sync.
 ```python
 type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # a 1-D vector
 type TokenCount = Annotated[int, Field(ge=0)]
-type SentenceId = str   # stable identity assigned at split; how an Edit names a row across edits
+SentenceId = NewType("SentenceId", str)   # content-addressed id (sha256 of the sentence text); how an Edit names a row across edits
 
 class SectionKind(StrEnum):
     """Where a Section came from. The Document is the root, so every Section has one of these."""
@@ -177,7 +177,7 @@ class Encoded(BaseModel):
 class Sentence(Encoded):
     """The atomic instruction and keep/drop unit; split no further."""
     node: Literal["sentence"] = "sentence"   # discriminates a child Sentence from a child Section
-    id: SentenceId            # stable handle an Edit addresses; survives Parquet and reuse=
+    id: SentenceId            # content-hash handle an Edit addresses; identical text keeps its id across re-represent, reuse=, and Parquet
 
 class Section(Encoded):
     """A markdown header / XML block / plain run. Membership is the nesting itself; sections nest."""
@@ -217,6 +217,12 @@ of its children and its `token_count` equals their sum (so stored values can nev
 children), that every embedding shares one dimension, that token counts are non-negative
 (`TokenCount`), that no `Section` or `Document` is empty (`min_length=1`), and that every `Sentence`
 `id` is unique within the `Document` (an `Edit` must name exactly one row, never two).
+
+**Content-addressed ids.** A `Sentence` id is `s` + the first 12 hex chars of the sha256 of its exact
+`text`, so identical text always maps to the same id — re-representing a lightly edited prompt keeps
+every unchanged line's id, and only edited lines get new ids (a whitespace change is a text change, so
+it shifts the id too). When the same text appears more than once, occurrences after the first take a
+`-2`, `-3`, … suffix in document order, keeping ids unique and deterministic.
 
 **One model per Document.** A `Document` records the `embedding_model` that produced its vectors.
 `reuse=` carries embeddings forward only when the model id matches, and `redundancy` refuses to
@@ -547,6 +553,13 @@ are Hypothesis properties over generated documents and stacks.
 
 ## Persistence — Parquet
 
+**Status.** The wire and on-disk format today is **JSON** (pydantic native, zero extra dependencies):
+a `Document` serializes with `model_dump_json` — every `embedding` becomes a float list — and the phase
+verbs pass `DocumentEnvelope` / `ScoredEnvelope` / `PlanEnvelope`, each stamped `schema_version=1`, over
+stdin/stdout. The float32 → JSON double → float32 round-trip is exact. The Parquet table below is the
+**planned** format for when data volume demands it (dense-vector density and Arrow interop); it adds a
+`polars` dependency and is deferred under YAGNI until then.
+
 The tree is the in-memory view; on disk it flattens to a single **Parquet** table, **one row per
 node** (columns `level` — `document` / `section` / `sentence` — plus `text`, `token_count`,
 `embedding`, a `parent` id and `order` (which together encode the nesting at any depth), the
@@ -567,30 +580,41 @@ storage format.
 
 ## CLI
 
-A few single-purpose verbs, built with [`click`](https://github.com/pallets/click). Each takes a
-prompt from a `FILE` argument or stdin and writes its result to stdout; diagnostics go to stderr;
-exit `0` on success, `2` on usage error, `1` otherwise.
+A few single-purpose verbs, built with [`click`](https://github.com/pallets/click). Each reads from a
+`FILE` argument or stdin and writes its result to stdout; diagnostics go to stderr; exit `0` on success,
+`1` on a known boundary error (bad envelope, unknown strategy name, empty prompt). Each of the four
+phases is its own verb, and they **compose over a Unix pipe**: every phase emits a self-contained JSON
+**envelope** carrying the `Document` (and, downstream, the `Scores` or `Plan`) the next phase needs.
 
-- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D]`
-  — prompt in, **reduced prompt out**. Runs all four phases end to end; the `auto` selector folds the
+- `alexandria represent [FILE] [--model MODEL]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
+- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table]` — `DocumentEnvelope` in, a
+  **`ScoredEnvelope`** out; `--table` prints a human-readable per-instruction report instead. Run
+  several scorers and their columns are the `Scores` bundle. No embedder is needed — it scores the
+  Document it is handed.
+- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — `ScoredEnvelope` in, a
+  **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
+- `alexandria select [FILE] [--model MODEL] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
+  **reduced prompt** out (or a JSON reduction summary with `--json`). The `auto` selector folds the
   ranked `Plan` highest-confidence-first while the prompt stays within `--drift-budget` (default `0.01`,
-  i.e. 1%) of the original. Pass several optimizers and their stacks concatenate into one series. There is
-  no `--scorer` flag because each chosen optimizer declares the scorer(s) it needs. Text in, text out, so it
-  drops straight into a pipe: `alexandria reduce prompt.txt > reduced.txt`. This is the headline path.
-- `alexandria review [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — same pipeline with the
-  `review` selector: **interactive**, it walks the `Plan` from highest confidence down and asks you to
-  accept or reject each drop, then returns the reduced prompt. `reduce --selector auto` is the same flow
-  with the drift budget accepting candidates instead of a person.
-- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--json]` — prompt in, per-instruction scores out
-  (Represent + Score). Run several scorers and the columns are the `Scores` bundle. A human-readable
-  table when stdout is a TTY, JSON when piped or `--json`. Usable before any optimizer exists.
-- `alexandria benchmark PATHS... [--json]` — run the pipeline over a corpus and print the report.
+  i.e. 1%) of the original.
+- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D] [--model MODEL] [--json]`
+  — prompt in, **reduced prompt out**, running all four phases in one process. This is the headline
+  path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
+  (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each
+  chosen optimizer declares the scorer(s) it needs.
 
-**On composing via pipes.** Phase composition is a *library* property — pure functions over the
-in-memory `Document`. The CLI deliberately does **not** serialize the embedding matrix between
-subprocesses (an `n × dim` float blob per pipe buys nothing); each verb runs the phases it needs in
-one process. Unix-philosophy composition is preserved where it pays off: clean text I/O and small,
-single-purpose verbs.
+So `alexandria represent < p.txt | alexandria score | alexandria optimize | alexandria select`
+reproduces `alexandria reduce < p.txt`, and any prefix of that pipe is a useful stop
+(`... | alexandria score --table` to inspect redundancy). A future interactive `review` selector walks
+the same `Plan` and asks a human to accept or reject each drop.
+
+**On composing via pipes.** Phase composition is first a *library* property — pure functions over the
+in-memory `Document` — and the envelopes make it a *process* property too. The envelope is
+self-contained: it always carries the `Document` a downstream phase needs, so no phase re-derives it,
+and `score`/`optimize` need no model at all. Envelopes are JSON today (`schema_version=1`, pydantic
+native, zero extra dependencies); a Parquet path is added later when data volume asks for it (see
+[Persistence](#persistence--parquet)). The `reduce` verb stays the fast route that skips serialization
+between phases.
 
 ## Evaluation — a separate concern
 

@@ -1,4 +1,5 @@
 from alexandria.core.apply import try_apply
+from alexandria.core.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.core.ir import (
     Document,
     Embedding,
@@ -12,6 +13,7 @@ from alexandria.core.ir import (
 from alexandria.core.protocols import (
     Candidate,
     Delete,
+    Edit,
     Embedder,
     Optimizer,
     Params,
@@ -19,7 +21,7 @@ from alexandria.core.protocols import (
     Plan,
     Scorer,
     Scores,
-    ScoreVector,
+    Selection,
     Selector,
 )
 from alexandria.core.registry import (
@@ -38,6 +40,8 @@ __all__ = [
     "Candidate",
     "Delete",
     "Document",
+    "DocumentEnvelope",
+    "Edit",
     "Embedder",
     "Embedding",
     "Node",
@@ -45,11 +49,13 @@ __all__ = [
     "Params",
     "Peers",
     "Plan",
-    "ScoreVector",
+    "PlanEnvelope",
+    "ScoredEnvelope",
     "Scorer",
     "Scores",
     "Section",
     "SectionKind",
+    "Selection",
     "Selector",
     "Sentence",
     "SentenceId",

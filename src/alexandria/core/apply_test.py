@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from alexandria.core.apply import try_apply
-from alexandria.core.ir import Document, Section, SectionKind, Sentence
+from alexandria.core.ir import Document, Section, SectionKind, Sentence, SentenceId
 from alexandria.core.protocols import Candidate, Delete
 
 if TYPE_CHECKING:
@@ -15,7 +15,7 @@ _VEC: NDArray[np.float32] = np.ones(4, dtype=np.float32)
 
 
 def _sentence(sid: str, text: str) -> Sentence:
-    return Sentence(id=sid, text=text, token_count=1, embedding=_VEC)
+    return Sentence(id=SentenceId(sid), text=text, token_count=1, embedding=_VEC)
 
 
 def _plain_section(sentences: tuple[Sentence, ...]) -> Section:
@@ -34,7 +34,9 @@ def _document(texts: list[str]) -> Document:
 
 
 def _delete(*targets: str) -> Candidate:
-    return Candidate(edit=Delete(targets=targets), confidence=1.0, source="t", reason="r")
+    return Candidate(
+        edit=Delete(targets=tuple(SentenceId(t) for t in targets)), confidence=1.0, source="t", reason="r"
+    )
 
 
 def test_drops_targeted_sentence() -> None:

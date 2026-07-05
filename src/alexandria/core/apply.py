@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 from alexandria.core.ir import Document, Node, Section, Sentence, rollup
 
 if TYPE_CHECKING:
+    from alexandria.core.ir import SentenceId
     from alexandria.core.protocols import Candidate
 
 
@@ -25,7 +26,7 @@ def try_apply(document: Document, candidate: Candidate) -> Document | None:
     return _rebuild(document, remaining)
 
 
-def _empties_a_section(document: Document, surviving: set[str]) -> bool:
+def _empties_a_section(document: Document, surviving: set[SentenceId]) -> bool:
     def empty(section: Section) -> bool:
         if all(s.id not in surviving for s in section.sentences):
             return True
@@ -34,7 +35,7 @@ def _empties_a_section(document: Document, surviving: set[str]) -> bool:
     return any(empty(section) for section in document.sections)
 
 
-def _rebuild(document: Document, surviving: set[str]) -> Document:
+def _rebuild(document: Document, surviving: set[SentenceId]) -> Document:
     sections = tuple(_rebuild_section(section, surviving) for section in document.sections)
     text, token_count = rollup(sections)
     return Document(
@@ -46,7 +47,7 @@ def _rebuild(document: Document, surviving: set[str]) -> Document:
     )
 
 
-def _rebuild_section(section: Section, surviving: set[str]) -> Section:
+def _rebuild_section(section: Section, surviving: set[SentenceId]) -> Section:
     kept: list[Node] = []
     for child in section.children:
         if isinstance(child, Sentence):
