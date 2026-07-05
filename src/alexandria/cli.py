@@ -12,12 +12,11 @@ from alexandria.ir.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelop
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER
 from alexandria.ops.features.optimize import optimize as optimize_phase
 from alexandria.ops.features.represent import represent as represent_phase
-from alexandria.ops.features.score import DEFAULT_SCORER
+from alexandria.ops.features.score import DEFAULT_SCORER, score_rows
 from alexandria.ops.features.score import score as score_phase
 from alexandria.ops.features.select import DEFAULT_SELECTOR
 from alexandria.ops.features.select import select as select_phase
-from alexandria.runtime.pipeline import reduce as reduce_prompt
-from alexandria.runtime.pipeline import score_rows
+from alexandria.ops.pipe import reduce as reduce_prompt
 from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder
 
 if TYPE_CHECKING:

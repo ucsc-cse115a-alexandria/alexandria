@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from alexandria.runtime.pipeline import score_report
+from alexandria.ops.pipe import score_report
 from alexandria.utils.embedders import HashEmbedder
 
 

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from alexandria.ir.registry import get_scorer, register_scorer
+from alexandria.ir.registry import get_scorer, register_scorer, scorer_peers
 from alexandria.ir.similarity import similarity_matrix_for
 
 if TYPE_CHECKING:
@@ -47,4 +47,23 @@ def score(document: Document, names: tuple[str, ...] = (DEFAULT_SCORER,)) -> Sco
     return bundle
 
 
-__all__ = ["DEFAULT_SCORER", "most_similar", "redundancy", "score"]
+def score_rows(document: Document, bundle: Scores, scorers: tuple[str, ...]) -> list[dict[str, object]]:
+    """Turn an already-scored Document into display rows: id, text, each scorer's value, and its peer."""
+    sentences = document.sentences
+    text_by_id = {s.id: s.text.strip() for s in sentences}
+    peer_finders = [finder for name in scorers if (finder := scorer_peers(name)) is not None]
+    peers = peer_finders[0](document) if peer_finders else None
+    rows: list[dict[str, object]] = []
+    for i, sentence in enumerate(sentences):
+        row: dict[str, object] = {"id": sentence.id, "text": sentence.text.strip()}
+        for name in scorers:
+            row[name] = round(bundle[name][sentence.id], 4)
+        if peers is not None:
+            peer_id, _ = peers[i]
+            row["most_similar_id"] = peer_id
+            row["most_similar_text"] = text_by_id[peer_id] if peer_id is not None else None
+        rows.append(row)
+    return rows
+
+
+__all__ = ["DEFAULT_SCORER", "most_similar", "redundancy", "score", "score_rows"]
