@@ -11,6 +11,7 @@ from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import DEFAULT_SELECTOR, select
+from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, Params
@@ -39,13 +40,17 @@ class ReduceResult(BaseModel):
 
 def reduce(
     prompt: str,
-    embedder: Embedder,
+    embedder: Embedder | None = None,
     *,
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     selector: str = DEFAULT_SELECTOR,
     params: Params | None = None,
 ) -> ReduceResult:
-    """Run represent → score → optimize → select end to end and return the reduction."""
+    """Run represent → score → optimize → select end to end and return the reduction.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
+    embedder = embedder if embedder is not None else default_embedder()
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
     plan = optimize(document, scores, names=optimizers, params=params)
@@ -54,9 +59,12 @@ def reduce(
 
 
 def score_report(
-    prompt: str, embedder: Embedder, *, scorers: tuple[str, ...] = (DEFAULT_SCORER,)
+    prompt: str, embedder: Embedder | None = None, *, scorers: tuple[str, ...] = (DEFAULT_SCORER,)
 ) -> list[dict[str, object]]:
-    """Represent then score into display rows: id, text, each scorer's value, and its peer (if any)."""
+    """Represent then score into display rows: id, text, each scorer's value, and its peer (if any).
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
     document = represent(prompt, embedder)
     return score_rows(document, score(document, names=scorers), scorers)
 

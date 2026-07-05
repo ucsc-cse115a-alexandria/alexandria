@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 import tiktoken
 
 from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
+from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -240,12 +241,15 @@ def _leaf_sentences(sections: tuple[RawSection, ...]) -> list[RawSentence]:
     return leaves
 
 
-def represent(prompt: str, embedder: Embedder) -> Document:
-    """Build the Document IR: split losslessly, then tokenize and embed every node."""
+def represent(prompt: str, embedder: Embedder | None = None) -> Document:
+    """Build the Document IR: split losslessly, then tokenize and embed every node.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
     segments = split(prompt)
     if not segments:
         raise ValueError("cannot represent an empty prompt")
-    return encode(segments, embedder)
+    return encode(segments, embedder if embedder is not None else default_embedder())
 
 
 __all__ = ["represent"]

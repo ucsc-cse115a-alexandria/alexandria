@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from alexandria.ir.contracts import Candidate, Params, Selection
 from alexandria.ir.registry import get_selector, register_selector
 from alexandria.ir.similarity import cosine_distance
+from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, Plan
@@ -34,12 +35,16 @@ def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> 
 def select(
     document: Document,
     plan: Plan,
-    embedder: Embedder,
+    embedder: Embedder | None = None,
     name: str = DEFAULT_SELECTOR,
     *,
     params: Params | None = None,
 ) -> Selection:
-    """Run the named selector to fold the Plan into a reduced Document."""
+    """Run the named selector to fold the Plan into a reduced Document.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
+    embedder = embedder if embedder is not None else default_embedder()
     if embedder.model_id != document.embedding_model:
         raise ValueError(
             f"embedder {embedder.model_id!r} does not match document embedding model {document.embedding_model!r}"
