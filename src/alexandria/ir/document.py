@@ -1,16 +1,21 @@
-"""The intermediate representation: a Document -> Section -> Sentence tree, validated on build."""
+"""The intermediate representation: a Document -> Section -> Sentence tree, validated on build.
+
+Document.apply folds one Delete into a smaller tree.
+"""
 
 from __future__ import annotations
 
 from enum import StrEnum
-from typing import TYPE_CHECKING, Annotated, Literal, Self
+from typing import TYPE_CHECKING, Annotated, Literal, NewType, Self
 
 import numpy as np
 from numpy.typing import NDArray
-from pydantic import BaseModel, ConfigDict, Field, PlainValidator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, PlainValidator, field_serializer, model_validator
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
+
+    from alexandria.ir.contracts import Candidate
 
 
 def _as_vector(value: object) -> NDArray[np.float32]:
@@ -22,7 +27,7 @@ def _as_vector(value: object) -> NDArray[np.float32]:
 
 Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]
 TokenCount = Annotated[int, Field(ge=0)]
-SentenceId = str
+SentenceId = NewType("SentenceId", str)
 
 
 class SectionKind(StrEnum):
@@ -36,6 +41,11 @@ class Encoded(BaseModel):
     text: str
     token_count: TokenCount
     embedding: Embedding
+
+    @field_serializer("embedding", when_used="json")
+    def _serialize_embedding(self, embedding: NDArray[np.float32]) -> list[float]:
+        """Emit the vector as a JSON float list; float32 widens to double and narrows back exactly."""
+        return embedding.tolist()
 
 
 class Sentence(Encoded):
@@ -99,6 +109,21 @@ class Document(Encoded):
         _check_one_dimension([*self.sections, self])
         return self
 
+    def apply(self, candidate: Candidate) -> Document | None:
+        """Apply one candidate, returning a smaller rebuilt Document.
+
+        Returns the document unchanged when the candidate's targets are already gone,
+        and None if the edit would empty the Document or a Section.
+        """
+        surviving = {s.id for s in self.sentences}
+        present = {target for target in candidate.edit.targets if target in surviving}
+        if not present:
+            return self
+        remaining = surviving - present
+        if not remaining or _empties_a_section(self, remaining):
+            return None
+        return _rebuild(self, remaining)
+
 
 Section.model_rebuild()
 
@@ -107,3 +132,45 @@ def _check_one_dimension(nodes: list[Encoded]) -> None:
     dims = {node.embedding.shape[0] for node in nodes}
     if len(dims) > 1:
         raise ValueError(f"all embeddings must share one dimension, got {sorted(dims)}")
+
+
+def _empties_a_section(document: Document, surviving: set[SentenceId]) -> bool:
+    def empty(section: Section) -> bool:
+        if all(s.id not in surviving for s in section.sentences):
+            return True
+        return any(empty(child) for child in section.children if isinstance(child, Section))
+
+    return any(empty(section) for section in document.sections)
+
+
+def _rebuild(document: Document, surviving: set[SentenceId]) -> Document:
+    sections = tuple(_rebuild_section(section, surviving) for section in document.sections)
+    text, token_count = rollup(sections)
+    return Document(
+        embedding_model=document.embedding_model,
+        sections=sections,
+        text=text,
+        token_count=token_count,
+        embedding=document.embedding,
+    )
+
+
+def _rebuild_section(section: Section, surviving: set[SentenceId]) -> Section:
+    kept: list[Node] = []
+    for child in section.children:
+        if isinstance(child, Sentence):
+            if child.id in surviving:
+                kept.append(child)
+        else:
+            kept.append(_rebuild_section(child, surviving))
+    children = tuple(kept)
+    text, token_count = rollup(children)
+    return Section(
+        kind=section.kind,
+        header=section.header,
+        children=children,
+        text=text,
+        token_count=token_count,
+        # embedding is the pre-edit vector; re-embedding needs a model, which ir avoids.
+        embedding=section.embedding,
+    )

@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import hashlib
+from functools import lru_cache
 from typing import TYPE_CHECKING, Protocol, cast
 
 import numpy as np
 
-from alexandria.core.similarity import normalize
+from alexandria.ir.similarity import normalize
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,7 +16,7 @@ if TYPE_CHECKING:
 
     from numpy.typing import NDArray
 
-    from alexandria.core.protocols import Embedder
+    from alexandria.ir.contracts import Embedder
 
 _DIM = 64
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
@@ -71,3 +72,9 @@ def build_embedder(model: str) -> Embedder:
     if factory is not None:
         return factory()
     return SentenceTransformerEmbedder(model)  # pragma: no cover
+
+
+@lru_cache(maxsize=1)
+def default_embedder() -> Embedder:  # pragma: no cover
+    """The process-wide default embedder, built lazily on first use."""
+    return build_embedder(DEFAULT_MODEL)

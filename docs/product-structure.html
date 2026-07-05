@@ -78,13 +78,11 @@
     .leg .ic { grid-row: 1 / span 2; width: 38px; height: 38px; align-self: center; }
     .leg.l-cli { border-color: var(--blue); background: var(--blue-bg); }   .l-cli .num, .l-cli .nm { color: var(--blue); }   .l-cli .ic { color: var(--blue); }
     .leg.l-rt  { border-color: var(--green); background: var(--green-bg); }  .l-rt .num, .l-rt .nm { color: var(--green-ink); } .l-rt .ic { color: var(--green-ink); }
-    .leg.l-ph  { border-color: var(--orange); background: var(--orange-bg); }.l-ph .num, .l-ph .nm { color: var(--orange-ink); }.l-ph .ic { color: var(--orange-ink); }
     .leg.l-co  { border-color: var(--purple); background: var(--purple-bg); }.l-co .num, .l-co .nm { color: var(--purple-ink); }.l-co .ic { color: var(--purple-ink); }
 
     .band { position: relative; border-radius: 12px; padding: 14px; display: flex; align-items: stretch; gap: 12px; }
     .band.b-cli { border: 2px solid var(--blue); background: var(--blue-soft); }
     .band.b-rt  { border: 2px solid var(--green); background: var(--green-bg); }
-    .band.b-ph  { border: 2px solid var(--orange); background: var(--orange-bg); }
     .band.b-co  { border: 2px solid var(--purple); background: var(--purple-bg); flex-direction: column; gap: 6px; }
 
     .cell { background: #fff; border: 1.5px solid #cbd5e1; border-radius: 9px; padding: 11px 13px; }
@@ -101,6 +99,12 @@
     .rt-cell { flex: 1; border-color: var(--green); display: flex; flex-direction: column; justify-content: center; }
     .rt-cell .nm { text-align: center; color: var(--green-ink); font-size: 15px; }
     .rt-cell .ds { text-align: center; font-size: 12.5px; }
+
+    .leg.l-ut  { border-color: var(--orange); background: var(--orange-bg); } .l-ut .num, .l-ut .nm { color: var(--orange-ink); } .l-ut .ic { color: var(--orange-ink); }
+    .band.b-ut { border: 2px solid var(--orange); background: var(--orange-bg); }
+    .ut-cell { flex: 1; border-color: var(--orange); display: flex; flex-direction: column; justify-content: center; }
+    .ut-cell .nm { text-align: center; color: var(--orange-ink); font-size: 15px; }
+    .ut-cell .ds { text-align: center; font-size: 12.5px; }
 
     .ph-cell { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; }
     .ph-cell .hd { text-align: center; }
@@ -138,7 +142,8 @@
     <p class="lead">
       A long prompt flows left to right through the four phases —
       <b>represent → score → optimize → select</b> — and comes out reduced. The dashed
-      <b>reduce</b> loop is the one-call entry point that runs all four end to end.
+      <b>reduce</b> loop is the one-call entry point that runs all four end to end —
+      no setup needed, a default embedder is built on first use.
     </p>
     <section class="figure">
       <div class="pipeline">
@@ -176,7 +181,7 @@
               </g>
             </svg>
             </div>
-            <div class="desc">Split into instructions, count tokens, embed each one (and parents).</div>
+            <div class="desc">Split into sections and sentences, count tokens, embed each one (and parents).</div>
           </div>
 
           <div class="stage s-sco">
@@ -190,12 +195,12 @@
               <div class="bar"><span>Sₙ</span><i style="width:76%"></i><b>0.76</b></div>
             </div>
             </div>
-            <div class="desc">Rate every instruction. First scorer: redundancy (max pairwise similarity).</div>
+            <div class="desc">Rate every sentence. First scorer: redundancy (max pairwise similarity).</div>
           </div>
 
           <div class="stage s-opt">
             <div class="hd"><span class="badge">3</span><h3>Optimize</h3></div>
-            <div class="io">Scores → Plan (edit stack)</div>
+            <div class="io">Scores → Plan (candidates)</div>
             <div class="body">
             <div class="edits">
               <div class="edit"><span>1 · Delete S₄</span><b>0.94</b></div>
@@ -204,7 +209,7 @@
               <div class="dots">⋮</div>
             </div>
             </div>
-            <div class="desc">Propose and rank edits (candidates) with confidence. Return a Plan (stack).</div>
+            <div class="desc">Propose edits (candidates), each with a confidence. Return them as a Plan.</div>
           </div>
 
           <div class="stage s-sel">
@@ -226,7 +231,7 @@
               </g>
             </svg>
             </div>
-            <div class="desc">Apply candidates in order while staying within the drift budget (e.g. 1%).</div>
+            <div class="desc">Apply candidates highest-confidence-first while staying within the drift budget (default 0.01).</div>
           </div>
         </div>
 
@@ -246,9 +251,9 @@
 
     <h2>2. Architecture (layers)</h2>
     <p class="lead">
-      Four layers, each depending only on the one below it: the <b>CLI</b> is a thin wrapper over
-      the <b>runtime</b>, which composes the four pluggable <b>phases</b>, which are all built on the
-      stable <b>core</b> contract. Layering is enforced by import-linter.
+      Four layers, each depending only on the one below it: the <b>cli</b> is a thin wrapper over
+      <b>ops</b> (the <b>pipe</b> that composes the four pluggable <b>features</b>), which build on the
+      <b>utils</b> shell and the stable <b>ir</b> contract. Layering is enforced by four import-linter contracts.
     </p>
     <section class="figure">
       <div class="arch">
@@ -262,8 +267,8 @@
         </div>
         <div class="band b-cli">
           <div class="cell cli-cell">
-            <div class="nm">alexandria CLI</div>
-            <div class="ds">reduce | review | score | benchmark</div>
+            <div class="nm">cli/ &nbsp;<span style="color:#9ca3af;font-weight:400">main.py · envelope.py</span></div>
+            <div class="ds">represent | score | optimize | select | reduce</div>
           </div>
           <div class="conn down">
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
@@ -274,21 +279,21 @@
         <!-- row 2: Runtime -->
         <div class="leg l-rt">
           <div class="num">2</div>
-          <div class="nm">Runtime <span>(Orchestration)</span></div>
+          <div class="nm">Ops <span>(Library body)</span></div>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
-          <div class="ds">Compose phases, manage embedder</div>
+          <div class="ds">Compose the four features</div>
         </div>
         <div class="band b-rt">
           <div class="cell rt-cell">
-            <div class="nm">pipeline.py</div>
-            <div class="ds">Compose the four phases (reduce / score_report)</div>
+            <div class="nm">pipe.py</div>
+            <div class="ds">Compose the four features (reduce / score_report)</div>
           </div>
           <div class="hsep">
             <svg width="22" height="14" viewBox="0 0 22 14" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 2 1 7l4 5M17 2l4 5-4 5M1 7h20"/></svg>
           </div>
           <div class="cell rt-cell">
-            <div class="nm">embedding.py</div>
-            <div class="ds">Embedder implementations (only place that builds a model)</div>
+            <div class="nm">features/</div>
+            <div class="ds">The four pluggable features (each imports only ir) ↓</div>
           </div>
           <div class="conn down">
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 1v12M3 10l4 4 4-4"/></svg>
@@ -298,48 +303,61 @@
           </div>
         </div>
 
-        <!-- row 3: Phases -->
-        <div class="leg l-ph">
-          <div class="num">3</div>
-          <div class="nm">Phases <span>(Pluggable)</span></div>
+        <!-- row 2 detail: the four features (inside ops) -->
+        <div class="leg l-rt">
+          <div class="nm">ops/features/</div>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M19.439 7.85c-.049.322.059.648.289.878l1.568 1.568c.47.47.706 1.087.706 1.704s-.235 1.233-.706 1.704l-1.611 1.611a.98.98 0 0 1-.837.276c-.47-.07-.802-.48-.968-.925a2.501 2.501 0 1 0-3.214 3.214c.446.166.855.497.925.968a.979.979 0 0 1-.276.837l-1.61 1.61a2.404 2.404 0 0 1-1.705.707 2.402 2.402 0 0 1-1.704-.706l-1.568-1.568a1.026 1.026 0 0 0-.877-.29c-.493.074-.84.504-1.02.968a2.5 2.5 0 1 1-3.237-3.237c.464-.18.894-.527.967-1.02a1.026 1.026 0 0 0-.289-.877l-1.568-1.568A2.402 2.402 0 0 1 1.998 12c0-.617.236-1.234.706-1.704L4.23 8.77c.24-.24.581-.353.917-.303.515.077.877.528 1.073 1.01a2.5 2.5 0 1 0 3.259-3.259c-.482-.196-.933-.558-1.01-1.073-.05-.336.062-.676.303-.917l1.525-1.525A2.402 2.402 0 0 1 12 1.998c.617 0 1.234.236 1.704.706l1.568 1.568c.23.23.556.338.877.29.493-.074.84-.504 1.02-.968a2.5 2.5 0 1 1 3.237 3.237c-.464.18-.894.527-.967 1.02z"/></svg>
-          <div class="ds">Four swappable phases built on the core</div>
+          <div class="ds">The four swappable features the pipe composes, each importing only ir</div>
         </div>
-        <div class="band b-ph">
+        <div class="band b-rt">
           <div class="cell ph-cell ph-rep">
-            <div class="hd"><div class="pnm">represent/</div><div class="phase">Phase 1</div></div>
+            <div class="hd"><div class="pnm">represent.py</div><div class="phase">Phase 1</div></div>
             <div class="io">prompt → Document</div>
-            <ul><li>split.py</li><li>encode.py <span style="color:#9ca3af">(tokenize + embed)</span></li></ul>
+            <ul><li>sections + sentences</li><li>tiktoken + Embedder (injected or default)</li></ul>
           </div>
           <div class="hsep"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h10M8 2l4 4-4 4"/></svg></div>
           <div class="cell ph-cell ph-sco">
-            <div class="hd"><div class="pnm">score/</div><div class="phase">Phase 2</div></div>
+            <div class="hd"><div class="pnm">score.py</div><div class="phase">Phase 2</div></div>
             <div class="io">Document → Scores</div>
-            <ul><li>redundancy.py</li><li>centrality.py</li><li>… (more scorers)</li></ul>
+            <ul><li>redundancy</li><li>… (more scorers)</li></ul>
           </div>
           <div class="hsep"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h10M8 2l4 4-4 4"/></svg></div>
           <div class="cell ph-cell ph-opt">
-            <div class="hd"><div class="pnm">optimize/</div><div class="phase">Phase 3</div></div>
+            <div class="hd"><div class="pnm">optimize.py</div><div class="phase">Phase 3</div></div>
             <div class="io">Scores → Plan</div>
-            <ul><li>greedy_pairwise.py</li><li>merge.py</li><li>… (more optimizers)</li></ul>
+            <ul><li>greedy_pairwise</li><li>… (more optimizers)</li></ul>
           </div>
           <div class="hsep"><svg width="14" height="12" viewBox="0 0 14 12" fill="none" stroke="#475569" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 6h10M8 2l4 4-4 4"/></svg></div>
           <div class="cell ph-cell ph-sel">
-            <div class="hd"><div class="pnm">select/</div><div class="phase">Phase 4</div></div>
+            <div class="hd"><div class="pnm">select.py</div><div class="phase">Phase 4</div></div>
             <div class="io">Plan → Document</div>
-            <ul><li>auto.py</li><li>review.py</li><li>… (more selectors)</li></ul>
+            <ul><li>auto</li><li>… (more selectors)</li></ul>
           </div>
         </div>
 
-        <!-- row 4: Core -->
+        <!-- row 3: Utils -->
+        <div class="leg l-ut">
+          <div class="num">3</div>
+          <div class="nm">Utils <span>(Shell)</span></div>
+          <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 1v3M15 1v3M9 20v3M15 20v3M20 9h3M20 14h3M1 9h3M1 14h3"/></svg>
+          <div class="ds">The imperative shell — the only impure boundary</div>
+        </div>
+        <div class="band b-ut">
+          <div class="cell ut-cell">
+            <div class="nm">utils/embedders.py</div>
+            <div class="ds">SentenceTransformer + hash Embedders, default_embedder (only place that builds a model)</div>
+          </div>
+        </div>
+
+        <!-- row 4: IR -->
         <div class="leg l-co">
           <div class="num">4</div>
-          <div class="nm">Core <span>(Contract)</span></div>
+          <div class="nm">IR <span>(Contract)</span></div>
           <svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/><path d="m3.3 7 8.7 5 8.7-5"/><path d="M12 22V12"/></svg>
-          <div class="ds">IR, protocols, registry, apply, similarity</div>
+          <div class="ds">The stable contract — IR, protocols, registry, similarity</div>
         </div>
         <div class="band b-co">
-          <div class="co-head">core/ <span>(Stable Contract)</span></div>
+          <div class="co-head">ir/ <span>(Stable Contract — depends on nothing else in alexandria)</span></div>
           <div class="conn up">
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
@@ -347,11 +365,10 @@
             <svg viewBox="0 0 14 16" fill="none" stroke="#64748b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 15V3M3 6l4-4 4 4"/></svg>
           </div>
           <div class="co-row">
-            <div class="cell co-cell"><div class="nm">ir.py</div><div class="ds">Document / Section / Sentence (validated IR)</div></div>
-            <div class="cell co-cell"><div class="nm">protocols.py</div><div class="ds">Scorer / Optimizer / Selector / Embedder Protocols, types</div></div>
-            <div class="cell co-cell"><div class="nm">registry.py</div><div class="ds">@register_* lookup, requires-check, entry points</div></div>
-            <div class="cell co-cell"><div class="nm">apply.py</div><div class="ds">apply / try_apply (fold edit stack, return inverse)</div></div>
-            <div class="cell co-cell"><div class="nm">similarity.py</div><div class="ds">cosine similarity utilities</div></div>
+            <div class="cell co-cell"><div class="nm">ir/document.py</div><div class="ds">Document / Section / Sentence + Document.apply (validated IR)</div></div>
+            <div class="cell co-cell"><div class="nm">ir/contracts.py</div><div class="ds">Scorer / Optimizer / Selector / Embedder Protocols, types</div></div>
+            <div class="cell co-cell"><div class="nm">ir/registry.py</div><div class="ds">@register_* lookup, requires-check</div></div>
+            <div class="cell co-cell"><div class="nm">ir/similarity.py</div><div class="ds">cosine similarity utilities</div></div>
           </div>
         </div>
 

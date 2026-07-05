@@ -1,18 +1,21 @@
 from __future__ import annotations
 
+import hashlib
 import re
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import tiktoken
 
-from alexandria.core.ir import Document, Node, Section, SectionKind, Sentence, rollup
+from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
+from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
-    from alexandria.core.protocols import Embedder
+    from alexandria.ir.contracts import Embedder
 
 _SEPARATOR = re.compile(r"\n+")
 _MARKDOWN_HEADER = re.compile(r"(#{1,6})\s+\S")
@@ -172,12 +175,27 @@ def _segments(prompt: str) -> list[str]:
     return segments
 
 
+def _assign_ids(texts: list[str]) -> list[SentenceId]:
+    """Content-addressed ids: 's' + the first 12 hex chars of the text's sha256, so the same text
+    always gets the same id. A '-N' suffix (N from 2) disambiguates the Nth identical text in
+    document order, keeping ids unique and their assignment deterministic."""
+    seen: Counter[str] = Counter()
+    ids: list[SentenceId] = []
+    for text in texts:
+        base = "s" + hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+        seen[base] += 1
+        suffix = "" if seen[base] == 1 else f"-{seen[base]}"
+        ids.append(SentenceId(base + suffix))
+    return ids
+
+
 def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
     leaves = _leaf_sentences(sections)
     vectors = embedder.embed([leaf.text for leaf in leaves])
+    ids = _assign_ids([leaf.text for leaf in leaves])
     built_sentences = iter(
-        Sentence(id=f"s{i}", text=leaf.text, token_count=len(_ENCODING.encode(leaf.text)), embedding=vector)
-        for i, (leaf, vector) in enumerate(zip(leaves, vectors, strict=True))
+        Sentence(id=sid, text=leaf.text, token_count=len(_ENCODING.encode(leaf.text)), embedding=vector)
+        for sid, leaf, vector in zip(ids, leaves, vectors, strict=True)
     )
     built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
     text, token_count = rollup(built)
@@ -223,12 +241,15 @@ def _leaf_sentences(sections: tuple[RawSection, ...]) -> list[RawSentence]:
     return leaves
 
 
-def represent(prompt: str, embedder: Embedder) -> Document:
-    """Build the Document IR: split losslessly, then tokenize and embed every node."""
+def represent(prompt: str, embedder: Embedder | None = None) -> Document:
+    """Build the Document IR: split losslessly, then tokenize and embed every node.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
     segments = split(prompt)
     if not segments:
         raise ValueError("cannot represent an empty prompt")
-    return encode(segments, embedder)
+    return encode(segments, embedder if embedder is not None else default_embedder())
 
 
 __all__ = ["represent"]

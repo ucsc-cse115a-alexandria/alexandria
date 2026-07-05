@@ -45,8 +45,8 @@ default `auto` selector sorts candidates by `confidence` (highest first) and app
 reduced prompt stays within `drift_budget` cosine distance of the original prompt embedding — so an
 unattended `reduce` compresses as far as the meaning budget allows. A future interactive selector (the
 `review` verb) walks the same ranked stack and asks a human to accept or reject each edit. Both call one
-pure primitive, `apply`, which **folds the stack left** into the smaller `Document` — each edit applying to
-the result of the one before it, the way `sed` streams commands — the only place the tree is rewritten.
+pure primitive, `Document.apply`, folding the stack candidate by candidate into the smaller `Document` —
+each edit applying to the result of the one before it, the way `sed` streams commands — the only place the tree is rewritten.
 Adding a scorer, optimizer, or selector is one new file, never an edit to an existing one, and a third
 party can ship one from its own package (see [Extending a phase](#extending-a-phase-scorers-and-optimizers)).
 
@@ -107,44 +107,34 @@ with the rest.
 ## Project layout
 
 The folder structure is part of the design: every layer is its own folder, so the dependency order is
-visible in the tree — `cli` wraps `runtime`, `runtime` drives the `phases`, and the `phases` build on
-the stable contract in `core/`. It separates that contract from the swappable strategies and makes the
-plugin convention visible.
+visible in the tree — `cli` wraps `ops`, the `ops` pipe drives the four `features`, and everything
+builds on the imperative shell in `utils` and the stable contract in `ir/`. It separates that contract
+from the swappable strategies and makes the plugin convention visible.
 
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, select, apply, reduce, score_report, Document
-    cli.py              # layer 1 — thin wrapper; verbs reduce / score
-    runtime/            # layer 2 — what runs the library at call time
-      embedding.py      #   Embedder implementations; the only place a model is built (imperative shell)
-      pipeline.py       #   compose the four phases end to end — reduce / score_report
-    phases/             # layer 3 — the four pluggable phases; each imports only core
-      represent/        #   phase 1 — prompt → Document
-        __init__.py     #     represent(prompt, embedder) -> Document
-        split.py        #     group prompt lines into a nested section tree (markdown / xml / plain)
-        encode.py       #     tokenize + embed (via injected Embedder) every node
-      score/            #   phase 2 — strategy package (many scorers → Scores bundle)
-        __init__.py     #     score(document, names=...) -> Scores; imports built-ins
-        redundancy.py   #     @register_scorer("redundancy")
-        centrality.py   #     (later — a new file, nothing else changes)
-      optimize/         #   phase 3 — strategy package (many optimizers → concatenated Plan stack)
-        __init__.py     #     optimize(document, scores, names=...) -> Plan
-        greedy_pairwise.py #  @register_optimizer("greedy_pairwise", requires=("redundancy",))
-        merge.py        #     (later)
-      select/           #   phase 4 — strategy package (selectors fold a Plan → reduced Document)
-        __init__.py     #     select(document, plan, embedder, name=...) -> Document
-        auto.py         #     @register_selector("auto") — confidence-ranked, drift-budgeted
-        review.py       #     (later — interactive accept/reject)
-    core/               # layer 4 — the contract; depends on nothing else in alexandria
-      __init__.py       #   re-exports IR / Protocols / registry / apply / similarity
-      ir.py             #   Document / Section / Sentence + validation
-      protocols.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan
-      registry.py       #   @register_* (rejects dup names) + lookup + requires-check + entry points
-      apply.py          #   apply / try_apply: fold the edit stack -> a smaller Document (the only rewrite)
+    __init__.py         # public API: represent, score, optimize, select, reduce, score_report, Document
+    __main__.py         # `python -m alexandria` → the CLI
+    cli/                # layer 1 — thin wrapper; verbs represent / score / optimize / select / reduce
+      main.py           #   click commands; parse args, move text in/out, call the library
+      envelope.py       #   the JSON wire envelopes between piped verbs (schema_version=1)
+    ops/                # layer 2 — the library body
+      pipe.py           #   compose the four features end to end — reduce / score_report
+      features/         #   the four pluggable features; each imports only ir
+        represent.py    #     phase 1 — prompt → Document (split + tiktoken + injected Embedder)
+        score.py        #     phase 2 — @register_scorer("redundancy"); score(...) -> Scores, score_rows
+        optimize.py     #     phase 3 — @register_optimizer("greedy_pairwise", requires=("redundancy",))
+        select.py       #     phase 4 — @register_selector("auto"); fold a Plan → reduced Document
+    utils/              # layer 3 — the imperative shell
+      embedders.py      #   Embedder implementations; the only place a model is built (default_embedder)
+    ir/                 # layer 4 — the contract; depends on nothing else in alexandria
+      document.py       #   Document / Section / Sentence + validation + Document.apply (the only rewrite)
+      contracts.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan
+      registry.py       #   @register_* (rejects dup names) + lookup + requires-check
       similarity.py     #   cosine helpers shared by score, optimize, and select
-pyproject.toml          # entry points (strategy discovery) + import-linter layering contracts
-tests/                  # mirrors src/alexandria; strategies.py (Hypothesis) + pure-function laws
+pyproject.toml          # import-linter layering contracts
+tests/                  # end-to-end pipeline tests; unit tests are co-located as *_test.py
 ```
 
 ## The intermediate representation
@@ -159,7 +149,7 @@ columns cannot drift out of sync.
 ```python
 type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # a 1-D vector
 type TokenCount = Annotated[int, Field(ge=0)]
-type SentenceId = str   # stable identity assigned at split; how an Edit names a row across edits
+SentenceId = NewType("SentenceId", str)   # content-addressed id (sha256 of the sentence text); how an Edit names a row across edits
 
 class SectionKind(StrEnum):
     """Where a Section came from. The Document is the root, so every Section has one of these."""
@@ -177,7 +167,7 @@ class Encoded(BaseModel):
 class Sentence(Encoded):
     """The atomic instruction and keep/drop unit; split no further."""
     node: Literal["sentence"] = "sentence"   # discriminates a child Sentence from a child Section
-    id: SentenceId            # stable handle an Edit addresses; survives Parquet and reuse=
+    id: SentenceId            # content-hash handle an Edit addresses; identical text keeps its id across re-represent, reuse=, and Parquet
 
 class Section(Encoded):
     """A markdown header / XML block / plain run. Membership is the nesting itself; sections nest."""
@@ -218,6 +208,12 @@ children), that every embedding shares one dimension, that token counts are non-
 (`TokenCount`), that no `Section` or `Document` is empty (`min_length=1`), and that every `Sentence`
 `id` is unique within the `Document` (an `Edit` must name exactly one row, never two).
 
+**Content-addressed ids.** A `Sentence` id is `s` + the first 12 hex chars of the sha256 of its exact
+`text`, so identical text always maps to the same id — re-representing a lightly edited prompt keeps
+every unchanged line's id, and only edited lines get new ids (a whitespace change is a text change, so
+it shifts the id too). When the same text appears more than once, occurrences after the first take a
+`-2`, `-3`, … suffix in document order, keeping ids unique and deterministic.
+
 **One model per Document.** A `Document` records the `embedding_model` that produced its vectors.
 `reuse=` carries embeddings forward only when the model id matches, and `redundancy` refuses to
 cosine-compare vectors across model ids — so the single impure input can never silently mix two
@@ -251,10 +247,13 @@ These are sub-steps, not phases — you always run them together to get a `Docum
 `Document` crosses into Score.
 
 **Injected embedder.** `encode` never hard-wires a model: it calls an `Embedder` Protocol passed into
-`represent`. Production wires in `sentence-transformers`; tests pass a deterministic fake. This is the
-system's only impure boundary — `core`, the `phases`, and `pipeline` never import a model, a rule the
-layering linter enforces (see [Invariants & enforcement](#invariants--enforcement)). The model's id
-is stamped onto the `Document` as `embedding_model`.
+`represent` — and when no embedder is passed, `represent` builds the cached default (`all-MiniLM-L6-v2`)
+so `reduce(prompt)` works with no setup. Production wires in `sentence-transformers`; tests pass a
+deterministic fake. This is the system's only impure boundary — `ir`, the `features`, and `pipe` never
+import `sentence_transformers` directly; the model backend lives in the `utils` shell, and `ops` reaches
+it only through the default embedder (the layering linter forbids direct imports; see
+[Invariants & enforcement](#invariants--enforcement)). The model's id is stamped onto the `Document` as
+`embedding_model`.
 
 **Incremental encoding.** Embedding dominates cost, so `encode` is content-addressed at every level.
 Given a prior `Document` via `reuse`, any node — `Sentence`, `Section`, or `Document` — whose `text`
@@ -334,7 +333,7 @@ type Plan = tuple[Candidate, ...]   # an ordered stack Select folds top-to-botto
 Returning a `Plan` of edits instead of a `Document` is what lets several optimizers run at once and
 keeps a human in the loop: a stack is data you can **concatenate, rank, review, serialize, and undo**, where
 a reconstructed `Document` is not. The single pure primitive
-`apply(document, edits) -> (Document, inverse)` (in `core`) **folds the stack left** — each edit applies to
+`apply(document, edits) -> (Document, inverse)` (in the `ir` layer) **folds the stack left** — each edit applies to
 the `Document` the previous edit produced, the way `sed` streams commands — and returns the **inverse stack**
 alongside it; it is the *only* place the tree is rewritten. Because every edit addresses its targets by stable
 `id` rather than by row position, an edit stays valid as earlier edits reshape the document — there is no
@@ -403,7 +402,7 @@ only while the reduced prompt stays within the drift budget:
 base = Document.embedding                       # the real embedding of the original prompt
 current = Document
 for candidate in plan sorted by confidence desc:
-    trial = try_apply(current, candidate)       # None if it would empty a Section/Document → skip
+    trial = current.apply(candidate)            # None if it would empty a Section/Document → skip
     if trial is None: continue
     drift = cosine_distance(embed(trial.text), base)   # re-embed the reduced prompt
     if drift ≤ params.drift_budget:             # default 0.01 — within 1% of the original
@@ -428,19 +427,20 @@ from highest confidence down and asks a human to accept or reject each, then ret
 `Document`. `auto` and `review` are the same phase with different stop logic — automatic budget versus a
 person — which is exactly why Select is its own pluggable phase rather than a branch inside `reduce`.
 
-**The fold primitive — `apply` / `try_apply` (in `core`).** `apply(document, plan)` folds an entire stack
-left and **raises** if an edit would empty a `Section` or the `Document`; `try_apply(document, candidate)`
-applies a single candidate and returns `None` for that same infeasibility instead of raising, so a selector
-can skip rather than abort. Both address targets by stable `id`, so an edit whose targets an earlier edit
-already removed is simply skipped. This is the only place the IR tree is rewritten.
+**The fold primitive — `Document.apply` (a method on the IR).** `document.apply(candidate)` returns a
+smaller rebuilt `Document`, returns the document unchanged when the candidate's targets are already gone,
+and returns `None` when the edit would empty a `Section` or the `Document` — so a selector folds a plan by
+calling it once per candidate and skips (rather than aborts) on `None`. It addresses targets by stable
+`id`, so an edit whose targets an earlier edit already removed is simply skipped. This is the only place
+the IR tree is rewritten.
 
 ## Extending a phase: scorers, optimizers, and selectors
 
 Score, Optimize, and Select are open sets. Adding a strategy follows one convention for all three, so
 every addition looks the same:
 
-1. **One strategy, one file** in that phase's package (`score/`, `optimize/`, or `select/`).
-2. **Implement the phase `Protocol`.** All live in `core/protocols.py`, alongside the data they
+1. **Add its function** to that feature's module (`ops/features/score.py`, `optimize.py`, or `select.py`).
+2. **Implement the phase `Protocol`.** All live in `ir/contracts.py`, alongside the data they
    exchange:
 
    ```python
@@ -463,18 +463,18 @@ every addition looks the same:
    error before any work runs, not a `KeyError` mid-pipeline:
 
    ```python
-   # score/centrality.py
+   # ops/features/score.py
    @register_scorer("centrality")
    def centrality(document: Document) -> list[float]:
        ...
 
-   # optimize/greedy_pairwise.py
+   # ops/features/optimize.py
    @register_optimizer("greedy_pairwise", requires=("redundancy",))
    def greedy_pairwise(document: Document, scores: Scores, params: Params) -> Plan:
        redundancy = scores["redundancy"]
        ...   # return a tuple of Candidate, never a Document
 
-   # select/auto.py
+   # ops/features/select.py
    @register_selector("auto")
    def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document:
        ...   # fold the plan within params.drift_budget; return the reduced Document
@@ -514,12 +514,15 @@ exactly, embeddings included. These are **Hypothesis** properties over generated
 handful of fixtures — `tests/strategies.py` ships the generators (valid trees, plus deliberately
 malformed ones for negative tests), so the laws are checked against thousands of shapes.
 
-**Layering (`import-linter`).** The dependency rule the layout describes is an `import-linter`
-contract run in CI: `core` imports nothing else in `alexandria`; the four `phases` (`represent`,
-`score`, `optimize`, `select`) import only `core`; `runtime` (`embedding`, `pipeline`) sits above them; `cli` is
-a leaf no module imports. A **forbidden contract** also bars `core`, the `phases`, and `pipeline` from
-importing any embedding backend — only the `embedding` shell may. A cycle or a layering violation
-fails the build — *modularity through contracts* and *library first* cannot quietly rot.
+**Layering (`import-linter`).** The dependency rule the layout describes is enforced by four
+`import-linter` contracts run in CI: (1) *Layered architecture* — `cli` over `ops` over `utils` over
+`ir`, higher layers importing lower ones and never the reverse, so `ir` imports nothing else in
+`alexandria`; (2) *Pipe composes features* — within `ops`, `pipe` may import the four `features` to
+compose them, never the reverse; (3) *Features are independent* — the four features (`represent`,
+`score`, `optimize`, `select`) may not import each other, so shared types live in `ir.contracts`; and
+(4) *Embedding backend isolated to the shell* — a **forbidden** contract barring `ir`, `ops`, and `cli`
+from importing `sentence_transformers`, so only the `utils.embedders` shell builds a model. A cycle or a
+layering violation fails the build — *modularity through contracts* and *library first* cannot quietly rot.
 
 **Functional core, imperative shell.** The embedder is injected into Represent behind an `Embedder`
 Protocol; the concrete model lives only in the shell. Tests pass a deterministic fake, making
@@ -547,6 +550,13 @@ are Hypothesis properties over generated documents and stacks.
 
 ## Persistence — Parquet
 
+**Status.** The wire and on-disk format today is **JSON** (pydantic native, zero extra dependencies):
+a `Document` serializes with `model_dump_json` — every `embedding` becomes a float list — and the phase
+verbs pass `DocumentEnvelope` / `ScoredEnvelope` / `PlanEnvelope`, each stamped `schema_version=1`, over
+stdin/stdout. The float32 → JSON double → float32 round-trip is exact. The Parquet table below is the
+**planned** format for when data volume demands it (dense-vector density and Arrow interop); it adds a
+`polars` dependency and is deferred under YAGNI until then.
+
 The tree is the in-memory view; on disk it flattens to a single **Parquet** table, **one row per
 node** (columns `level` — `document` / `section` / `sentence` — plus `text`, `token_count`,
 `embedding`, a `parent` id and `order` (which together encode the nesting at any depth), the
@@ -567,30 +577,41 @@ storage format.
 
 ## CLI
 
-A few single-purpose verbs, built with [`click`](https://github.com/pallets/click). Each takes a
-prompt from a `FILE` argument or stdin and writes its result to stdout; diagnostics go to stderr;
-exit `0` on success, `2` on usage error, `1` otherwise.
+A few single-purpose verbs, built with [`click`](https://github.com/pallets/click). Each reads from a
+`FILE` argument or stdin and writes its result to stdout; diagnostics go to stderr; exit `0` on success,
+`1` on a known boundary error (bad envelope, unknown strategy name, empty prompt). Each of the four
+phases is its own verb, and they **compose over a Unix pipe**: every phase emits a self-contained JSON
+**envelope** carrying the `Document` (and, downstream, the `Scores` or `Plan`) the next phase needs.
 
-- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D]`
-  — prompt in, **reduced prompt out**. Runs all four phases end to end; the `auto` selector folds the
+- `alexandria represent [FILE] [--model MODEL]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
+- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table]` — `DocumentEnvelope` in, a
+  **`ScoredEnvelope`** out; `--table` prints a human-readable per-instruction report instead. Run
+  several scorers and their columns are the `Scores` bundle. No embedder is needed — it scores the
+  Document it is handed.
+- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — `ScoredEnvelope` in, a
+  **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
+- `alexandria select [FILE] [--model MODEL] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
+  **reduced prompt** out (or a JSON reduction summary with `--json`). The `auto` selector folds the
   ranked `Plan` highest-confidence-first while the prompt stays within `--drift-budget` (default `0.01`,
-  i.e. 1%) of the original. Pass several optimizers and their stacks concatenate into one series. There is
-  no `--scorer` flag because each chosen optimizer declares the scorer(s) it needs. Text in, text out, so it
-  drops straight into a pipe: `alexandria reduce prompt.txt > reduced.txt`. This is the headline path.
-- `alexandria review [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — same pipeline with the
-  `review` selector: **interactive**, it walks the `Plan` from highest confidence down and asks you to
-  accept or reject each drop, then returns the reduced prompt. `reduce --selector auto` is the same flow
-  with the drift budget accepting candidates instead of a person.
-- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--json]` — prompt in, per-instruction scores out
-  (Represent + Score). Run several scorers and the columns are the `Scores` bundle. A human-readable
-  table when stdout is a TTY, JSON when piped or `--json`. Usable before any optimizer exists.
-- `alexandria benchmark PATHS... [--json]` — run the pipeline over a corpus and print the report.
+  i.e. 1%) of the original.
+- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D] [--model MODEL] [--json]`
+  — prompt in, **reduced prompt out**, running all four phases in one process. This is the headline
+  path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
+  (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each
+  chosen optimizer declares the scorer(s) it needs.
 
-**On composing via pipes.** Phase composition is a *library* property — pure functions over the
-in-memory `Document`. The CLI deliberately does **not** serialize the embedding matrix between
-subprocesses (an `n × dim` float blob per pipe buys nothing); each verb runs the phases it needs in
-one process. Unix-philosophy composition is preserved where it pays off: clean text I/O and small,
-single-purpose verbs.
+So `alexandria represent < p.txt | alexandria score | alexandria optimize | alexandria select`
+reproduces `alexandria reduce < p.txt`, and any prefix of that pipe is a useful stop
+(`... | alexandria score --table` to inspect redundancy). A future interactive `review` selector walks
+the same `Plan` and asks a human to accept or reject each drop.
+
+**On composing via pipes.** Phase composition is first a *library* property — pure functions over the
+in-memory `Document` — and the envelopes make it a *process* property too. The envelope is
+self-contained: it always carries the `Document` a downstream phase needs, so no phase re-derives it,
+and `score`/`optimize` need no model at all. Envelopes are JSON today (`schema_version=1`, pydantic
+native, zero extra dependencies); a Parquet path is added later when data volume asks for it (see
+[Persistence](#persistence--parquet)). The `reduce` verb stays the fast route that skips serialization
+between phases.
 
 ## Evaluation — a separate concern
 

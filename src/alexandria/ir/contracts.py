@@ -5,14 +5,13 @@ from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from alexandria.core.ir import Document, SentenceId
+from alexandria.ir.document import Document, SentenceId
 
 if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
 
-ScoreVector = tuple[float, ...]
-Scores = dict[str, ScoreVector]
+Scores = dict[str, dict[SentenceId, float]]  # scorer name -> sentence id -> score
 
 # A scorer may also expose, per sentence, its most-similar peer id and that similarity.
 Peers = Callable[[Document], list[tuple[SentenceId | None, float]]]
@@ -42,9 +41,13 @@ class Delete(BaseModel):
     targets: tuple[SentenceId, ...] = Field(min_length=1)
 
 
+# The one edit shape today; widen to `Delete | Replace` later. Delete.op is the discriminator.
+Edit = Delete
+
+
 class Candidate(BaseModel):
     model_config = ConfigDict(frozen=True)
-    edit: Delete
+    edit: Edit
     confidence: float
     source: str
     reason: str
@@ -61,5 +64,13 @@ class Optimizer(Protocol):
     def __call__(self, document: Document, scores: Scores, params: Params) -> Plan: ...
 
 
+class Selection(BaseModel):
+    """A selector's result: the reduced Document and the candidates it actually applied."""
+
+    model_config = ConfigDict(frozen=True)
+    document: Document
+    applied: Plan
+
+
 class Selector(Protocol):
-    def __call__(self, document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document: ...
+    def __call__(self, document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection: ...

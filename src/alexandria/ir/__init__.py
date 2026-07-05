@@ -1,5 +1,18 @@
-from alexandria.core.apply import try_apply
-from alexandria.core.ir import (
+from alexandria.ir.contracts import (
+    Candidate,
+    Delete,
+    Edit,
+    Embedder,
+    Optimizer,
+    Params,
+    Peers,
+    Plan,
+    Scorer,
+    Scores,
+    Selection,
+    Selector,
+)
+from alexandria.ir.document import (
     Document,
     Embedding,
     Node,
@@ -9,20 +22,7 @@ from alexandria.core.ir import (
     SentenceId,
     TokenCount,
 )
-from alexandria.core.protocols import (
-    Candidate,
-    Delete,
-    Embedder,
-    Optimizer,
-    Params,
-    Peers,
-    Plan,
-    Scorer,
-    Scores,
-    ScoreVector,
-    Selector,
-)
-from alexandria.core.registry import (
+from alexandria.ir.registry import (
     get_optimizer,
     get_scorer,
     get_selector,
@@ -32,12 +32,13 @@ from alexandria.core.registry import (
     required_scorers,
     scorer_peers,
 )
-from alexandria.core.similarity import cosine_distance, cosine_similarity_matrix, normalize
+from alexandria.ir.similarity import cosine_distance, cosine_similarity_matrix, normalize
 
 __all__ = [
     "Candidate",
     "Delete",
     "Document",
+    "Edit",
     "Embedder",
     "Embedding",
     "Node",
@@ -45,11 +46,11 @@ __all__ = [
     "Params",
     "Peers",
     "Plan",
-    "ScoreVector",
     "Scorer",
     "Scores",
     "Section",
     "SectionKind",
+    "Selection",
     "Selector",
     "Sentence",
     "SentenceId",
@@ -65,5 +66,4 @@ __all__ = [
     "register_selector",
     "required_scorers",
     "scorer_peers",
-    "try_apply",
 ]

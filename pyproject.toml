@@ -135,44 +135,54 @@ exclude = [
 root_package = "alexandria"
 include_external_packages = true
 
-# Test modules are co-located as *_test.py, so they live inside the linted package.
-# A test legitimately crosses layers to build real Document fixtures (it needs
-# represent + the embedding shell), so each crossing test module is exempted here.
-# grimp wildcards replace whole segments only, so the "_test" suffix can't be globbed.
-
-# Layering: higher layers may import lower ones, never the reverse. Modules joined
-# by "|" are independent siblings that may not import each other.
+# Layering: higher layers may import lower ones, never the reverse.
 [[tool.importlinter.contracts]]
 name = "Layered architecture"
 type = "layers"
 layers = [
     "alexandria.cli",
-    "alexandria.runtime.embedding | alexandria.runtime.pipeline",
-    "alexandria.phases.represent | alexandria.phases.score | alexandria.phases.optimize | alexandria.phases.select",
-    "alexandria.core",
-]
-ignore_imports = [
-    "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent_test -> alexandria.**",
-    "alexandria.phases.score_test -> alexandria.**",
-    "alexandria.phases.select_test -> alexandria.**",
+    "alexandria.ops",
+    "alexandria.utils",
+    "alexandria.ir",
 ]
 
-# Functional core, imperative shell: only the embedding shell may touch a model.
+# Pipe may import features to compose them, never the reverse.
+[[tool.importlinter.contracts]]
+name = "Pipe composes features"
+type = "layers"
+containers = ["alexandria.ops"]
+layers = ["pipe", "features"]
+
+# Test modules are co-located as *_test.py, so the "Features are independent"
+# wildcard sweeps them in as sibling modules. A feature test legitimately imports
+# its own feature (and sometimes sibling features) to build real Document fixtures,
+# so each test module is exempted on that contract below. Adding a new feature auto-
+# extends the wildcard, but its co-located _test.py must be added to ignore_imports
+# by hand — grimp wildcards replace whole segments, so the "_test" suffix can't be globbed.
+
+# Features may not import each other; inter-feature types live in ir.contracts.
+[[tool.importlinter.contracts]]
+name = "Features are independent"
+type = "independence"
+modules = ["alexandria.ops.features.*"]
+ignore_imports = [
+    "alexandria.ops.features.optimize_test -> alexandria.**",
+    "alexandria.ops.features.represent_test -> alexandria.**",
+    "alexandria.ops.features.score_test -> alexandria.**",
+    "alexandria.ops.features.select_test -> alexandria.**",
+]
+
+# Functional core, imperative shell: only the embedding shell may import
+# sentence_transformers directly; chains through it are expected.
 [[tool.importlinter.contracts]]
 name = "Embedding backend isolated to the shell"
 type = "forbidden"
 source_modules = [
-    "alexandria.core",
-    "alexandria.phases",
-    "alexandria.runtime.pipeline",
+    "alexandria.ir",
+    "alexandria.ops",
+    "alexandria.cli",
 ]
 forbidden_modules = [
     "sentence_transformers",
 ]
-ignore_imports = [
-    "alexandria.phases.optimize_test -> alexandria.**",
-    "alexandria.phases.represent_test -> alexandria.**",
-    "alexandria.phases.score_test -> alexandria.**",
-    "alexandria.phases.select_test -> alexandria.**",
-]
+allow_indirect_imports = true

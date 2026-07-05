@@ -4,7 +4,8 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from alexandria.core.registry import (
+from alexandria.ir.contracts import Selection
+from alexandria.ir.registry import (
     get_optimizer,
     get_scorer,
     get_selector,
@@ -15,8 +16,8 @@ from alexandria.core.registry import (
 )
 
 if TYPE_CHECKING:
-    from alexandria.core.ir import Document
-    from alexandria.core.protocols import Embedder, Params, Plan, Scores
+    from alexandria.ir.contracts import Embedder, Params, Plan, Scores
+    from alexandria.ir.document import Document
 
 
 def test_lookup_round_trip() -> None:
@@ -55,9 +56,9 @@ def test_optimizer_with_unregistered_requires_raises() -> None:
 
 def test_selector_round_trip() -> None:
     @register_selector("reg_test_selector")
-    def selector(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document:
-        del plan, embedder, params
-        return document
+    def selector(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
+        del embedder, params
+        return Selection(document=document, applied=plan)
 
     assert get_selector("reg_test_selector") is selector
 
