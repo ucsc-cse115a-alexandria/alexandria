@@ -37,7 +37,10 @@ def cli() -> None:
     "--min-similarity",
     type=float,
     default=None,
-    help="Stop reduction before dropping below this similarity floor (e.g., 0.99). Mutually exclusive with --drift-budget.",
+    help=(
+        "Stop reduction before dropping below this similarity floor (e.g., 0.99). "
+        "Mutually exclusive with --drift-budget."
+    ),
 )
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 def reduce(
