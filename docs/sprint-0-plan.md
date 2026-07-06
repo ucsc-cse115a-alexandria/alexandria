@@ -3,34 +3,25 @@
 **Product:** Alexandria (Prompt Optimization for LLM Applications / Coding Agent) ·
 **Team:** Alexandria ·
 **Sprint completion date:** Tue, Jun 30, 2026 ·
-**Revision:** 1.1 (2026-06-26)
+**Revision:** 2.0 (2026-07-06)
 
 ## Goal
 
-Prototype the optimization pipeline end to end: turn a prompt into the `Document` IR
-(Represent), compute per-instruction `redundancy` scores (Score), and drop redundant
-instructions with `greedy_pairwise` (Optimize). In parallel, produce short research notes
-(the spike).
+Ship the optimization pipeline end to end behind one CLI command: turn a prompt into the
+`Document` IR (Represent), compute per-instruction `redundancy` scores (Score), and drop
+redundant instructions with `greedy_pairwise` (Optimize). In parallel, run the research spike
+that prepares the Sprint 1 benchmark, on top of a fresh repo scaffold with CI.
 
 ## Task listing (by user story, priority order)
 
-Highest priority at the top. Estimates are ideal hours (each task ≤ 6h).
+Estimates are ideal hours (each task ≤ 6h).
 
-### User story 1: Project setup & CI
+### User story: Shorten a prompt end to end (G1, G3 · Customer/User value · Priority 1)
 
-> As an open-source contributor, I want a project scaffold and a CI pipeline,
-> so that multiple developers can work on the codebase while holding a minimum code-quality bar.
-
-- Set up repo scaffold and packaging (3h)
-- Set up CI to run lint, type check, and tests on every push (4h)
-- Write install / run instructions (2h)
-
-**Total for user story 1: 9 hours**
-
-### User story 2: Optimize a prompt
-
-> As a user, I want to pass in a prompt and get back a shorter, optimized prompt
-> with redundant instructions removed.
+> As an engineer using Cursor or Claude Code whose `CLAUDE.md` / `AGENT.md` has grown bloated,
+> I want a one CLI command that cuts the token count of that agent-instruction file by removing
+> redundant instructions while keeping meaning intact, so that I cut the per-token cost I pay on
+> every request and avoid the accuracy loss that comes with a bloated prompt.
 
 > _Built incrementally: first a PoC that runs end to end, then each step is improved
 > (better segmentation, scoring, and optimization) in later increments._
@@ -39,23 +30,38 @@ Highest priority at the top. Estimates are ideal hours (each task ≤ 6h).
 - Score: rate how redundant each instruction is (4h)
 - Optimize: drop redundant instructions while preserving meaning (6h)
 - CLI: run the whole pipeline, prompt in and reduced prompt out (4h)
-- Report token reduction over a few known prompts (2h)
 
-**Total for user story 2: 22 hours**
+**Total for the user story: 20 hours**
 
-### User story 3: Research
+## Enabling work (not user stories)
 
-> As a developer, I want to ground our scoring and evaluation design in prior research,
-> so that we build on existing work instead of guessing.
+These items deliver no value to the user on their own, but the user story cannot land without
+them, and the spike prepares Sprint 1. Each is an imperative backlog item tagged with the kind
+of value it delivers, listed in priority order. The infrastructure enabler lands first.
 
-Each task produces a note following [docs/research/TEMPLATE.md](research/TEMPLATE.md).
+### Enabler A: Research spike toward the Sprint 1 benchmark (Spike / Technical value · Priority 2)
 
-- Prompt optimization: 2-3 works on prompt compression/optimization (5h)
-- Long-prompt effects: 2-3 papers on long-context degradation (5h)
-- Prompt-writing techniques (2026 papers only): extract reproducible techniques (5h)
-- Accuracy benchmarks: find one publishing exact eval prompts + ground truth (6h)
+Survey prompt-optimization work, how token count affects LLM accuracy, and existing prompt/agent
+benchmarks. Each task produces a note following
+[docs/research/TEMPLATE.md](research/TEMPLATE.md).
 
-**Total for user story 3: 21 hours**
+- [spike] Prompt optimization: 2-3 works on prompt compression/optimization (5h)
+- [spike] Long-prompt effects: 2-3 papers on long-context degradation (5h)
+- [spike] Prompt-writing techniques (2026 papers only): extract reproducible techniques (5h)
+- [spike] Accuracy benchmarks: find one publishing exact eval prompts + ground truth (6h)
+
+**Total for Enabler A: 21 hours**
+
+### Enabler B: Repo scaffold and CI (Infrastructure / Technical value · Priority 3)
+
+A project scaffold and a CI pipeline, so that multiple developers can work on the codebase while
+holding a minimum code-quality bar. Lands before the user story's tasks.
+
+- Set up repo scaffold and packaging (3h)
+- Set up CI to run lint, type check, and tests on every push (4h)
+- Write install / run instructions (2h)
+
+**Total for Enabler B: 9 hours**
 
 ## Team roles
 
@@ -63,11 +69,10 @@ Each task produces a note following [docs/research/TEMPLATE.md](research/TEMPLAT
 - Matthew Zerner: _(TBD)_
 - Virinchi Chintala: _(TBD)_
 - Marc Dylan Tan: _(TBD)_
-- Jack Dao: Scrum _(TBD)_
 
 ## Initial task assignment
 
-- Masa Ishihara: User story 2 (Optimize a prompt), build the end-to-end PoC
+- Masa Ishihara: The user story (shorten a prompt end to end), build the end-to-end PoC
 - Matthew Zerner: _(TBD)_
 - Virinchi Chintala: _(TBD)_
 - Marc Dylan Tan: _(TBD)_

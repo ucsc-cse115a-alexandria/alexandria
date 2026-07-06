@@ -120,8 +120,8 @@ release plan should be revised to move G3 into Sprint 1. Improving the compressi
 ## Team roles
 
 - Masa Ishihara: Product Owner
-- Matthew Zerner: _(TBD)_
-- Virinchi Chintala: _(TBD)_
+- Matthew Zerner: Team
+- Virinchi Chintala: Team
 - Marc Dylan Tan: Scrum Master
 
 ## Initial task assignment
