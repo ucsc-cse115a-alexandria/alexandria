@@ -26,6 +26,7 @@ class Params(BaseModel):
     model_config = ConfigDict(frozen=True)
     threshold: Threshold = 0.85
     drift_budget: Drift = 0.01
+    max_tokens: int | None = Field(default=None, ge=1)
 
 
 class Embedder(Protocol):
