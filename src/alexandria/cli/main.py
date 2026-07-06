@@ -10,6 +10,7 @@ from pydantic import ValidationError
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Params
 from alexandria.ops import DEFAULT_MODEL, DETERMINISTIC, build_embedder
+from alexandria.ops.features.compare import compare as compare_feature
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER
 from alexandria.ops.features.optimize import optimize as optimize_phase
 from alexandria.ops.features.represent import represent as represent_phase
@@ -128,6 +129,31 @@ def select_cmd(file: IO[str], model: str, drift_budget: float, as_json: bool) ->
         )
     else:
         click.echo(selection.document.text, nl=False)
+
+
+@cli.command(name="compare")
+@click.argument("original", type=click.File("r"))
+@click.argument("edited", type=click.File("r"))
+@click.option(
+    "--min-similarity",
+    type=float,
+    default=None,
+    help="turn the command into a gate: exit 1 when similarity falls below this (0.99 = the 99% fidelity gate)",
+)
+@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
+@click.pass_context
+def compare_cmd(
+    ctx: click.Context, original: IO[str], edited: IO[str], min_similarity: float | None, model: str
+) -> None:
+    """Compare two prompts: cosine similarity and token reduction as JSON (at most one FILE may be '-').
+
+    This command talks in similarity where reduce talks in --drift-budget; the JSON carries both.
+    """
+    with _clean_errors():
+        result = compare_feature(original.read(), edited.read(), build_embedder(model))
+    click.echo(result.model_dump_json(indent=2))
+    if min_similarity is not None and result.similarity < min_similarity:
+        ctx.exit(1)
 
 
 @cli.command(name="reduce")
