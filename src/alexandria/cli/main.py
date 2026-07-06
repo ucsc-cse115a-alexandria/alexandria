@@ -10,15 +10,12 @@ from pydantic import ValidationError
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Params
 from alexandria.ops import DEFAULT_MODEL, DETERMINISTIC, build_embedder
-from alexandria.ops.features.compare import compare as compare_feature
-from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER
-from alexandria.ops.features.optimize import optimize as optimize_phase
-from alexandria.ops.features.represent import represent as represent_phase
-from alexandria.ops.features.score import DEFAULT_SCORER, score_rows
-from alexandria.ops.features.score import score as score_phase
-from alexandria.ops.features.select import DEFAULT_SELECTOR
-from alexandria.ops.features.select import select as select_phase
-from alexandria.ops.pipe import reduce as reduce_prompt
+from alexandria.ops.features.compare import compare
+from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
+from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
+from alexandria.ops.features.select import DEFAULT_SELECTOR, select
+from alexandria.ops.pipe import reduce
 
 if TYPE_CHECKING:
     from collections.abc import Generator
@@ -67,7 +64,7 @@ def cli() -> None:
 def represent_cmd(file: IO[str], model: str) -> None:
     """Raw prompt in, a DocumentEnvelope (JSON) out."""
     with _clean_errors():
-        document = represent_phase(file.read(), build_embedder(model))
+        document = represent(file.read(), build_embedder(model))
     click.echo(DocumentEnvelope(document=document).model_dump_json())
 
 
@@ -80,7 +77,7 @@ def score_cmd(file: IO[str], scorers: str, as_table: bool) -> None:
     names = _names(scorers)
     with _clean_errors():
         document = DocumentEnvelope.model_validate_json(file.read()).document
-        bundle = score_phase(document, names=names)
+        bundle = score(document, names=names)
     if as_table:
         for row in score_rows(document, bundle, names):
             click.echo("  ".join(f"{key}={value}" for key, value in row.items()))
@@ -97,7 +94,7 @@ def optimize_cmd(file: IO[str], optimizers: str, threshold: float) -> None:
     names = _names(optimizers)
     with _clean_errors():
         scored = ScoredEnvelope.model_validate_json(file.read())
-        plan = optimize_phase(scored.document, scored.scores, names=names, params=Params(threshold=threshold))
+        plan = optimize(scored.document, scored.scores, names=names, params=Params(threshold=threshold))
     click.echo(PlanEnvelope(document=scored.document, plan=plan).model_dump_json())
 
 
@@ -115,7 +112,7 @@ def select_cmd(file: IO[str], model: str, drift_budget: float, as_json: bool) ->
     """PlanEnvelope in, the reduced prompt out (or a JSON reduction summary with --json)."""
     with _clean_errors():
         envelope = PlanEnvelope.model_validate_json(file.read())
-        selection = select_phase(
+        selection = select(
             envelope.document, envelope.plan, build_embedder(model), params=Params(drift_budget=drift_budget)
         )
     if as_json:
@@ -150,7 +147,7 @@ def compare_cmd(
     This command talks in similarity where reduce talks in --drift-budget; the JSON carries both.
     """
     with _clean_errors():
-        result = compare_feature(original.read(), edited.read(), build_embedder(model))
+        result = compare(original.read(), edited.read(), build_embedder(model))
     click.echo(result.model_dump_json(indent=2))
     if min_similarity is not None and result.similarity < min_similarity:
         ctx.exit(1)
@@ -176,7 +173,7 @@ def reduce_cmd(
     names = _names(optimizers)
     params = Params(threshold=threshold, drift_budget=drift_budget)
     with _clean_errors():
-        result = reduce_prompt(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
+        result = reduce(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
     else:
