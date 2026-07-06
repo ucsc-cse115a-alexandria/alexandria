@@ -80,13 +80,28 @@ holding a minimum code-quality bar. Lands before the user story's tasks.
 
 ## Initial burnup chart
 
-_(TBD: burnup chart for Sprint 0, labeled with sprint number and product name, posted in the lab.)_
+Scope is the full task listing above: 50 ideal hours (user story 20h + Enabler A 21h +
+Enabler B 9h). The completed line is reconstructed from the GitHub commit history; the
+[Sprint 0 report](sprint-0-report.md)'s chart tracks the user story only.
+
+```mermaid
+xychart-beta
+    title "Sprint 0 Burnup — Alexandria"
+    x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
+    y-axis "Ideal hours" 0 --> 50
+    line [50, 50, 50, 50, 50, 50, 50]
+    line [7, 7, 25, 29, 50, 50, 50]
+```
+
+Upper line: total scope (50h). Lower line: cumulative ideal hours completed. Jun 24: repo
+scaffold, packaging, and CI landed (PR #1, 7h). Jun 26: install/run instructions plus the
+represent, score, and optimize phases (25h). Jun 27: the CLI merged with the select phase
+(PR #4), completing the user story (29h). Jun 28: all research-spike notes landed (PR #6),
+finishing the sprint scope (50h), and it held through the end of the sprint.
 
 ## Initial scrum board
 
-_(TBD: task board labeled with sprint number and product name, posted in the lab. Four columns:
-user stories · tasks not started · tasks in progress · tasks completed. Tasks sit in the same row
-as their user story.)_
+<https://github.com/orgs/ucsc-cse115a-alexandria/projects/1/views/1>
 
 ## Scrum times
 

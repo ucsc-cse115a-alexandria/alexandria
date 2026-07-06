@@ -132,13 +132,26 @@ release plan should be revised to move G3 into Sprint 1. Improving the compressi
   compressed); writing the result into the README is assigned separately
 - Marc Dylan Tan: Enabler A, benchmark selection
 
-## Initial burnup chart
+## Burnup chart (through Jul 6)
 
-_(TBD)_
+Scope line is the committed 35 ideal hours; the completed line counts only board items marked
+**Done**, credited on the day their PR merged (Enabler C API + CLI split and the skill-corpus
+download on Jul 5; the fidelity check and the CLI import-contract test on Jul 6). It stops at Jul 6,
+the current day.
+
+```mermaid
+xychart-beta
+    title "Sprint 1 Burnup — Alexandria"
+    x-axis [Jul1, Jul2, Jul3, Jul4, Jul5, Jul6, Jul7]
+    y-axis "Ideal hours" 0 --> 35
+    line [35, 35, 35, 35, 35, 35, 35]
+    line [0, 0, 0, 0, 12, 18]
+```
 
 ## Initial scrum board
 
-_(TBD)_
+<https://github.com/orgs/ucsc-cse115a-alexandria/projects/1/views/1>
+
 
 ## Scrum times
 
