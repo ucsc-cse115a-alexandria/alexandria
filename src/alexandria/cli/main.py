@@ -176,31 +176,30 @@ def compare_cmd(
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 def reduce_cmd(
-    file: IO[str], 
-    optimizers: str, 
-    selector: str, 
-    threshold: float, 
-    drift_budget: float, 
+    file: IO[str],
+    optimizers: str,
+    selector: str,
+    threshold: float,
+    drift_budget: float,
     min_similarity: float | None,
-    model: str, 
-    as_json: bool
+    model: str,
+    as_json: bool,
 ) -> None:
     """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json)."""
-    
-    #Validate mutually exclusive options
+    # NEW: Validate mutually exclusive options
     if min_similarity is not None and drift_budget != _DEFAULTS.drift_budget:
         raise click.UsageError("Options --min-similarity and --drift-budget are mutually exclusive.")
 
     names = _names(optimizers)
-    
-    
+
+    # NEW: Convert min-similarity to drift budget, or fall back to drift_budget
     final_drift_budget = (1.0 - min_similarity) if min_similarity is not None else drift_budget
-    
+
     params = Params(threshold=threshold, drift_budget=final_drift_budget)
-    
+
     with _clean_errors():
         result = reduce(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
-        
+
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
     else:
