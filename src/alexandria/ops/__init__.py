@@ -1,5 +1,6 @@
-"""The library body: the four features and the pipe that composes them."""
+"""The library body: the standalone features and the pipe that chains them."""
 
+from alexandria.ops.features.compare import CompareResult, compare
 from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score, score_rows
@@ -12,8 +13,10 @@ from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embed
 __all__ = [
     "DEFAULT_MODEL",
     "DETERMINISTIC",
+    "CompareResult",
     "ReduceResult",
     "build_embedder",
+    "compare",
     "optimize",
     "reduce",
     "represent",

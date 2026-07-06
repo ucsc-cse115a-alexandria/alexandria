@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from typing import TYPE_CHECKING
 
+import pytest
 from click.testing import CliRunner
 
 from alexandria.cli import cli
@@ -146,6 +148,25 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
+
+
+def test_compare_min_similarity_gates_the_exit_code() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("a.txt").write_text("keep this exact instruction\n")
+        Path("b.txt").write_text("keep this exact instruction\n")
+        Path("c.txt").write_text("a completely unrelated instruction\n")
+
+        same = runner.invoke(
+            cli, ["compare", "a.txt", "b.txt", "--model", "deterministic", "--min-similarity", "0.99"]
+        )
+        differ = runner.invoke(
+            cli, ["compare", "a.txt", "c.txt", "--model", "deterministic", "--min-similarity", "0.99"]
+        )
+
+    assert same.exit_code == 0
+    assert json.loads(same.output)["similarity"] == pytest.approx(1.0)
+    assert differ.exit_code == 1
 
 
 def test_represent_rejects_an_empty_prompt_cleanly() -> None:

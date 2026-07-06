@@ -113,6 +113,9 @@ ignore = [
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
+# pydantic introspects a computed_field's return annotation at model-build time, so its imports are
+# runtime-required even though they appear only in an annotation.
+runtime-evaluated-decorators = ["pydantic.computed_field"]
 
 [tool.ruff.format]
 quote-style = "double"
@@ -158,7 +161,8 @@ source_modules = ["alexandria.cli"]
 forbidden_modules = ["alexandria.utils"]
 allow_indirect_imports = true
 
-# Pipe may import features to compose them, never the reverse.
+# Features are standalone capabilities; pipe may import them to bundle the compositions worth
+# chaining (reduce, score_report), never the reverse.
 [[tool.importlinter.contracts]]
 name = "Pipe composes features"
 type = "layers"
@@ -172,12 +176,14 @@ layers = ["pipe", "features"]
 # extends the wildcard, but its co-located _test.py must be added to ignore_imports
 # by hand — grimp wildcards replace whole segments, so the "_test" suffix can't be globbed.
 
-# Features may not import each other; inter-feature types live in ir.contracts.
+# Each feature is a standalone capability and may not import a sibling; inter-feature types live in
+# ir.contracts.
 [[tool.importlinter.contracts]]
 name = "Features are independent"
 type = "independence"
 modules = ["alexandria.ops.features.*"]
 ignore_imports = [
+    "alexandria.ops.features.compare_test -> alexandria.**",
     "alexandria.ops.features.optimize_test -> alexandria.**",
     "alexandria.ops.features.represent_test -> alexandria.**",
     "alexandria.ops.features.score_test -> alexandria.**",
