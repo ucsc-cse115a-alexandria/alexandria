@@ -5,10 +5,9 @@ Requires:
 - OPENAI_API_KEY in the environment (see .env.example)
 """
 
-import argparse
-import sys
 from typing import TYPE_CHECKING
 
+import click
 import tiktoken
 
 from alexandria import compare
@@ -16,6 +15,7 @@ from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+    from typing import TextIO
 
     from alexandria.ir.contracts import Embedder
 
@@ -70,26 +70,22 @@ def inflate(
     raise RuntimeError(f"inflated text stayed below {MIN_SIMILARITY} similarity after {max_attempts} attempts")
 
 
-def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--factor", type=float, required=True, help="target token ratio, e.g. 1.5")
-    parser.add_argument("--model", default="gpt-5.4-mini", help="OpenAI model id")
-    parser.add_argument("--input", type=argparse.FileType("r"), default=sys.stdin, help="prompt file (default stdin)")
-    parser.add_argument(
-        "--output", type=argparse.FileType("w"), default=sys.stdout, help="output file (default stdout)"
-    )
-    parser.add_argument("--max-attempts", type=int, default=3, help="regenerations before giving up")
-    args = parser.parse_args()
-
+@click.command(help=__doc__)
+@click.option("--factor", type=float, required=True, help="Target token ratio, e.g. 1.5.")
+@click.option("--model", default="gpt-5.4-mini", show_default=True, help="OpenAI model id.")
+@click.option("--input", "input_file", type=click.File("r"), default="-", help="Prompt file (default stdin).")
+@click.option("--output", "output_file", type=click.File("w"), default="-", help="Output file (default stdout).")
+@click.option("--max-attempts", type=int, default=3, show_default=True, help="Regenerations before giving up.")
+def main(factor: float, model: str, input_file: TextIO, output_file: TextIO, max_attempts: int) -> None:
     inflated = inflate(
-        args.input.read(),
-        args.factor,
-        build_generate(args.model),
+        input_file.read(),
+        factor,
+        build_generate(model),
         default_embedder(),
         tiktoken.get_encoding("cl100k_base"),
-        max_attempts=args.max_attempts,
+        max_attempts=max_attempts,
     )
-    args.output.write(inflated)
+    output_file.write(inflated)
 
 
 if __name__ == "__main__":
