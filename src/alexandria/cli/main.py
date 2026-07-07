@@ -164,16 +164,42 @@ def compare_cmd(
     default=_DEFAULTS.drift_budget,
     help="max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)",
 )
+@click.option(
+    "--min-similarity",
+    type=float,
+    default=None,
+    help=(
+        "Stop reduction before dropping below this similarity floor (e.g., 0.99). "
+        "Mutually exclusive with --drift-budget."
+    ),
+)
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 def reduce_cmd(
-    file: IO[str], optimizers: str, selector: str, threshold: float, drift_budget: float, model: str, as_json: bool
+    file: IO[str],
+    optimizers: str,
+    selector: str,
+    threshold: float,
+    drift_budget: float,
+    min_similarity: float | None,
+    model: str,
+    as_json: bool,
 ) -> None:
     """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json)."""
+    # NEW: Validate mutually exclusive options
+    if min_similarity is not None and drift_budget != _DEFAULTS.drift_budget:
+        raise click.UsageError("Options --min-similarity and --drift-budget are mutually exclusive.")
+
     names = _names(optimizers)
-    params = Params(threshold=threshold, drift_budget=drift_budget)
+
+    # NEW: Convert min-similarity to drift budget, or fall back to drift_budget
+    final_drift_budget = (1.0 - min_similarity) if min_similarity is not None else drift_budget
+
+    params = Params(threshold=threshold, drift_budget=final_drift_budget)
+
     with _clean_errors():
         result = reduce(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
+
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
     else:
