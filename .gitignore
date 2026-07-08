@@ -19,4 +19,4 @@ coverage.*
 
 # Generated artifacts from scripts/
 data/
-corpus/
+corpus/.DS_Store
