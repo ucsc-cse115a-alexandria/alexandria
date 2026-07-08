@@ -27,12 +27,16 @@ dev = [
     "pytest-cov>=7.1.0",
     "import-linter>=2.7",
 ]
+scripts = [
+    "openai>=2.44",
+]
 
 [tool.uv]
 package = true
 
 [tool.pytest.ini_options]
-testpaths = ["src", "tests"]
+testpaths = ["src", "tests", "scripts"]
+pythonpath = ["scripts"]
 addopts = "--cov --cov-report=term-missing --import-mode=importlib"
 
 [tool.coverage.run]
