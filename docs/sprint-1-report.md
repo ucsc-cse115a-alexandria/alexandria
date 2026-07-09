@@ -1,4 +1,4 @@
-# Sprint 0 Report
+# Sprint 1 Report
 
 **Product:** Alexandria (Prompt Optimization for LLM Applications / Coding Agent) ·
 **Team:** Alexandria ·
@@ -24,7 +24,7 @@ None this sprint. The current process worked well, so we have nothing we want to
 
 ### Completed
 
-- **Sprint 0 user story (release plan):** As an engineer who uses Cursor or Claude Code, I want a
+- **Sprint 1 user story (release plan):** As an engineer who uses Cursor or Claude Code, I want a
   one CLI command that cuts the token count of my agent-instruction file by removing redundant
   instructions while keeping meaning intact. Shipped end to end (represent → score → optimize →
   select) behind the `reduce` command.
@@ -41,13 +41,13 @@ None this sprint. The current process worked well, so we have nothing we want to
 - User stories / day: 0.14
 - Ideal work hours / day: 2.3
 
-### Sprint 0 burnup chart
+### Sprint 1 burnup chart
 
-![Sprint 0 Burnup — Alexandria](sprint-0-burnup.png)
+![Sprint 1 Burnup — Alexandria](sprint-1-burnup.png)
 
 ```mermaid
 xychart-beta
-    title "Sprint 0 Burnup — Alexandria"
+    title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
     y-axis "Ideal hours" 0 --> 16
     line [16, 16, 16, 16, 16, 16, 16]
