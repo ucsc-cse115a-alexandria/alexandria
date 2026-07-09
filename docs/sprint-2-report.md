@@ -64,13 +64,13 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 
 | PR | Work | Hours |
 |----|------|------:|
-| — | Sprint 1 report + Sprint 2 plan docs (direct to `main`) | 5 |
+| — | Sprint 1 report + Sprint 2 plan docs (direct to `main`) | 2 |
 | #11 | Skill-corpus download script + corpus repository (#12, #18) | 5 |
-| #33, #35 | Enabler C: restructure, public API, CLI package (#22–#24) | 6 |
-| #36, #37 | Compression fidelity check + `compare` command (#20) | 4 |
+| #33, #35 | Enabler C: restructure, public API, CLI package (#22–#24) | 7 |
+| #36, #37 | Compression fidelity check + `compare` command (#20) | 5 |
 | #38 | `--min-similarity` option (#30) | 4 |
 | #39, #41 | Enabler A: benchmark survey + rating and shortlist (#25, #27) | 8 |
-| #40 | Redundancy inflation script (#19) | 3 |
+| #40 | Redundancy inflation script (#19) | 4 |
 | — | Enabler A: IFEval trial (#28, in progress at sprint end) | 5 |
 | **Total** | | **40** |
 
@@ -82,5 +82,5 @@ xychart-beta
     x-axis [Jul1, Jul2, Jul3, Jul4, Jul5, Jul6, Jul7]
     y-axis "Hours" 0 --> 40
     line [40, 40, 40, 40, 40, 40, 40]
-    line [4, 11, 14, 22, 24, 33, 40]
+    line [8, 9, 18, 22, 27, 35, 40]
 ```
