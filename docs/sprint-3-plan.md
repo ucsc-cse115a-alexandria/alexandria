@@ -183,10 +183,10 @@ work. The packaging spike moves to Sprint 4. The release plan should be revised 
 
 ## Initial task assignment
 
-- Masa Ishihara: 
-- Matthew Zerner: 
-- Virinchi Chintala:
-- Marc Dylan Tan: 
+- Masa Ishihara: User story 1
+- Matthew Zerner: User story 4
+- Virinchi Chintala: User story 3
+- Marc Dylan Tan: User story 2
 
 
 ## Initial burnup chart
