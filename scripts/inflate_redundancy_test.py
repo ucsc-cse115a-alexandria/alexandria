@@ -19,15 +19,16 @@ class ConstantEmbedder:
         return [np.ones(8, dtype=np.float32) for _ in texts]
 
 
-_RESTATEMENT = " Remember: reply in JSON and keep every key lowercase."
+_RESTATEMENT_PIECE = "Reply in JSON. Keep every key lowercase."
 
 
-def make_growing_generate() -> tuple[list[str], Callable[[str], str]]:
+def make_restating_generate() -> tuple[list[str], Callable[[str], str]]:
+    """Fake generate for the append-only loop: every call returns one restatement piece."""
     calls: list[str] = []
 
     def generate(prompt: str) -> str:
         calls.append(prompt)
-        return _ORIGINAL + _RESTATEMENT * len(calls)
+        return _RESTATEMENT_PIECE
 
     return calls, generate
 
@@ -39,7 +40,7 @@ class OrthogonalEmbedder:
         self._calls = 0
 
     def embed(self, texts: list[str]) -> list[np.ndarray]:
-        vectors = []
+        vectors: list[np.ndarray] = []
         for _ in texts:
             vector = np.zeros(64, dtype=np.float32)
             vector[self._calls % 64] = 1.0
@@ -48,12 +49,14 @@ class OrthogonalEmbedder:
         return vectors
 
 
-def test_inflate_expands_until_token_ratio_is_met() -> None:
+def test_inflate_expands_then_truncates_to_target() -> None:
     factor = 4.0
-    calls, generate = make_growing_generate()
+    target = round(factor * len(_ENCODING.encode(_ORIGINAL)))
+    calls, generate = make_restating_generate()
     inflated = inflate(_ORIGINAL, factor, generate, ConstantEmbedder(), _ENCODING)
-    assert len(_ENCODING.encode(inflated)) >= factor * len(_ENCODING.encode(_ORIGINAL))
-    assert len(calls) > 1
+    assert len(_ENCODING.encode(inflated)) == target  # truncated to exactly factor x
+    assert len(calls) > 1  # append-only needed several restatement pieces to reach the target
+    assert inflated.startswith(_RESTATEMENT_PIECE)  # first piece kept intact
 
 
 def test_section_feedback_flags_structure_change() -> None:
@@ -68,7 +71,7 @@ class KeywordEmbedder:
     model_id = "keyword"
 
     def embed(self, texts: list[str]) -> list[np.ndarray]:
-        vectors = []
+        vectors: list[np.ndarray] = []
         for text in texts:
             vector = np.zeros(2, dtype=np.float32)
             vector[1 if "quack" in text else 0] = 1.0
@@ -77,26 +80,25 @@ class KeywordEmbedder:
 
 
 def test_retry_feedback_names_drifted_section() -> None:
-    original = "# alpha\nstay calm and answer briefly.\n# beta\nalways cite your sources.\n"
-    drifted = "# alpha\nstay calm and answer briefly. stay calm.\n# beta\nalways cite your sources. quack quack.\n"
-    good = "# alpha\nstay calm and answer briefly. stay calm.\n# beta\nalways cite your sources. cite them.\n"
-    prompts = []
+    original = "# alpha\nalways cite the listed sources carefully.\n"
+    drifted = "# alpha\nquack quack quack quack quack quack quack.\n"
+    prompts: list[str] = []
 
     def generate(prompt: str) -> str:
         prompts.append(prompt)
-        return drifted if len(prompts) == 1 else good
+        # attempt 2's inflate prompt carries the drift feedback; the first attempt (and expands) drift
+        return original if "drifted in meaning" in prompt else drifted
 
-    assert inflate(original, 1.2, generate, KeywordEmbedder(), _ENCODING) == good
-    assert 'section "beta" drifted' in prompts[1]
-    assert 'section "alpha"' not in prompts[1]
+    assert inflate(original, 1.0, generate, KeywordEmbedder(), _ENCODING) == original
+    assert 'section "alpha" drifted' in prompts[-1]
 
 
 def test_inflate_raises_after_max_attempts_below_gate() -> None:
-    attempts = []
+    attempts: list[str] = []
 
     def long_generate(prompt: str) -> str:
         attempts.append(prompt)
-        return _ORIGINAL + _RESTATEMENT * 10  # skips the expand loop
+        return _RESTATEMENT_PIECE * 10  # long enough to skip the expand loop
 
     with pytest.raises(RuntimeError, match="after 2 attempts"):
         inflate(_ORIGINAL, 1.2, long_generate, OrthogonalEmbedder(), _ENCODING, max_attempts=2)

@@ -32,22 +32,22 @@ type Generate = Callable[[str], str]
 
 MIN_SIMILARITY = 0.95  # inflation's own gate; genuine restatement can't clear the library's 0.99 (MiniLM cosine)
 
-PROMPT_VERSION = "inflate-v4"
+PROMPT_VERSION = "inflate-v6"
 _INFLATE_INSTRUCTIONS = """\
-Restate the prompt below redundantly to make it roughly {factor}x its current length. Reword it in
-your own words — do not copy sentences verbatim — while preserving its exact meaning and reusing its
-key nouns, verbs, numbers, tool names, and markdown headers. Cover the same topics in the same order
-and proportions, then add further independent restatements of the same content until the text reaches
-about {factor}x the original length. Introduce no negation, comparator, number, tool name, or
-permission that is absent from the prompt. Output only the restated prompt.
+Restate the prompt below in completely fresh wording. Do not reuse any sentence, line, or multi-word
+phrase from the original unchanged — every sentence must be rewritten in your own words. Preserve its
+exact meaning, keep only individual key terms (nouns, verbs, numbers, tool names) and the markdown
+headers, and cover the same topics in the same order and proportions. Introduce no negation,
+comparator, number, tool name, or permission that is absent from the prompt. Output only the restatement.
 {feedback}
 {prompt}"""
 _EXPAND_INSTRUCTIONS = """\
-The text below redundantly restates an original prompt. Append another independent restatement of the
-same content in fresh wording, reusing the original's key terms and markdown headers and introducing
-nothing new. Output only the full expanded text.
+Restate the prompt below again in completely fresh wording, different from any earlier restatement. Do
+not reuse any sentence, line, or multi-word phrase from the original unchanged. Preserve its exact
+meaning, keep only individual key terms and the markdown headers, and introduce nothing new. Output
+only the restatement.
 
-{text}"""
+{prompt}"""
 _FEEDBACK_HEADER = (
     "\nYour previous attempt drifted in meaning. Restate only what the prompt already says, reusing its key terms:\n"
 )
@@ -57,7 +57,7 @@ def build_generate(model: str) -> Generate:
     """The production Generate: OpenAI Responses API, key from OPENAI_API_KEY."""
     from openai import OpenAI
 
-    client = OpenAI()
+    client = OpenAI(timeout=120.0)  # fail a stalled request instead of hanging; the SDK retries timeouts
 
     def generate(prompt: str) -> str:
         return client.responses.create(model=model, input=prompt).output_text
@@ -102,13 +102,14 @@ def inflate(
     encoding: tiktoken.Encoding,
     max_attempts: int = 2,
 ) -> str:
-    """Return an ~factor-times-longer prompt of redundant restatements, gated at MIN_SIMILARITY."""
-    target_tokens = factor * len(encoding.encode(prompt))
+    """Return independent redundant restatements truncated to factor x the original tokens, gated at MIN_SIMILARITY."""
+    target_tokens = round(factor * len(encoding.encode(prompt)))
     feedback = ""
     for _ in range(max_attempts):
-        inflated = generate(_INFLATE_INSTRUCTIONS.format(factor=factor, feedback=feedback, prompt=prompt))
-        while len(encoding.encode(inflated)) < target_tokens:
-            inflated = generate(_EXPAND_INSTRUCTIONS.format(text=inflated))
+        parts = [generate(_INFLATE_INSTRUCTIONS.format(feedback=feedback, prompt=prompt))]
+        while len(encoding.encode("\n\n".join(parts))) < target_tokens:
+            parts.append(generate(_EXPAND_INSTRUCTIONS.format(prompt=prompt)))
+        inflated = encoding.decode(encoding.encode("\n\n".join(parts))[:target_tokens])
         if compare(prompt, inflated, embedder).similarity >= MIN_SIMILARITY:
             return inflated
         notes = section_feedback(prompt, inflated, embedder)
