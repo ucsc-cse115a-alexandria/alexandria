@@ -66,22 +66,11 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 
 ### Sprint 1 burnup chart
 
-![Sprint 1 Burnup — Alexandria](sprint-1-burnup.png)
-
 ```mermaid
 xychart-beta
     title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
-    y-axis "Actual hours" 0 --> 33
+    y-axis "Hours" 0 --> 33
     line [33, 33, 33, 33, 33, 33, 33]
     line [1, 3, 8, 12.5, 25, 30, 33]
 ```
-
-Upper line: total actual hours spent over the sprint (33h). Lower line: cumulative actual hours.
-Jun 24–25 covered project scaffolding, CI, and planning docs (3h). Jun 26–27 was the bulk of the
-feature work: the represent → score → optimize phases, the pipeline, and the CLI landed on Jun 26,
-and the select phase merged on Jun 27 (PR #4), completing user story 1 end to end. Jun 28 added
-the fidelity-probe scripts plus Marc's research notes for all six papers (PR #6). Jun 28–29 also
-included the initial presentation slides (4h) for the Jun 29 class presentation. Jun 29–30 closed
-out the sprint with the v2 spec draft, product-structure docs, the logo that completes user
-story 2 (PR #8), and the revised Sprint 2–4 user stories (PR #10).
