@@ -43,26 +43,26 @@ None this sprint. The current process worked well, so we have nothing we want to
 ## Work completion rate
 
 - User stories completed: 2
-- Actual work hours: 33
+- Actual work hours: 36
 - Days in sprint: 7 (Jun 24–30, 2026)
 - User stories / day: 0.29
-- Actual work hours / day: 4.7
+- Actual work hours / day: 5.1
 
 Hours are actual time spent on sprint work, broken down by merged PR:
 
 | PR | Work | Hours |
 |----|------|------:|
-| #1 | Core package + coverage setup | 2 |
-| #2 | Sprint 1 plan docs | 1 |
+| #1 | Core package + coverage setup | 3 |
+| #2 | Sprint 1 plan docs | 2 |
 | #3 | Spec update (0626) | 1.5 |
 | #4 | Prototype: represent → score → optimize → select, pipeline, CLI | 8 |
 | #6 | Research notes for all six papers | 10 |
 | #7 | Skill-analyze / fidelity-probe scripts | 2.5 |
-| #8 | Alexandria logo | 1.5 |
-| #9 | Spec v2 draft | 1 |
+| #8 | Alexandria logo | 0.5 |
+| #9 | Spec v2 draft | 3 |
 | #10 | Sprint 2–4 user-story revision | 1.5 |
 | — | Initial presentation slides (no PR) | 4 |
-| **Total** | | **33** |
+| **Total** | | **36** |
 
 ### Sprint 1 burnup chart
 
@@ -70,7 +70,7 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 xychart-beta
     title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
-    y-axis "Hours" 0 --> 33
-    line [33, 33, 33, 33, 33, 33, 33]
-    line [1, 3, 8, 12.5, 25, 30, 33]
+    y-axis "Hours" 0 --> 36
+    line [36, 36, 36, 36, 36, 36, 36]
+    line [2, 5, 10, 14.5, 27, 34, 36]
 ```
