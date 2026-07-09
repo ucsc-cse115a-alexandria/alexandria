@@ -3,7 +3,7 @@
 **Product:** Alexandria (Prompt Optimization for LLM Applications / Coding Agent) ·
 **Team:** Alexandria ·
 **Sprint completion date:** Tue, Jun 30, 2026 ·
-**Revision:** 2.0 (2026-07-06)
+**Revision:** 2.1 (2026-07-09)
 
 ## Goal
 
@@ -33,13 +33,23 @@ Estimates are ideal hours (each task ≤ 6h).
 
 **Total for the user story: 20 hours**
 
+### User story: Make the tool easy to spot on GitHub (Customer/User value · Priority 2)
+
+> As an engineer searching GitHub for prompt tools, I want the project to have an icon that
+> shows what kind of tool Alexandria is, so that the project catches my eye when I scan
+> search results.
+
+- Design the Alexandria logo and add it to the repository (2h)
+
+**Total for the user story: 2 hours**
+
 ## Enabling work (not user stories)
 
 These items deliver no value to the user on their own, but the user story cannot land without
 them, and the spike prepares Sprint 2. Each is an imperative backlog item tagged with the kind
 of value it delivers, listed in priority order. The infrastructure enabler lands first.
 
-### Enabler A: Research spike toward the Sprint 2 benchmark (Spike / Technical value · Priority 2)
+### Enabler A: Research spike toward the Sprint 2 benchmark (Spike / Technical value · Priority 3)
 
 Survey prompt-optimization work, how token count affects LLM accuracy, and existing prompt/agent
 benchmarks. Each task produces a note following
@@ -52,7 +62,7 @@ benchmarks. Each task produces a note following
 
 **Total for Enabler A: 21 hours**
 
-### Enabler B: Repo scaffold and CI (Infrastructure / Technical value · Priority 3)
+### Enabler B: Repo scaffold and CI (Infrastructure / Technical value · Priority 4)
 
 A project scaffold and a CI pipeline, so that multiple developers can work on the codebase while
 holding a minimum code-quality bar. Lands before the user story's tasks.
@@ -80,24 +90,24 @@ holding a minimum code-quality bar. Lands before the user story's tasks.
 
 ## Initial burnup chart
 
-Scope is the full task listing above: 50 ideal hours (user story 20h + Enabler A 21h +
-Enabler B 9h). The completed line is reconstructed from the GitHub commit history; the
-[Sprint 1 report](sprint-1-report.md)'s chart tracks actual hours spent instead.
+Scope is the full task listing above: 52 ideal hours (user story 1 20h + user story 2 2h +
+Enabler A 21h + Enabler B 9h). The completed line is reconstructed from the GitHub commit
+history; the [Sprint 1 report](sprint-1-report.md)'s chart tracks actual hours spent instead.
 
 ```mermaid
 xychart-beta
     title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
-    y-axis "Ideal hours" 0 --> 50
-    line [50, 50, 50, 50, 50, 50, 50]
-    line [7, 7, 25, 29, 50, 50, 50]
+    y-axis "Ideal hours" 0 --> 52
+    line [52, 52, 52, 52, 52, 52, 52]
+    line [7, 7, 25, 29, 50, 50, 52]
 ```
 
-Upper line: total scope (50h). Lower line: cumulative ideal hours completed. Jun 24: repo
+Upper line: total scope (52h). Lower line: cumulative ideal hours completed. Jun 24: repo
 scaffold, packaging, and CI landed (PR #1, 7h). Jun 26: install/run instructions plus the
 represent, score, and optimize phases (25h). Jun 27: the CLI merged with the select phase
-(PR #4), completing the user story (29h). Jun 28: all research-spike notes landed (PR #6),
-finishing the sprint scope (50h), and it held through the end of the sprint.
+(PR #4), completing user story 1 (29h). Jun 28: all research-spike notes landed (PR #6, 50h).
+Jun 30: the Alexandria logo merged (PR #8), completing user story 2 and the sprint scope (52h).
 
 ## Initial scrum board
 

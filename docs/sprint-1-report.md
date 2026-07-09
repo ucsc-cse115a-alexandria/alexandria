@@ -24,10 +24,17 @@ None this sprint. The current process worked well, so we have nothing we want to
 
 ### Completed
 
-- **Sprint 1 user story (release plan):** As an engineer who uses Cursor or Claude Code, I want a
+- **User story 1 (reduce CLI):** As an engineer who uses Cursor or Claude Code, I want a
   one CLI command that cuts the token count of my agent-instruction file by removing redundant
   instructions while keeping meaning intact. Shipped end to end (represent → score → optimize →
   select) behind the `reduce` command.
+- **User story 2 (project icon):** As an engineer searching GitHub for prompt tools, I want the
+  project to have an icon that shows what kind of tool Alexandria is, so that the project
+  catches my eye when I scan search results. The Alexandria logo shipped in PR #8.
+- **Enabler: development environment.** Repo scaffold, packaging, and CI that runs the linter,
+  formatter, type checker, and tests with coverage on every push (PR #1).
+- **Enabler: related-work research.** Research notes for six papers on prompt compression,
+  long-context degradation, prompt-writing techniques, and benchmarks (PR #6).
 
 ### Not completed (planned but unfinished)
 
@@ -35,11 +42,11 @@ None this sprint. The current process worked well, so we have nothing we want to
 
 ## Work completion rate
 
-- User stories completed: 1
-- Actual work hours: 29
+- User stories completed: 2
+- Actual work hours: 33
 - Days in sprint: 7 (Jun 24–30, 2026)
-- User stories / day: 0.14
-- Actual work hours / day: 4.1
+- User stories / day: 0.29
+- Actual work hours / day: 4.7
 
 Hours are actual time spent on sprint work, broken down by merged PR:
 
@@ -54,7 +61,8 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 | #8 | Alexandria logo | 1.5 |
 | #9 | Spec v2 draft | 1 |
 | #10 | Sprint 2–4 user-story revision | 1.5 |
-| **Total** | | **29** |
+| — | Initial presentation slides (no PR) | 4 |
+| **Total** | | **33** |
 
 ### Sprint 1 burnup chart
 
@@ -64,15 +72,16 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 xychart-beta
     title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
-    y-axis "Actual hours" 0 --> 29
-    line [29, 29, 29, 29, 29, 29, 29]
-    line [1, 3, 8, 12.5, 23, 26, 29]
+    y-axis "Actual hours" 0 --> 33
+    line [33, 33, 33, 33, 33, 33, 33]
+    line [1, 3, 8, 12.5, 25, 30, 33]
 ```
 
-Upper line: total actual hours spent over the sprint (29h). Lower line: cumulative actual hours.
+Upper line: total actual hours spent over the sprint (33h). Lower line: cumulative actual hours.
 Jun 24–25 covered project scaffolding, CI, and planning docs (3h). Jun 26–27 was the bulk of the
 feature work: the represent → score → optimize phases, the pipeline, and the CLI landed on Jun 26,
-and the select phase merged on Jun 27 (PR #4), completing the user story end to end. Jun 28 added
-the fidelity-probe scripts plus Marc's research notes for all six papers (PR #6). Jun 29–30 closed
-out the sprint with the v2 spec draft, product-structure docs, the logo (PR #8), and the revised
-Sprint 2–4 user stories (PR #10).
+and the select phase merged on Jun 27 (PR #4), completing user story 1 end to end. Jun 28 added
+the fidelity-probe scripts plus Marc's research notes for all six papers (PR #6). Jun 28–29 also
+included the initial presentation slides (4h) for the Jun 29 class presentation. Jun 29–30 closed
+out the sprint with the v2 spec draft, product-structure docs, the logo that completes user
+story 2 (PR #8), and the revised Sprint 2–4 user stories (PR #10).

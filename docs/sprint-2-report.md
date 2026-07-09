@@ -54,8 +54,8 @@
 - Days in sprint: 7 (Jul 1–7, 2026)
 - User stories / day: 0
 - Actual work hours / day: 5.4
-- Average across all sprints to date (Sprints 1–2, 14 days): 0.07 user stories / day,
-  4.8 actual work hours / day
+- Average across all sprints to date (Sprints 1–2, 14 days): 0.14 user stories / day,
+  5.1 actual work hours / day
 
 Hours are actual time spent on sprint work, broken down by merged PR:
 
