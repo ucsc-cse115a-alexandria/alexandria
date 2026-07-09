@@ -6,21 +6,25 @@
 
 ## Actions to stop doing
 
-- Stop putting all enabler work before the user story. The benchmark spike (Enabler A) ran until
-  the last day of the sprint, so User story 1 never started.
+- Stop defining tasks with strong dependencies on each other. When one task depends on another, a
+  delay in the first task blocks the second.
 
 ## Actions to start doing
 
-- Assign an owner to every task at the start of the sprint. Task #29 (run the accuracy
-  experiment) had no owner, and nobody picked it up.
-- Start the tasks that other tasks depend on earlier. User story 1 waited for the benchmark
-  pick, and the pick landed only after the sprint ended.
+- Include test cases in the task definition. When we write a task, we also write the test cases
+  it must pass. This makes the goal of the task clear before we start.
+- Define more functional tasks, not evaluation tasks. In Sprint 2 much of the work was the
+  benchmark survey and candidate rating (Enabler A). That work rated options but did not build a
+  feature the user can run.
 
 ## Actions to keep doing
 
-- Keep shipping fast: write code quickly and merge to `main`. Linter, formatter, type checker,
-  tests, and CI stay in place as a safety guard, so any change that passes CI may be merged.
 - Keep the three weekly scrum meetings. They kept everyone aware of who works on what.
+- Do not merge a PR until CI passes. We want to keep building CI and tracking test coverage,
+  applying the engineering practices covered in ROC2 ("Scrum + Engineering Practices:
+  Experiences of Three Microsoft Teams").
+- Split user story tasks into small tasks. We can break a task into as many small tasks as we
+  need.
 
 ## Work completed / not completed
 
@@ -41,27 +45,26 @@
 ### Not completed (planned but unfinished)
 
 - **User story 1 (accuracy proof):** the before/after accuracy experiment (#29) and the README
-  write-up did not start. Both waited on the benchmark pick from Enabler A.
+  write-up did not start.
 - **User story 2: `--max-tokens` option (#31) and token counting in the CLI (#32).**
-- **Enabler A: trial the top candidate and pick the base benchmark (#28).** The IFEval trial and
-  the rationale landed on Jul 8, one day after the sprint ended.
-- **Enabler B: dataset generator (#21).** Merged on Jul 9.
+- **Enabler A: trial the top candidate and pick the base benchmark (#28).**
+- **Enabler B: dataset generator (#21).**
 
 ## Work completion rate
 
 - User stories completed: 0 (User story 2 shipped 1 of its 3 tasks)
-- Actual work hours: 38
+- Actual work hours: 40
 - Days in sprint: 7 (Jul 1–7, 2026)
 - User stories / day: 0
-- Actual work hours / day: 5.4
+- Actual work hours / day: 5.7
 - Average across all sprints to date (Sprints 1–2, 14 days): 0.14 user stories / day,
-  5.1 actual work hours / day
+  5.4 actual work hours / day
 
 Hours are actual time spent on sprint work, broken down by merged PR:
 
 | PR | Work | Hours |
 |----|------|------:|
-| — | Sprint 1 report + Sprint 2 plan docs (direct to `main`) | 3 |
+| — | Sprint 1 report + Sprint 2 plan docs (direct to `main`) | 5 |
 | #11 | Skill-corpus download script + corpus repository (#12, #18) | 5 |
 | #33, #35 | Enabler C: restructure, public API, CLI package (#22–#24) | 6 |
 | #36, #37 | Compression fidelity check + `compare` command (#20) | 4 |
@@ -69,24 +72,15 @@ Hours are actual time spent on sprint work, broken down by merged PR:
 | #39, #41 | Enabler A: benchmark survey + rating and shortlist (#25, #27) | 8 |
 | #40 | Redundancy inflation script (#19) | 3 |
 | — | Enabler A: IFEval trial (#28, in progress at sprint end) | 5 |
-| **Total** | | **38** |
+| **Total** | | **40** |
 
 ### Sprint 2 burnup chart
-
-![Sprint 2 Burnup — Alexandria](sprint-2-burnup.png)
 
 ```mermaid
 xychart-beta
     title "Sprint 2 Burnup — Alexandria"
     x-axis [Jul1, Jul2, Jul3, Jul4, Jul5, Jul6, Jul7]
-    y-axis "Actual hours" 0 --> 38
-    line [38, 38, 38, 38, 38, 38, 38]
-    line [1, 2.5, 3, 4.5, 22.5, 30, 38]
+    y-axis "Hours" 0 --> 40
+    line [40, 40, 40, 40, 40, 40, 40]
+    line [4, 11, 14, 22, 24, 33, 40]
 ```
-
-Upper line: total actual hours spent over the sprint (38h). Lower line: cumulative actual hours.
-Jul 1–4 was slow: most of the work was the Sprint 1 report and the Sprint 2 plan, and Jul 3 was
-a holiday. Work peaked in the second half. On Jul 5 the Enabler C restructure and the
-skill-corpus download script landed. On Jul 6 the compression fidelity check, the `compare`
-command, the `--min-similarity` work, and the benchmark survey notes landed. On Jul 7 the
-redundancy inflation script and the candidate shortlist landed, and the sprint ended.
