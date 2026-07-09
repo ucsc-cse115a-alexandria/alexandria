@@ -123,6 +123,10 @@ Tasks:
 > Alexandria to compress harder while the benchmark confirms my agent stays as accurate, so that
 > I save more tokens without giving up accuracy.
 
+Carries over the unfinished Sprint 2 US1 work: the baseline experiment is issue #29 and the
+docs write-up is issue #26. Depends on Enabler A (#28) landing first — see the enabling work
+below.
+
 Acceptance criteria:
 
 - The benchmark runs on the prompt before and after a compression change.
@@ -139,11 +143,27 @@ Tasks:
 
 **Total for user story 6: 10 hours**
 
+### Enabling work (carryover from Sprint 2)
+
+#### Enabler A — Pick the base benchmark (Technical value · before US6)
+
+Sprint 2's Enabler A spike is one step from done: trial the top candidate and pick the base
+benchmark (#28, in review). US6 runs this benchmark, so it lands before US6 starts.
+
+Tasks:
+
+- Finish the trial, review, and merge the benchmark pick (1h)
+
+**Total for enabling work: 1 hour**
+
 ## Capacity sanity check
 
 - Team of 4, one-week sprint: roughly **32 to 48 ideal hours** at 8 to 12 per person.
-- The six stories total **46 hours**, near the top of the band, and above the ~85% planning target.
-- Commit in priority order: US1 → US2 → US3 → US4 → US5 → US6.
+- The six stories plus the carryover enabler total **47 hours**, near the top of the band and
+  above the ~85% planning target.
+- Commit order: US1 → Enabler A → US6 → US3 → US4 → US5 → US2. Enabler A and US6 carry over
+  Sprint 2's accuracy work and have slow feedback loops (benchmark runs), so they start early;
+  the trim candidates stay last.
 - If over capacity, return US2 (9h) to the product backlog first, then US5 (6h). US1 already gives
   edit review in the CLI, so the GUI is the safest cut.
 
@@ -171,14 +191,14 @@ work. The packaging spike moves to Sprint 4. The release plan should be revised 
 
 ## Initial burnup chart
 
-Scope line is the committed 46 ideal hours; the completed line starts at zero.
+Scope line is the committed 47 ideal hours; the completed line starts at zero.
 
 ```mermaid
 xychart-beta
     title "Sprint 3 Burnup — Alexandria"
     x-axis [Jul8, Jul9, Jul10, Jul11, Jul12, Jul13, Jul14]
-    y-axis "Ideal hours" 0 --> 46
-    line [46, 46, 46, 46, 46, 46, 46]
+    y-axis "Ideal hours" 0 --> 47
+    line [47, 47, 47, 47, 47, 47, 47]
     line [0]
 ```
 

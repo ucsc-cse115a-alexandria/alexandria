@@ -36,10 +36,25 @@ None this sprint. The current process worked well, so we have nothing we want to
 ## Work completion rate
 
 - User stories completed: 1
-- Ideal work hours completed: 16
+- Actual work hours: 29
 - Days in sprint: 7 (Jun 24–30, 2026)
 - User stories / day: 0.14
-- Ideal work hours / day: 2.3
+- Actual work hours / day: 4.1
+
+Hours are actual time spent on sprint work, broken down by merged PR:
+
+| PR | Work | Hours |
+|----|------|------:|
+| #1 | Core package + coverage setup | 2 |
+| #2 | Sprint 1 plan docs | 1 |
+| #3 | Spec update (0626) | 1.5 |
+| #4 | Prototype: represent → score → optimize → select, pipeline, CLI | 8 |
+| #6 | Research notes for all six papers | 10 |
+| #7 | Skill-analyze / fidelity-probe scripts | 2.5 |
+| #8 | Alexandria logo | 1.5 |
+| #9 | Spec v2 draft | 1 |
+| #10 | Sprint 2–4 user-story revision | 1.5 |
+| **Total** | | **29** |
 
 ### Sprint 1 burnup chart
 
@@ -49,14 +64,15 @@ None this sprint. The current process worked well, so we have nothing we want to
 xychart-beta
     title "Sprint 1 Burnup — Alexandria"
     x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
-    y-axis "Ideal hours" 0 --> 16
-    line [16, 16, 16, 16, 16, 16, 16]
-    line [0, 0, 12, 16, 16, 16, 16]
+    y-axis "Actual hours" 0 --> 29
+    line [29, 29, 29, 29, 29, 29, 29]
+    line [1, 3, 8, 12.5, 23, 26, 29]
 ```
 
-Upper line: total scope (16h). Lower line: cumulative ideal hours completed, reconstructed from the
-GitHub commit history. Jun 24–25 covered project scaffolding, CI, and planning docs, which are not
-part of the user story's ideal hours, so the completed line stays at 0. Feature work began on Jun 26,
-when the represent → score → optimize phases plus the pipeline and CLI landed, and the final select
-phase merged on Jun 27 (PR #4), completing the story end to end. It held through the end of the
-sprint.
+Upper line: total actual hours spent over the sprint (29h). Lower line: cumulative actual hours.
+Jun 24–25 covered project scaffolding, CI, and planning docs (3h). Jun 26–27 was the bulk of the
+feature work: the represent → score → optimize phases, the pipeline, and the CLI landed on Jun 26,
+and the select phase merged on Jun 27 (PR #4), completing the user story end to end. Jun 28 added
+the fidelity-probe scripts plus Marc's research notes for all six papers (PR #6). Jun 29–30 closed
+out the sprint with the v2 spec draft, product-structure docs, the logo (PR #8), and the revised
+Sprint 2–4 user stories (PR #10).

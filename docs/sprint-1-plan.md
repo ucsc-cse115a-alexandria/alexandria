@@ -82,7 +82,7 @@ holding a minimum code-quality bar. Lands before the user story's tasks.
 
 Scope is the full task listing above: 50 ideal hours (user story 20h + Enabler A 21h +
 Enabler B 9h). The completed line is reconstructed from the GitHub commit history; the
-[Sprint 1 report](sprint-1-report.md)'s chart tracks the user story only.
+[Sprint 1 report](sprint-1-report.md)'s chart tracks actual hours spent instead.
 
 ```mermaid
 xychart-beta
