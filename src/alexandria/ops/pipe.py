@@ -4,9 +4,10 @@ from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.ir.contracts import Plan
+from alexandria.ir.contracts import Diff, Plan
 from alexandria.ir.document import Document
 from alexandria.ir.registry import required_scorers
+from alexandria.ops.features.diff import diffs
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
@@ -56,6 +57,32 @@ def reduce(
     plan = optimize(document, scores, names=optimizers, params=params)
     selection = select(document, plan, embedder, selector, params=params)
     return ReduceResult(document=selection.document, source=document, applied=selection.applied)
+
+
+class Proposal(BaseModel):
+    """The reviewable form of a reduction: the source Document and its proposed edits as diffs."""
+
+    model_config = ConfigDict(frozen=True)
+    document: Document
+    diffs: tuple[Diff, ...]
+
+
+def propose(
+    prompt: str,
+    embedder: Embedder | None = None,
+    *,
+    optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
+    params: Params | None = None,
+) -> Proposal:
+    """Run represent → score → optimize → diffs, stopping before selection.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
+    embedder = embedder if embedder is not None else default_embedder()
+    document = represent(prompt, embedder)
+    scores = score(document, names=_required_scorers(optimizers))
+    plan = optimize(document, scores, names=optimizers, params=params)
+    return Proposal(document=document, diffs=diffs(document, plan))
 
 
 def score_report(

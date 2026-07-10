@@ -1,0 +1,214 @@
+from __future__ import annotations
+
+import shutil
+from typing import TYPE_CHECKING, Self
+
+import click
+from pydantic import BaseModel, ConfigDict, model_validator
+
+from alexandria.ir.contracts import Candidate, Diff
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from alexandria.ir.document import Document, SentenceId
+
+_HIDE_CURSOR = "\x1b[?25l"
+_SHOW_CURSOR = "\x1b[?25h"
+_HOME_AND_CLEAR = "\x1b[H\x1b[J"
+_UP_KEYS = ("\x1b[A", "k")
+_DOWN_KEYS = ("\x1b[B", "j")
+_TOGGLE_KEYS = ("\r", "\n", " ")
+
+
+class ReviewState(BaseModel):
+    """The selection state machine behind the interactive review; every transition returns a new state."""
+
+    model_config = ConfigDict(frozen=True)
+    diffs: tuple[Diff, ...]
+    cursor: int
+    accepted: frozenset[int]
+    detail: bool = False  # when True the preview pane shows the cursor row's full edit
+
+    @model_validator(mode="after")
+    def _validate(self) -> Self:
+        if not 0 <= self.cursor < len(self.diffs):
+            raise ValueError(f"cursor {self.cursor} out of range for {len(self.diffs)} diffs")
+        if not all(0 <= index < len(self.diffs) for index in self.accepted):
+            raise ValueError("accepted indices must point into diffs")
+        return self
+
+    def move(self, delta: int) -> ReviewState:
+        cursor = min(max(self.cursor + delta, 0), len(self.diffs) - 1)
+        return self.model_copy(update={"cursor": cursor})
+
+    def toggle(self) -> ReviewState:
+        return self.model_copy(update={"accepted": self.accepted ^ {self.cursor}})
+
+    def toggle_all(self) -> ReviewState:
+        everything = frozenset(range(len(self.diffs)))
+        return self.model_copy(update={"accepted": frozenset() if self.accepted == everything else everything})
+
+    def toggle_detail(self) -> ReviewState:
+        return self.model_copy(update={"detail": not self.detail})
+
+    def accepted_candidates(self) -> tuple[Candidate, ...]:
+        """The accepted diffs' candidates in list (confidence) order — the order they are applied."""
+        return tuple(diff.candidate for index, diff in enumerate(self.diffs) if index in self.accepted)
+
+
+def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str:
+    """One complete frame: header, list viewport, live diff preview, and key help."""
+    columns, lines = size
+    removed = frozenset(target for candidate in state.accepted_candidates() for target in candidate.edit.targets)
+    # Arithmetic instead of applying the edits: rebuilding a large Document on every keypress is slow.
+    reduced_tokens = document.token_count - sum(s.token_count for s in document.sentences if s.id in removed)
+    header = (
+        f"Alexandria — {len(state.accepted)}/{len(state.diffs)} accepted"
+        f" · {document.token_count} → {reduced_tokens} tokens"
+    )
+    footer = "↑/↓ move · enter toggle · s show · a all · d done · q quit"
+    body_rows = max(lines - 3, 6)  # minus header, separator, footer
+    list_rows = min(2 * len(state.diffs) + 2, max(body_rows // 2, 4))
+    pane_rows = body_rows - list_rows
+    if state.detail:
+        pane_title = "─ edit detail "
+        pane = _detail_lines(document, state.diffs[state.cursor], pane_rows)
+    else:
+        pane_title = "─ diff (original → selection) "
+        pane = _preview_lines(document, removed, pane_rows)
+    return "\n".join(
+        [
+            click.style(header, bold=True),
+            *_list_lines(state, list_rows, columns),
+            click.style(pane_title + "─" * 20, dim=True),
+            *pane,
+            click.style(footer, dim=True),
+        ]
+    )
+
+
+def _detail_lines(document: Document, diff: Diff, rows: int) -> list[str]:
+    """The cursor row's full edit: why it was proposed and exactly where and what it would remove."""
+    candidate = diff.candidate
+    location = " > ".join(part for part in diff.spans[0].section_path if part) or "(top level)"
+    lines = [
+        f"confidence: {candidate.confidence:.3f} · optimizer: {candidate.source}",
+        f"reason: {candidate.reason}",
+        f"location: {location}",
+    ]
+    targets = frozenset(candidate.edit.targets)
+    lines.extend(_preview_lines(document, targets, max(rows - len(lines), 3)))
+    if len(lines) > rows:
+        lines = [*lines[: max(rows - 1, 1)], click.style("… truncated", dim=True)]
+    return lines
+
+
+def _list_lines(state: ReviewState, rows: int, columns: int) -> list[str]:
+    """The scrolling checkbox viewport: two lines per edit, hidden rows marked with ↑/↓ more."""
+    capacity = max((rows - 2) // 2, 1)  # two rows per item, two reserved for the more markers
+    total = len(state.diffs)
+    start = min(max(state.cursor - capacity // 2, 0), max(total - capacity, 0))
+    end = min(start + capacity, total)
+    lines: list[str] = []
+    if start > 0:
+        lines.append(click.style(f"  ↑ {start} more", dim=True))
+    for index in range(start, end):
+        diff = state.diffs[index]
+        marker = "▸" if index == state.cursor else " "
+        box = "[x]" if index in state.accepted else "[ ]"
+        span = diff.spans[0]
+        location = " > ".join(part for part in span.section_path if part) or "(top level)"
+        row = f"{marker} {box} {diff.candidate.confidence:.2f}  {location}"[:columns]
+        lines.append(click.style(row, bold=True) if index == state.cursor else row)
+        lines.append(click.style(f"      - {span.original.strip()}"[:columns], fg="red"))
+    if end < total:
+        lines.append(click.style(f"  ↓ {total - end} more", dim=True))
+    return lines
+
+
+def _preview_lines(document: Document, removed: frozenset[SentenceId], rows: int) -> list[str]:
+    """Hunks built from the sentences the selection removes, each with one sentence of context.
+
+    The removals are known exactly, so the preview never guesses with a text diff — on large
+    documents difflib's junk heuristics turn a pure one-line deletion into huge phantom
+    "+" blocks. Distant hunks are separated by a dim ``···`` marker.
+    """
+    sentences = document.sentences
+    shown: set[int] = set()
+    for position, sentence in enumerate(sentences):
+        if sentence.id in removed:
+            shown.update(index for index in (position - 1, position, position + 1) if 0 <= index < len(sentences))
+    if not shown:
+        return [click.style("(no edits accepted — output equals the original)", dim=True)]
+    body: list[str] = []
+    previous = None
+    for index in sorted(shown):
+        if previous is not None and index > previous + 1:
+            body.append(click.style("···", dim=True))
+        sentence = sentences[index]
+        for line in sentence.text.splitlines() or [""]:
+            if sentence.id in removed:
+                body.append(click.style(f"-{line}", fg="red"))
+            else:
+                body.append(f" {line}")
+        previous = index
+    if len(body) > rows:
+        hidden = len(body) - max(rows - 1, 1)
+        body = [*body[: max(rows - 1, 1)], click.style(f"… {hidden} more lines", dim=True)]
+    return body
+
+
+def _write_stderr(text: str) -> None:
+    click.echo(text, err=True, nl=False)
+
+
+def review(
+    document: Document,
+    diffs: tuple[Diff, ...],
+    read_key: Callable[[], str] | None = None,
+    write: Callable[[str], None] = _write_stderr,
+) -> tuple[Candidate, ...] | None:
+    """Run the review loop: render a frame, read one key, transition.
+
+    Returns the accepted candidates on 'd' (done) and None on 'q' (quit). Both hooks are
+    injected so tests can script the whole loop without a terminal; read_key defaults to
+    click.getchar, resolved per call so tests can also monkeypatch it.
+    """
+    read_key = read_key if read_key is not None else click.getchar
+    state = ReviewState(diffs=diffs, cursor=0, accepted=frozenset())
+    write(_HIDE_CURSOR)
+    try:
+        while True:
+            columns, lines = shutil.get_terminal_size()
+            write(_HOME_AND_CLEAR + render(state, document, (columns, lines)))
+            key = read_key()
+            if key in _UP_KEYS:
+                state = state.move(-1)
+            elif key in _DOWN_KEYS:
+                state = state.move(1)
+            elif key in _TOGGLE_KEYS:
+                state = state.toggle()
+            elif key == "a":
+                state = state.toggle_all()
+            elif key == "s":
+                state = state.toggle_detail()
+            elif key == "d":
+                return state.accepted_candidates()
+            elif key == "q":
+                return None
+    finally:
+        write(_SHOW_CURSOR)
+
+
+def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
+    """Fold Document.apply over the candidates; accept means accept — no drift-budget re-filtering.
+
+    A candidate whose edit would empty the document or a section (apply returns None) is skipped.
+    """
+    current = document
+    for candidate in candidates:
+        trial = current.apply(candidate)
+        if trial is not None:
+            current = trial
+    return current

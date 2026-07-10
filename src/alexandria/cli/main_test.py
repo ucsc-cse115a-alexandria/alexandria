@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+import click
 import pytest
 from click.testing import CliRunner
 
@@ -148,6 +149,51 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
+
+
+def test_reduce_interactive_rejects_a_stdin_prompt() -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--interactive", "--model", "deterministic"], input="a\nb\n")
+
+    assert result.exit_code == 2
+    assert "--interactive" in result.output
+    assert "stdin" in result.output
+
+
+def test_reduce_interactive_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
+    keys = iter("\rd")  # accept the first (only) proposal, then done
+    monkeypatch.setattr(click, "getchar", lambda: next(keys))
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("keep one\nkeep one\nunique\n")
+        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+
+    assert result.exit_code == 0
+    assert result.stdout.count("keep one") == 1
+    assert "unique" in result.stdout
+
+
+def test_reduce_interactive_quit_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(click, "getchar", lambda: "q")
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("keep one\nkeep one\nunique\n")
+        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+
+    assert result.exit_code == 0
+    assert result.stdout.count("keep one") == 2
+    assert "aborted" in result.stderr
+
+
+def test_reduce_interactive_rejects_selector_knobs() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("a\nb\n")
+        result = runner.invoke(
+            cli, ["reduce", "--interactive", "--min-similarity", "0.99", "--model", "deterministic", "p.md"]
+        )
+
+    assert result.exit_code == 2
+    assert "--interactive" in result.output
 
 
 def test_compare_min_similarity_gates_the_exit_code() -> None:
