@@ -3,8 +3,11 @@
 from alexandria.ir.document import Document
 from alexandria.ops import (
     CompareResult,
+    Diff,
+    DiffSpan,
     ReduceResult,
     compare,
+    diffs,
     optimize,
     reduce,
     represent,
@@ -15,9 +18,12 @@ from alexandria.ops import (
 
 __all__ = [
     "CompareResult",
+    "Diff",
+    "DiffSpan",
     "Document",
     "ReduceResult",
     "compare",
+    "diffs",
     "optimize",
     "reduce",
     "represent",

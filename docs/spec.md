@@ -114,7 +114,7 @@ from the swappable strategies and makes the plugin convention visible.
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, select, compare, reduce, score_report, Document
+    __init__.py         # public API: represent, score, optimize, select, compare, diffs, reduce, score_report, Document
     __main__.py         # `python -m alexandria` → the CLI
     cli/                # layer 1 — thin wrapper; verbs represent / score / optimize / select / compare / reduce
       main.py           #   click commands; parse args, move text in/out, call the library
@@ -127,11 +127,12 @@ src/
         optimize.py     #     phase 3 — @register_optimizer("greedy_pairwise", requires=("redundancy",))
         select.py       #     phase 4 — @register_selector("auto"); fold a Plan → reduced Document
         compare.py      #     compare(original, edited) → CompareResult (similarity + token reduction)
+        diff.py         #     diffs(document, plan) → displayable Diffs, one per candidate, confidence order
     utils/              # layer 3 — the imperative shell
       embedders.py      #   Embedder implementations; the only place a model is built (default_embedder)
     ir/                 # layer 4 — the contract; depends on nothing else in alexandria
       document.py       #   Document / Section / Sentence + validation + Document.apply (the only rewrite)
-      contracts.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan
+      contracts.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan/Diff
       registry.py       #   @register_* (rejects dup names) + lookup + requires-check
       similarity.py     #   cosine helpers shared by score, optimize, and select
 pyproject.toml          # import-linter layering contracts
