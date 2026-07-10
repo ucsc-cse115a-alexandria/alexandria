@@ -114,13 +114,14 @@ from the swappable strategies and makes the plugin convention visible.
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, select, compare, diffs, reduce, score_report, Document
+    __init__.py         # public API: represent, score, optimize, select, compare, diffs, propose, reduce, score_report, Document
     __main__.py         # `python -m alexandria` → the CLI
     cli/                # layer 1 — thin wrapper; verbs represent / score / optimize / select / compare / reduce
       main.py           #   click commands; parse args, move text in/out, call the library
       envelope.py       #   the JSON wire envelopes between piped verbs (schema_version=1)
+      interactive.py    #   reduce --interactive: ReviewState machine + render + the getchar review loop
     ops/                # layer 2 — the library body
-      pipe.py           #   chain features where composing several is convenient — reduce / score_report
+      pipe.py           #   chain features where composing several is convenient — reduce / propose / score_report
       features/         #   the standalone features; each imports ir, plus utils only for the default embedder
         represent.py    #     phase 1 — prompt → Document (split + tiktoken + injected Embedder)
         score.py        #     phase 2 — @register_scorer("redundancy"); score(...) -> Scores, score_rows
