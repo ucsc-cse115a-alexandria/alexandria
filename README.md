@@ -7,18 +7,19 @@
 | src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
 | src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/main.py               |      106 |        1 |       12 |        1 |     98.3% |       191 |
-| src/alexandria/ir/contracts.py           |       39 |        0 |       10 |        6 |     87.8% |33-\>35, 33-\>exit, 35-\>exit, 60-\>exit, 64-\>exit, 76-\>exit |
+| src/alexandria/ir/contracts.py           |       49 |        0 |       10 |        6 |     89.8% |33-\>35, 33-\>exit, 35-\>exit, 78-\>exit, 82-\>exit, 94-\>exit |
 | src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
 | src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/ops/features/compare.py   |       34 |        0 |        2 |        0 |    100.0% |           |
+| src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        44 |
 | src/alexandria/ops/features/optimize.py  |       36 |        0 |       10 |        0 |    100.0% |           |
 | src/alexandria/ops/features/represent.py |      151 |        1 |       38 |        1 |     98.9% |       237 |
 | src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
 | src/alexandria/ops/features/select.py    |       28 |        1 |        8 |        1 |     94.4% |        27 |
 | src/alexandria/ops/pipe.py               |       37 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
-| **TOTAL**                                |  **706** |    **7** |  **126** |   **14** | **97.5%** |           |
+| **TOTAL**                                |  **735** |    **8** |  **134** |   **15** | **97.4%** |           |
 
 
 ## Setup coverage badge
