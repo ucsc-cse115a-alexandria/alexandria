@@ -228,8 +228,8 @@ def reduce_cmd(
     \b
     Interactive keys:
       up/down or k/j  move          enter/space  check or uncheck the edit
-      d               show detail   a            toggle all
-      c               confirm — apply the checked edits and exit
+      s               show detail   a            toggle all
+      d               done — apply the checked edits and exit
       q               quit without changing the prompt
     """
     if interactive and getattr(file, "name", None) == "<stdin>":

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from alexandria.cli.interactive import ReviewState, apply_candidates, render, review
 from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan
 from alexandria.ir.document import Document, SentenceId
@@ -74,7 +76,7 @@ def _scripted_review(document: Document, proposed: tuple[Diff, ...], keys: str) 
 def test_review_with_scripted_keys_keeps_accepted_and_drops_rejected() -> None:
     document, proposed = _reviewable()
 
-    accepted = _scripted_review(document, proposed, "\rjc")  # toggle first, move down, confirm
+    accepted = _scripted_review(document, proposed, "\rjd")  # toggle first, move down, done
 
     assert accepted == (proposed[0].candidate,)
 
@@ -93,6 +95,28 @@ def test_toggle_detail_round_trips() -> None:
     assert state.toggle_detail().toggle_detail().detail is False
 
 
+def test_render_preview_builds_hunks_from_the_removed_sentences() -> None:
+    # The preview must come from the known removed sentences, not a text diff: on large
+    # documents difflib's junk heuristics misalign a pure one-line deletion into huge
+    # phantom "+" blocks (reproduced on skill-corpus inflate/10, 872 "+" lines).
+    filler_a = "".join(f"alpha paragraph {i} says something unique.\n\n" for i in range(80))
+    filler_b = "".join(f"beta paragraph {i} says something else entirely.\n\n" for i in range(80))
+    prompt = f"repeat me\nrepeat me\n{filler_a}{filler_b}echo twice\necho twice\n"
+    document = represent(prompt, build_embedder(DETERMINISTIC))
+    plan = optimize(document, score(document, names=("redundancy",)))
+    proposed = diffs(document, plan)
+    state = ReviewState(diffs=proposed, cursor=0, accepted=frozenset(range(len(proposed))))
+
+    frame = render(state, document, (120, 40))
+
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", frame)
+    preview = plain.split("─ diff (original → selection) ")[1]
+    assert "-repeat me" in preview
+    assert "-echo twice" in preview
+    assert "···" in preview  # the two removals are far apart: one gap marker between hunks
+    assert not any(line.startswith("+") for line in preview.splitlines())
+
+
 def test_render_detail_shows_the_full_edit_for_the_cursor_row() -> None:
     document, proposed = _reviewable()
     state = ReviewState(diffs=proposed, cursor=0, accepted=frozenset(), detail=True)
@@ -102,6 +126,20 @@ def test_render_detail_shows_the_full_edit_for_the_cursor_row() -> None:
     assert proposed[0].candidate.reason in frame
     assert proposed[0].candidate.source in frame
     assert "edit detail" in frame
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", frame)
+    assert "-repeat me" in plain  # what gets removed, with its surrounding context
+    assert " repeat me" in plain  # the kept twin right next to it
+
+
+def test_review_s_shows_detail_and_d_confirms() -> None:
+    document, proposed = _reviewable()
+    feed = iter("s\rd")  # open detail, toggle the first edit, done
+    frames: list[str] = []
+
+    accepted = review(document, proposed, read_key=lambda: next(feed), write=frames.append)
+
+    assert accepted == (proposed[0].candidate,)
+    assert any("edit detail" in frame for frame in frames)
 
 
 def test_render_marks_cursor_checkboxes_and_previews_only_accepted() -> None:

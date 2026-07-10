@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import difflib
 import shutil
 from typing import TYPE_CHECKING, Self
 
@@ -12,7 +11,7 @@ from alexandria.ir.contracts import Candidate, Diff
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from alexandria.ir.document import Document
+    from alexandria.ir.document import Document, SentenceId
 
 _HIDE_CURSOR = "\x1b[?25l"
 _SHOW_CURSOR = "\x1b[?25h"
@@ -61,21 +60,23 @@ class ReviewState(BaseModel):
 def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str:
     """One complete frame: header, list viewport, live diff preview, and key help."""
     columns, lines = size
-    reduced = apply_candidates(document, state.accepted_candidates())
+    removed = frozenset(target for candidate in state.accepted_candidates() for target in candidate.edit.targets)
+    # Arithmetic instead of applying the edits: rebuilding a large Document on every keypress is slow.
+    reduced_tokens = document.token_count - sum(s.token_count for s in document.sentences if s.id in removed)
     header = (
         f"Alexandria — {len(state.accepted)}/{len(state.diffs)} accepted"
-        f" · {document.token_count} → {reduced.token_count} tokens"
+        f" · {document.token_count} → {reduced_tokens} tokens"
     )
-    footer = "↑/↓ move · enter toggle · d detail · a all · c confirm · q quit"
+    footer = "↑/↓ move · enter toggle · s show · a all · d done · q quit"
     body_rows = max(lines - 3, 6)  # minus header, separator, footer
     list_rows = min(2 * len(state.diffs) + 2, max(body_rows // 2, 4))
     pane_rows = body_rows - list_rows
     if state.detail:
         pane_title = "─ edit detail "
-        pane = _detail_lines(state.diffs[state.cursor], pane_rows)
+        pane = _detail_lines(document, state.diffs[state.cursor], pane_rows)
     else:
         pane_title = "─ diff (original → selection) "
-        pane = _preview_lines(document.text, reduced.text, pane_rows)
+        pane = _preview_lines(document, removed, pane_rows)
     return "\n".join(
         [
             click.style(header, bold=True),
@@ -87,19 +88,17 @@ def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str
     )
 
 
-def _detail_lines(diff: Diff, rows: int) -> list[str]:
-    """The cursor row's full edit: location, why it was proposed, and the exact text it removes."""
+def _detail_lines(document: Document, diff: Diff, rows: int) -> list[str]:
+    """The cursor row's full edit: why it was proposed and exactly where and what it would remove."""
     candidate = diff.candidate
+    location = " > ".join(part for part in diff.spans[0].section_path if part) or "(top level)"
     lines = [
         f"confidence: {candidate.confidence:.3f} · optimizer: {candidate.source}",
         f"reason: {candidate.reason}",
+        f"location: {location}",
     ]
-    for span in diff.spans:
-        location = " > ".join(part for part in span.section_path if part) or "(top level)"
-        lines.append(f"location: {location}")
-        lines.extend(click.style(f"- {line}", fg="red") for line in span.original.splitlines())
-    if diff.replacement:
-        lines.extend(click.style(f"+ {line}", fg="green") for line in diff.replacement.splitlines())
+    targets = frozenset(candidate.edit.targets)
+    lines.extend(_preview_lines(document, targets, max(rows - len(lines), 3)))
     if len(lines) > rows:
         lines = [*lines[: max(rows - 1, 1)], click.style("… truncated", dim=True)]
     return lines
@@ -128,20 +127,36 @@ def _list_lines(state: ReviewState, rows: int, columns: int) -> list[str]:
     return lines
 
 
-def _preview_lines(original: str, reduced: str, rows: int) -> list[str]:
-    """A unified diff of original vs. the current selection, truncated to the preview rows."""
-    body = [
-        line
-        for line in difflib.unified_diff(original.splitlines(), reduced.splitlines(), lineterm="", n=1)
-        if not line.startswith(("---", "+++", "@@"))
-    ]
-    if not body:
+def _preview_lines(document: Document, removed: frozenset[SentenceId], rows: int) -> list[str]:
+    """Hunks built from the sentences the selection removes, each with one sentence of context.
+
+    The removals are known exactly, so the preview never guesses with a text diff — on large
+    documents difflib's junk heuristics turn a pure one-line deletion into huge phantom
+    "+" blocks. Distant hunks are separated by a dim ``···`` marker.
+    """
+    sentences = document.sentences
+    shown: set[int] = set()
+    for position, sentence in enumerate(sentences):
+        if sentence.id in removed:
+            shown.update(index for index in (position - 1, position, position + 1) if 0 <= index < len(sentences))
+    if not shown:
         return [click.style("(no edits accepted — output equals the original)", dim=True)]
+    body: list[str] = []
+    previous = None
+    for index in sorted(shown):
+        if previous is not None and index > previous + 1:
+            body.append(click.style("···", dim=True))
+        sentence = sentences[index]
+        for line in sentence.text.splitlines() or [""]:
+            if sentence.id in removed:
+                body.append(click.style(f"-{line}", fg="red"))
+            else:
+                body.append(f" {line}")
+        previous = index
     if len(body) > rows:
         hidden = len(body) - max(rows - 1, 1)
         body = [*body[: max(rows - 1, 1)], click.style(f"… {hidden} more lines", dim=True)]
-    palette = {"-": "red", "+": "green"}
-    return [click.style(line, fg=palette[line[0]]) if line[0] in palette else line for line in body]
+    return body
 
 
 def _write_stderr(text: str) -> None:
@@ -176,9 +191,9 @@ def review(
                 state = state.toggle()
             elif key == "a":
                 state = state.toggle_all()
-            elif key == "d":
+            elif key == "s":
                 state = state.toggle_detail()
-            elif key == "c":
+            elif key == "d":
                 return state.accepted_candidates()
             elif key == "q":
                 return None
