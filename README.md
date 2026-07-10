@@ -6,7 +6,8 @@
 |----------------------------------------- | -------: | -------: | -------: | -------: | --------: | --------: |
 | src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
 | src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
-| src/alexandria/cli/main.py               |      106 |        1 |       12 |        1 |     98.3% |       191 |
+| src/alexandria/cli/interactive.py        |      137 |        6 |       48 |        7 |     93.0% |36, 38, 103, 157-158, 187, 198-\>182, 212-\>210 |
+| src/alexandria/cli/main.py               |      125 |        2 |       22 |        2 |     97.3% |   62, 248 |
 | src/alexandria/ir/contracts.py           |       49 |        0 |       10 |        6 |     89.8% |33-\>35, 33-\>exit, 35-\>exit, 78-\>exit, 82-\>exit, 94-\>exit |
 | src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
@@ -17,9 +18,9 @@
 | src/alexandria/ops/features/represent.py |      151 |        1 |       38 |        1 |     98.9% |       237 |
 | src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
 | src/alexandria/ops/features/select.py    |       28 |        1 |        8 |        1 |     94.4% |        27 |
-| src/alexandria/ops/pipe.py               |       37 |        0 |        0 |        0 |    100.0% |           |
+| src/alexandria/ops/pipe.py               |       48 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
-| **TOTAL**                                |  **735** |    **8** |  **134** |   **15** | **97.4%** |           |
+| **TOTAL**                                |  **902** |   **15** |  **192** |   **23** | **96.5%** |           |
 
 
 ## Setup coverage badge
