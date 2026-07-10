@@ -1,6 +1,8 @@
 """The library body: the standalone features and the pipe that chains them."""
 
+from alexandria.ir.contracts import Diff, DiffSpan
 from alexandria.ops.features.compare import CompareResult, compare
+from alexandria.ops.features.diff import diffs
 from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score, score_rows
@@ -14,9 +16,12 @@ __all__ = [
     "DEFAULT_MODEL",
     "DETERMINISTIC",
     "CompareResult",
+    "Diff",
+    "DiffSpan",
     "ReduceResult",
     "build_embedder",
     "compare",
+    "diffs",
     "optimize",
     "reduce",
     "represent",

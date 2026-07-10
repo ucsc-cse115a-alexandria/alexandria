@@ -188,6 +188,7 @@ type = "independence"
 modules = ["alexandria.ops.features.*"]
 ignore_imports = [
     "alexandria.ops.features.compare_test -> alexandria.**",
+    "alexandria.ops.features.diff_test -> alexandria.**",
     "alexandria.ops.features.optimize_test -> alexandria.**",
     "alexandria.ops.features.represent_test -> alexandria.**",
     "alexandria.ops.features.score_test -> alexandria.**",
