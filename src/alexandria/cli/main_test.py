@@ -184,6 +184,45 @@ def test_reduce_interactive_quit_leaves_the_prompt_unchanged(monkeypatch: pytest
     assert "aborted" in result.stderr
 
 
+_TWO_PAIR_PROMPT = "# A\nrepeat me\nrepeat me\n# B\necho twice\necho twice\n"
+
+
+def _interactive_reduce_run(monkeypatch: pytest.MonkeyPatch, keys: str) -> tuple[int, str]:
+    feed = iter(keys)
+    monkeypatch.setattr(click, "getchar", lambda: next(feed))
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text(_TWO_PAIR_PROMPT)
+        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+    return result.exit_code, result.stdout
+
+
+def test_interactive_accept_all_matches_the_automatic_run(monkeypatch: pytest.MonkeyPatch) -> None:
+    exit_code, stdout = _interactive_reduce_run(monkeypatch, "ad")  # check everything, done
+
+    # A budget generous enough that the automatic selector rejects nothing (the #51 reading).
+    automatic = reduce(_TWO_PAIR_PROMPT, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    assert exit_code == 0
+    assert stdout == automatic.text
+
+
+def test_interactive_reject_all_returns_the_input_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    exit_code, stdout = _interactive_reduce_run(monkeypatch, "d")  # done with nothing checked
+
+    assert exit_code == 0
+    assert stdout == _TWO_PAIR_PROMPT
+
+
+def test_interactive_mixed_selection_applies_exactly_the_accepted_subset(monkeypatch: pytest.MonkeyPatch) -> None:
+    exit_code, stdout = _interactive_reduce_run(monkeypatch, "\rd")  # accept the cursor row only, done
+
+    assert exit_code == 0
+    # One duplicate pair reduced, the other left untouched — exactly the accepted subset.
+    reduced_pair, kept_pair = sorted((stdout.count("repeat me"), stdout.count("echo twice")))
+    assert (reduced_pair, kept_pair) == (1, 2)
+    assert "# A" in stdout and "# B" in stdout
+
+
 def test_reduce_interactive_rejects_selector_knobs() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
