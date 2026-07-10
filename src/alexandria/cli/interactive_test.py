@@ -74,7 +74,7 @@ def _scripted_review(document: Document, proposed: tuple[Diff, ...], keys: str) 
 def test_review_with_scripted_keys_keeps_accepted_and_drops_rejected() -> None:
     document, proposed = _reviewable()
 
-    accepted = _scripted_review(document, proposed, "\rjd")  # toggle first, move down, done
+    accepted = _scripted_review(document, proposed, "\rjc")  # toggle first, move down, confirm
 
     assert accepted == (proposed[0].candidate,)
 
@@ -83,6 +83,25 @@ def test_review_quit_returns_none() -> None:
     document, proposed = _reviewable()
 
     assert _scripted_review(document, proposed, "\raq") is None
+
+
+def test_toggle_detail_round_trips() -> None:
+    state = ReviewState(diffs=(_diff("a", 0.9),), cursor=0, accepted=frozenset())
+
+    assert state.detail is False
+    assert state.toggle_detail().detail is True
+    assert state.toggle_detail().toggle_detail().detail is False
+
+
+def test_render_detail_shows_the_full_edit_for_the_cursor_row() -> None:
+    document, proposed = _reviewable()
+    state = ReviewState(diffs=proposed, cursor=0, accepted=frozenset(), detail=True)
+
+    frame = render(state, document, (80, 24))
+
+    assert proposed[0].candidate.reason in frame
+    assert proposed[0].candidate.source in frame
+    assert "edit detail" in frame
 
 
 def test_render_marks_cursor_checkboxes_and_previews_only_accepted() -> None:

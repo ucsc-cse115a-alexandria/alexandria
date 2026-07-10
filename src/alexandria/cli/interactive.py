@@ -29,6 +29,7 @@ class ReviewState(BaseModel):
     diffs: tuple[Diff, ...]
     cursor: int
     accepted: frozenset[int]
+    detail: bool = False  # when True the preview pane shows the cursor row's full edit
 
     @model_validator(mode="after")
     def _validate(self) -> Self:
@@ -49,6 +50,9 @@ class ReviewState(BaseModel):
         everything = frozenset(range(len(self.diffs)))
         return self.model_copy(update={"accepted": frozenset() if self.accepted == everything else everything})
 
+    def toggle_detail(self) -> ReviewState:
+        return self.model_copy(update={"detail": not self.detail})
+
     def accepted_candidates(self) -> tuple[Candidate, ...]:
         """The accepted diffs' candidates in list (confidence) order — the order they are applied."""
         return tuple(diff.candidate for index, diff in enumerate(self.diffs) if index in self.accepted)
@@ -62,18 +66,43 @@ def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str
         f"Alexandria — {len(state.accepted)}/{len(state.diffs)} accepted"
         f" · {document.token_count} → {reduced.token_count} tokens"
     )
-    footer = "↑/↓ move · enter toggle · a all · d done · q quit"
+    footer = "↑/↓ move · enter toggle · d detail · a all · c confirm · q quit"
     body_rows = max(lines - 3, 6)  # minus header, separator, footer
     list_rows = min(2 * len(state.diffs) + 2, max(body_rows // 2, 4))
+    pane_rows = body_rows - list_rows
+    if state.detail:
+        pane_title = "─ edit detail "
+        pane = _detail_lines(state.diffs[state.cursor], pane_rows)
+    else:
+        pane_title = "─ diff (original → selection) "
+        pane = _preview_lines(document.text, reduced.text, pane_rows)
     return "\n".join(
         [
             click.style(header, bold=True),
             *_list_lines(state, list_rows, columns),
-            click.style("─ diff (original → selection) " + "─" * 20, dim=True),
-            *_preview_lines(document.text, reduced.text, body_rows - list_rows),
+            click.style(pane_title + "─" * 20, dim=True),
+            *pane,
             click.style(footer, dim=True),
         ]
     )
+
+
+def _detail_lines(diff: Diff, rows: int) -> list[str]:
+    """The cursor row's full edit: location, why it was proposed, and the exact text it removes."""
+    candidate = diff.candidate
+    lines = [
+        f"confidence: {candidate.confidence:.3f} · optimizer: {candidate.source}",
+        f"reason: {candidate.reason}",
+    ]
+    for span in diff.spans:
+        location = " > ".join(part for part in span.section_path if part) or "(top level)"
+        lines.append(f"location: {location}")
+        lines.extend(click.style(f"- {line}", fg="red") for line in span.original.splitlines())
+    if diff.replacement:
+        lines.extend(click.style(f"+ {line}", fg="green") for line in diff.replacement.splitlines())
+    if len(lines) > rows:
+        lines = [*lines[: max(rows - 1, 1)], click.style("… truncated", dim=True)]
+    return lines
 
 
 def _list_lines(state: ReviewState, rows: int, columns: int) -> list[str]:
@@ -148,6 +177,8 @@ def review(
             elif key == "a":
                 state = state.toggle_all()
             elif key == "d":
+                state = state.toggle_detail()
+            elif key == "c":
                 return state.accepted_candidates()
             elif key == "q":
                 return None

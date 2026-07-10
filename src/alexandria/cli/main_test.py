@@ -160,7 +160,7 @@ def test_reduce_interactive_rejects_a_stdin_prompt() -> None:
 
 
 def test_reduce_interactive_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
-    keys = iter("\rd")  # accept the first (only) proposal, then done
+    keys = iter("\rc")  # accept the first (only) proposal, then confirm
     monkeypatch.setattr(click, "getchar", lambda: next(keys))
     runner = CliRunner()
     with runner.isolated_filesystem():

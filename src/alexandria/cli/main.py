@@ -72,7 +72,18 @@ def _interactive_reduce(prompt: str, optimizers: tuple[str, ...], params: Params
 
 @click.group()
 def cli() -> None:
-    """Alexandria — label-free prompt optimization."""
+    """Alexandria — label-free prompt optimization.
+
+    \b
+    Quick start:
+      alexandria reduce prompt.md                # reduce automatically
+      alexandria reduce --interactive prompt.md  # review each edit, apply only what you accept
+      alexandria compare original.md reduced.md  # check similarity and token reduction
+
+    \b
+    The phase verbs pipe into each other for step-by-step runs:
+      cat prompt.md | alexandria represent | alexandria score | alexandria optimize | alexandria select
+    """
 
 
 @cli.command(name="represent")
@@ -193,7 +204,7 @@ def compare_cmd(
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
-    "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the accepted ones"
+    "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the checked ones"
 )
 def reduce_cmd(
     file: IO[str],
@@ -206,7 +217,21 @@ def reduce_cmd(
     as_json: bool,
     interactive: bool,
 ) -> None:
-    """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json)."""
+    """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json).
+
+    \b
+    Examples:
+      alexandria reduce prompt.md                    # automatic: the selector applies edits within --drift-budget
+      alexandria reduce prompt.md --json             # machine-readable summary of what was applied
+      alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
+
+    \b
+    Interactive keys:
+      up/down or k/j  move          enter/space  check or uncheck the edit
+      d               show detail   a            toggle all
+      c               confirm — apply the checked edits and exit
+      q               quit without changing the prompt
+    """
     if interactive and getattr(file, "name", None) == "<stdin>":
         raise click.UsageError(
             "--interactive reads keys from the terminal, so FILE cannot be stdin; pass a file path."
