@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from contextlib import contextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
@@ -42,6 +43,22 @@ def _clean_errors() -> Generator[None]:
 
 def _names(raw: str) -> tuple[str, ...]:
     return tuple(name.strip() for name in raw.split(",") if name.strip())
+
+
+_out_option = click.option(
+    "--out",
+    "out_path",
+    type=click.Path(dir_okay=False, writable=True, path_type=Path),
+    default=None,
+    help="also save this phase's envelope JSON to PATH (stdout is unchanged)",
+)
+
+
+def _emit_envelope(payload: str, out_path: Path | None) -> None:
+    """Echo the phase envelope to stdout and, when --out is given, also save it to that path."""
+    if out_path is not None:
+        out_path.write_text(payload + "\n")
+    click.echo(payload)
 
 
 def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens: int) -> str:
@@ -89,41 +106,49 @@ def cli() -> None:
 @cli.command(name="represent")
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
-def represent_cmd(file: IO[str], model: str) -> None:
+@_out_option
+def represent_cmd(file: IO[str], model: str, out_path: Path | None) -> None:
     """Raw prompt in, a DocumentEnvelope (JSON) out."""
     with _clean_errors():
         document = represent(file.read(), build_embedder(model))
-    click.echo(DocumentEnvelope(document=document).model_dump_json())
+        payload = DocumentEnvelope(document=document).model_dump_json()
+    _emit_envelope(payload, out_path)
 
 
 @cli.command(name="score")
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--scorer", "scorers", default=DEFAULT_SCORER, help="comma-separated scorer names")
 @click.option("--table", "as_table", is_flag=True, help="print a human-readable report instead of a ScoredEnvelope")
-def score_cmd(file: IO[str], scorers: str, as_table: bool) -> None:
+@_out_option
+def score_cmd(file: IO[str], scorers: str, as_table: bool, out_path: Path | None) -> None:
     """DocumentEnvelope in, a ScoredEnvelope (JSON) out, or a report with --table."""
     names = _names(scorers)
     with _clean_errors():
         document = DocumentEnvelope.model_validate_json(file.read()).document
         bundle = score(document, names=names)
+        payload = ScoredEnvelope(document=document, scores=bundle).model_dump_json()
+    if out_path is not None:
+        out_path.write_text(payload + "\n")
     if as_table:
         for row in score_rows(document, bundle, names):
             click.echo("  ".join(f"{key}={value}" for key, value in row.items()))
     else:
-        click.echo(ScoredEnvelope(document=document, scores=bundle).model_dump_json())
+        click.echo(payload)
 
 
 @cli.command(name="optimize")
 @click.argument("file", type=click.File("r"), default="-")
 @click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
 @click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
-def optimize_cmd(file: IO[str], optimizers: str, threshold: float) -> None:
+@_out_option
+def optimize_cmd(file: IO[str], optimizers: str, threshold: float, out_path: Path | None) -> None:
     """ScoredEnvelope in, a PlanEnvelope (JSON) out."""
     names = _names(optimizers)
     with _clean_errors():
         scored = ScoredEnvelope.model_validate_json(file.read())
         plan = optimize(scored.document, scored.scores, names=names, params=Params(threshold=threshold))
-    click.echo(PlanEnvelope(document=scored.document, plan=plan).model_dump_json())
+        payload = PlanEnvelope(document=scored.document, plan=plan).model_dump_json()
+    _emit_envelope(payload, out_path)
 
 
 @cli.command(name="select")
