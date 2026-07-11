@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Task 3 trial: confirm IFEval fits budget and degrades under redundancy inflation."""
+
 import json
 import time
 from pathlib import Path
@@ -10,8 +11,7 @@ from alexandria.utils.embedders import default_embedder
 from scripts.inflate_redundancy import build_generate, inflate
 
 IFEVAL_DATA = (
-    Path.home()
-    / "ucscCode/CSE115A/ifeval-tool/google-research/instruction_following_eval/data/input_data.jsonl"
+    Path.home() / "ucscCode/CSE115A/ifeval-tool/google-research/instruction_following_eval/data/input_data.jsonl"
 )
 OUT_DIR = Path("trial_results")
 N_PROMPTS = 5
@@ -28,11 +28,11 @@ def load_prompts(n):
 
 def main():
     start = time.time()
-    embedder = default_embedder()                    # embeds prompts/responses
-    encoding = tiktoken.get_encoding("cl100k_base")   # encodes into token space
-    generate = build_generate(MODEL)                  # generates responses
+    embedder = default_embedder()  # embeds prompts/responses
+    encoding = tiktoken.get_encoding("cl100k_base")  # encodes into token space
+    generate = build_generate(MODEL)  # generates responses
     items = load_prompts(N_PROMPTS)
-    OUT_DIR.mkdir(exist_ok=True)                      # dir for input/response files
+    OUT_DIR.mkdir(exist_ok=True)  # dir for input/response files
     for label, factor in [("baseline", None), ("2x", 2.0), ("10x", 10.0)]:  # label + factor
         print(f"--- {label} ---")
         input_path = OUT_DIR / f"input_data_{label}.jsonl"
@@ -41,8 +41,10 @@ def main():
             for i, item in enumerate(items):
                 print(f"  [{label}] prompt {i + 1}/{len(items)}...")
                 try:
-                    prompt_text = item["prompt"] if factor is None else inflate(
-                        item["prompt"], factor, generate, embedder, encoding
+                    prompt_text = (
+                        item["prompt"]
+                        if factor is None
+                        else inflate(item["prompt"], factor, generate, embedder, encoding)
                     )
                 except RuntimeError as e:
                     print(f"    SKIPPED (inflation failed): {e}")
