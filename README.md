@@ -36,6 +36,18 @@ uv run alexandria represent < prompt.txt \
   | uv run alexandria select > reduced.txt
 ```
 
+Add `--out FILE` to save a phase's JSON envelope while it still streams to the next phase (a tee),
+so you can inspect an intermediate or re-run a later phase from it. Because each verb reads its input
+envelope from a `FILE` argument, a saved file feeds straight back in — no need to re-run earlier phases:
+
+```bash
+uv run alexandria represent --out doc.json < prompt.txt \
+  | uv run alexandria score --out scored.json \
+  | uv run alexandria optimize --out plan.json > /dev/null
+
+uv run alexandria optimize scored.json | uv run alexandria select   # re-run from the saved scored envelope
+```
+
 `score --table` prints a per-instruction redundancy report instead of a `ScoredEnvelope`:
 
 ```bash

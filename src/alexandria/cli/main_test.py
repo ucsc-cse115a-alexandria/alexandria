@@ -9,7 +9,7 @@ import pytest
 from click.testing import CliRunner
 
 from alexandria.cli import cli
-from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope
+from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Params
 from alexandria.ir.registry import register_scorer
 from alexandria.ops import DETERMINISTIC, build_embedder
@@ -37,6 +37,24 @@ def test_phase_verbs_pipe_to_the_same_text_as_reduce() -> None:
     reduced = runner.invoke(cli, ["select", "--model", "deterministic", "--drift-budget", "2.0"], input=plan.output)
 
     assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
+    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    assert reduced.output == expected.text
+
+
+def test_out_is_a_tee_so_the_piped_run_still_matches_reduce() -> None:
+    runner = CliRunner()
+    prompt = "keep one\nkeep one\nunique line\n"
+    with runner.isolated_filesystem():
+        document = runner.invoke(cli, ["represent", "--model", "deterministic", "--out", "doc.json"], input=prompt)
+        scored = runner.invoke(cli, ["score", "--out", "scored.json"], input=document.output)
+        plan = runner.invoke(cli, ["optimize", "--out", "plan.json"], input=scored.output)
+        reduced = runner.invoke(
+            cli, ["select", "--model", "deterministic", "--drift-budget", "2.0"], input=plan.output
+        )
+
+        assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
+        assert [Path(name).exists() for name in ("doc.json", "scored.json", "plan.json")] == [True, True, True]
+
     expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
     assert reduced.output == expected.text
 
@@ -70,6 +88,18 @@ def test_score_emits_a_scored_envelope_by_default() -> None:
     assert '"redundancy"' in result.output
 
 
+def test_score_out_saves_a_roundtrippable_scored_envelope() -> None:
+    runner = CliRunner()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["score", "--out", "scored.json"], input=document)
+
+        assert result.exit_code == 0
+        saved = Path("scored.json").read_text()
+        assert saved.strip() == result.output.strip()
+        assert ScoredEnvelope.model_validate_json(saved).model_dump_json() == saved.strip()
+
+
 def test_score_table_prints_a_human_report() -> None:
     runner = CliRunner()
     document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
@@ -79,6 +109,19 @@ def test_score_table_prints_a_human_report() -> None:
     assert result.exit_code == 0
     assert "redundancy=" in result.output
     assert "most_similar_id=" in result.output
+
+
+def test_optimize_out_saves_a_roundtrippable_plan_envelope() -> None:
+    runner = CliRunner()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    scored = runner.invoke(cli, ["score"], input=document).output
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["optimize", "--out", "plan.json"], input=scored)
+
+        assert result.exit_code == 0
+        saved = Path("plan.json").read_text()
+        assert saved.strip() == result.output.strip()
+        assert PlanEnvelope.model_validate_json(saved).model_dump_json() == saved.strip()
 
 
 def test_select_reports_a_model_mismatch_cleanly() -> None:
@@ -252,6 +295,18 @@ def test_compare_min_similarity_gates_the_exit_code() -> None:
     assert same.exit_code == 0
     assert json.loads(same.output)["similarity"] == pytest.approx(1.0)
     assert differ.exit_code == 1
+
+
+def test_represent_out_saves_a_roundtrippable_document_envelope() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        result = runner.invoke(cli, ["represent", "--model", "deterministic", "--out", "doc.json"], input="dup\ndup\n")
+
+        assert result.exit_code == 0
+        saved = Path("doc.json").read_text()
+        # The saved file matches stdout, and re-parsing then re-dumping reproduces it byte-for-byte.
+        assert saved.strip() == result.output.strip()
+        assert DocumentEnvelope.model_validate_json(saved).model_dump_json() == saved.strip()
 
 
 def test_represent_rejects_an_empty_prompt_cleanly() -> None:
