@@ -20,3 +20,4 @@ coverage.*
 # Generated artifacts from scripts/
 data/
 corpus/
+.DS_Store
