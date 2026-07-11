@@ -3,21 +3,24 @@
 import json
 import time
 from pathlib import Path
-import tiktoken
-from scripts.inflate_redundancy import build_generate, inflate
-from alexandria.utils.embedders import default_embedder
 
-IFEVAL_DATA = Path.home() / "ucscCode/CSE115A/ifeval-tool/google-research/instruction_following_eval/data/input_data.jsonl"
+import tiktoken
+
+from alexandria.utils.embedders import default_embedder
+from scripts.inflate_redundancy import build_generate, inflate
+
+IFEVAL_DATA = (
+    Path.home()
+    / "ucscCode/CSE115A/ifeval-tool/google-research/instruction_following_eval/data/input_data.jsonl"
+)
 OUT_DIR = Path("trial_results")
 N_PROMPTS = 5
 MODEL = "gpt-5.4-mini"
 
 
 def load_prompts(n):
-    all_prompts = []
-    with open(IFEVAL_DATA) as f:
-        for line in f:
-            all_prompts.append(json.loads(line))
+    with IFEVAL_DATA.open() as f:
+        all_prompts = [json.loads(line) for line in f]
     # pick the n longest prompts, so there's more original content to redundantly restate
     all_prompts.sort(key=lambda p: len(p["prompt"]), reverse=True)
     return all_prompts[:n]
@@ -25,16 +28,16 @@ def load_prompts(n):
 
 def main():
     start = time.time()
-    embedder = default_embedder()
-    encoding = tiktoken.get_encoding("cl100k_base")
-    generate = build_generate(MODEL)
+    embedder = default_embedder()                    # embeds prompts/responses
+    encoding = tiktoken.get_encoding("cl100k_base")   # encodes into token space
+    generate = build_generate(MODEL)                  # generates responses
     items = load_prompts(N_PROMPTS)
-    OUT_DIR.mkdir(exist_ok=True)
-    for label, factor in [("baseline", None), ("2x", 2.0), ("10x", 10.0)]:
+    OUT_DIR.mkdir(exist_ok=True)                      # dir for input/response files
+    for label, factor in [("baseline", None), ("2x", 2.0), ("10x", 10.0)]:  # label + factor
         print(f"--- {label} ---")
         input_path = OUT_DIR / f"input_data_{label}.jsonl"
         response_path = OUT_DIR / f"responses_{label}.jsonl"
-        with open(input_path, "w") as inp_f, open(response_path, "w") as resp_f:
+        with input_path.open("w") as inp_f, response_path.open("w") as resp_f:
             for i, item in enumerate(items):
                 print(f"  [{label}] prompt {i + 1}/{len(items)}...")
                 try:

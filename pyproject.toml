@@ -14,7 +14,6 @@ dependencies = [
     "tiktoken>=0.8",
     "click>=8.1",
     "sentence-transformers>=3.0",
-    "openai>=2.44.0",
 ]
 
 [project.scripts]
