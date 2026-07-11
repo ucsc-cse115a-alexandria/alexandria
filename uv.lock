@@ -9,6 +9,7 @@ source = { editable = "." }
 dependencies = [
     { name = "click" },
     { name = "numpy" },
+    { name = "openai" },
     { name = "pydantic" },
     { name = "sentence-transformers" },
     { name = "tiktoken" },
@@ -30,6 +31,7 @@ scripts = [
 requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "numpy", specifier = ">=2.1" },
+    { name = "openai", specifier = ">=2.44.0" },
     { name = "pydantic", specifier = ">=2.9" },
     { name = "sentence-transformers", specifier = ">=3.0" },
     { name = "tiktoken", specifier = ">=0.8" },
