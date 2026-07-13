@@ -295,9 +295,7 @@ def reduce_cmd(
 @cli.command(name="tokens")
 @click.argument(
     "directory",
-    type=click.Path(
-        exists=True, file_okay=False, dir_okay=True, path_type=Path
-    ),
+    type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path),
     default=".",
 )
 def tokens_cmd(directory: Path) -> None:
@@ -316,4 +314,3 @@ def tokens_cmd(directory: Path) -> None:
             total_tokens += count
 
     click.echo(f"{'-' * 20}\nTotal: {total_tokens} tokens")
-    
