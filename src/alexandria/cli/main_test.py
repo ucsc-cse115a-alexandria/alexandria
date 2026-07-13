@@ -59,6 +59,21 @@ def test_out_is_a_tee_so_the_piped_run_still_matches_reduce() -> None:
     assert reduced.output == expected.text
 
 
+def test_a_phase_starts_from_a_saved_file_matching_the_in_memory_reduce() -> None:
+    # #60: each phase can be rerun alone by loading the previous phase's saved envelope from a file.
+    runner = CliRunner()
+    prompt = "keep one\nkeep one\nunique line\n"
+    with runner.isolated_filesystem():
+        Path("d.json").write_text(runner.invoke(cli, ["represent", "--model", "deterministic"], input=prompt).output)
+        Path("s.json").write_text(runner.invoke(cli, ["score", "d.json"]).output)  # starts from the saved file
+        Path("pl.json").write_text(runner.invoke(cli, ["optimize", "s.json"]).output)  # starts from the saved file
+        reduced = runner.invoke(cli, ["select", "pl.json", "--model", "deterministic", "--drift-budget", "2.0"])
+
+    assert reduced.exit_code == 0
+    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    assert reduced.output == expected.text
+
+
 def test_select_json_reports_the_reduction_summary() -> None:
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique line\n"

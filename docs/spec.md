@@ -590,12 +590,12 @@ A few single-purpose verbs, built with [`click`](https://github.com/pallets/clic
 phases is its own verb, and they **compose over a Unix pipe**: every phase emits a self-contained JSON
 **envelope** carrying the `Document` (and, downstream, the `Scores` or `Plan`) the next phase needs.
 
-- `alexandria represent [FILE] [--model MODEL]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
-- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table]` — `DocumentEnvelope` in, a
+- `alexandria represent [FILE] [--model MODEL] [--out PATH]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
+- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table] [--out PATH]` — `DocumentEnvelope` in, a
   **`ScoredEnvelope`** out; `--table` prints a human-readable per-instruction report instead. Run
   several scorers and their columns are the `Scores` bundle. No embedder is needed — it scores the
   Document it is handed.
-- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — `ScoredEnvelope` in, a
+- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T] [--out PATH]` — `ScoredEnvelope` in, a
   **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
 - `alexandria select [FILE] [--model MODEL] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
   **reduced prompt** out (or a JSON reduction summary with `--json`). The `auto` selector folds the
@@ -606,6 +606,10 @@ phases is its own verb, and they **compose over a Unix pipe**: every phase emits
   path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
   (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each
   chosen optimizer declares the scorer(s) it needs.
+
+`--out PATH` saves the JSON envelope while preserving stdout for a pipe; the next compatible phase can
+read that saved file as its `FILE` argument. See the [CLI guide](cli.md) for user-facing examples and
+the complete workflow reference.
 
 So `alexandria represent < p.txt | alexandria score | alexandria optimize | alexandria select`
 reproduces `alexandria reduce < p.txt`, and any prefix of that pipe is a useful stop
