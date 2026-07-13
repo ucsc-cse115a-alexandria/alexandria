@@ -316,3 +316,4 @@ def tokens_cmd(directory: Path) -> None:
             total_tokens += count
 
     click.echo(f"{'-' * 20}\nTotal: {total_tokens} tokens")
+    
