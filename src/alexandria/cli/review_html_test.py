@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from typing import Any
 
 from alexandria.cli.review_html import render_review_page
 from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan
@@ -21,13 +22,13 @@ def _empty_proposal() -> Proposal:
     return Proposal(document=document, diffs=())
 
 
-def _parse_selection(html: str) -> dict[str, object]:
+def _parse_selection(html: str) -> dict[str, Any]:
     match = re.search(r'<script type="application/json" id="selection">(.*?)</script>', html, re.DOTALL)
     assert match is not None
     return json.loads(match.group(1))
 
 
-def _parse_payload(html: str) -> dict[str, object]:
+def _parse_payload(html: str) -> dict[str, Any]:
     match = re.search(r'<script type="application/json" id="payload">(.*?)</script>', html, re.DOTALL)
     assert match is not None
     return json.loads(match.group(1))
