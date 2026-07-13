@@ -293,20 +293,26 @@ def reduce_cmd(
 
 
 @cli.command(name="tokens")
-@click.argument("directory", type=click.Path(exists=True, file_okay=False, dir_okay=True, path_type=Path), default=".")
+@click.argument(
+    "directory",
+    type=click.Path(
+        exists=True, file_okay=False, dir_okay=True, path_type=Path
+    ),
+    default=".",
+)
 def tokens_cmd(directory: Path) -> None:
     """List token counts of instruction files in a directory."""
     encoding = tiktoken.get_encoding("cl100k_base")
-    
+
     total_tokens = 0
     target_names = {"CLAUDE.md", "AGENT.md"}
-    
+
     for file_path in directory.rglob("*.md"):
         if file_path.name in target_names or "skills" in file_path.parts:
             text = file_path.read_text(encoding="utf-8")
             count = len(encoding.encode(text))
-            
+
             click.echo(f"{file_path.name}: {count} tokens")
             total_tokens += count
-            
-    click.echo(f"{'-'*20}\nTotal: {total_tokens} tokens")
+
+    click.echo(f"{'-' * 20}\nTotal: {total_tokens} tokens")
