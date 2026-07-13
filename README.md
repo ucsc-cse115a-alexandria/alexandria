@@ -45,8 +45,12 @@ uv run alexandria represent --out doc.json < prompt.txt \
   | uv run alexandria score --out scored.json \
   | uv run alexandria optimize --out plan.json > /dev/null
 
-uv run alexandria optimize scored.json | uv run alexandria select   # re-run from the saved scored envelope
+uv run alexandria optimize scored.json                 # rerun just this phase from the saved scored envelope
+uv run alexandria optimize scored.json | uv run alexandria select   # or start here and run the rest
 ```
+
+A save-then-load split run (each phase loaded from a saved file) yields the same result as the
+one-shot `reduce`, so you can rerun a single phase in isolation without redoing the earlier ones.
 
 `score --table` prints a per-instruction redundancy report instead of a `ScoredEnvelope`:
 
