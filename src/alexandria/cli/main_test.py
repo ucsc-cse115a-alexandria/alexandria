@@ -314,3 +314,39 @@ def test_represent_rejects_an_empty_prompt_cleanly() -> None:
 
     assert result.exit_code == 1
     assert "empty prompt" in result.output
+
+def test_tokens_counts_instruction_files_accurately() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Setup: Create our target instruction files
+        Path("CLAUDE.md").write_text("this is a test prompt\n")
+        
+        # Setup: Create a skills directory with a file
+        skills_dir = Path("skills")
+        skills_dir.mkdir()
+        (skills_dir / "python.md").write_text("another test prompt here\n")
+
+        # Execution
+        result = runner.invoke(cli, ["tokens", "."])
+
+        # Verification
+        assert result.exit_code == 0
+        assert "CLAUDE.md:" in result.output
+        assert "python.md:" in result.output
+        assert "Total:" in result.output
+
+
+def test_tokens_ignores_non_instruction_files() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        # Setup: Create valid files AND a file that should be ignored (README.md)
+        Path("CLAUDE.md").write_text("this is a test prompt\n")
+        Path("README.md").write_text("this file should not be counted\n")
+
+        # Execution
+        result = runner.invoke(cli, ["tokens", "."])
+
+        # Verification
+        assert result.exit_code == 0
+        assert "CLAUDE.md:" in result.output
+        assert "README.md:" not in result.output
