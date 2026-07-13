@@ -315,12 +315,13 @@ def test_represent_rejects_an_empty_prompt_cleanly() -> None:
     assert result.exit_code == 1
     assert "empty prompt" in result.output
 
+
 def test_tokens_counts_instruction_files_accurately() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         # Setup: Create our target instruction files
         Path("CLAUDE.md").write_text("this is a test prompt\n")
-        
+
         # Setup: Create a skills directory with a file
         skills_dir = Path("skills")
         skills_dir.mkdir()
