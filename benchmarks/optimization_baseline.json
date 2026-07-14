@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "config": {
+    "model": "hash-64",
+    "optimizers": [
+      "greedy_pairwise"
+    ],
+    "selector": "auto",
+    "threshold": 0.85,
+    "drift_budget": 2.0
+  },
+  "tokens": {
+    "source": 6,
+    "reduced": 4,
+    "saved": 2,
+    "reduction_ratio": 0.333333
+  },
+  "quality": {
+    "instruction_coverage": 1.0,
+    "minimum_instruction_similarity": 1.0
+  },
+  "applied_edits": 1
+}

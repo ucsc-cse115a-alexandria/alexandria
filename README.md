@@ -44,6 +44,30 @@ uv run alexandria represent < prompt.txt | uv run alexandria score --table
 
 `reduce --json` and `select --json` emit a summary (`text`, `applied`, `source_tokens`, `reduced_tokens`).
 
+`report` runs the full optimization and always emits machine-readable JSON with token metrics and
+quality scores:
+
+```bash
+uv run alexandria report prompt.txt --model deterministic --drift-budget 2.0
+```
+
+The `tokens` object reports source, reduced, and saved tokens. The `quality` object reports the
+token-weighted mean and minimum best-match cosine similarity for every source instruction. To fail
+when a report is worse than a committed baseline, pass the baseline file:
+
+```bash
+uv run alexandria report benchmarks/optimization_prompt.txt \
+  --model deterministic \
+  --threshold 0.85 \
+  --drift-budget 2.0 \
+  --baseline benchmarks/optimization_baseline.json
+```
+
+The command exits with status 1 when reduced token count rises or either monitored quality score
+falls beyond its tolerance. Use `--token-tolerance` and `--quality-tolerance` for expected numerical
+variation. The workflow in `.github/workflows/optimization-quality.yml` runs this comparison on every
+push and uploads the current JSON report as a CI artifact.
+
 By default the embeddings come from `sentence-transformers` (`all-MiniLM-L6-v2`), downloaded on first
 use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder. Because
 that embedder re-embeds edited text to an unrelated vector, an offline run needs a generous
@@ -55,8 +79,9 @@ Be concise.
 Use examples.
 ```
 
-`represent`, `select`, and `reduce` take `--model`; `optimize` and `reduce` take `--threshold`;
-`select` and `reduce` take `--drift-budget`. Envelopes are JSON today (`schema_version=1`).
+`represent`, `select`, `reduce`, and `report` take `--model`; `optimize`, `reduce`, and `report` take
+`--threshold`; `select`, `reduce`, and `report` take `--drift-budget`. Envelopes and reports are JSON
+today (`schema_version=1`).
 
 ## Library
 
