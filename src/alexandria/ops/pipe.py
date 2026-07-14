@@ -178,7 +178,9 @@ def compare_reports(
     if current.config != baseline.config:
         raise ValueError("baseline config does not match the current report config")
     if current.tokens.source != baseline.tokens.source:
-        raise ValueError("baseline source token count does not match; regenerate the baseline for this fixture prompt")
+        raise ValueError(
+            "baseline source token count does not match; regenerate the baseline for this fixture prompt"
+        )
 
     regressions: list[Regression] = []
     _append_max_regression(
