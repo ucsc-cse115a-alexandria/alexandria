@@ -16,29 +16,28 @@ DEFAULT_SELECTOR = "auto"
 
 @register_selector(DEFAULT_SELECTOR)
 def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
-    
+
     base = document.embedding
     current = document
     applied: list[Candidate] = []
-    
+
     # Check if we are already under budget before doing any work
     if params.max_tokens is not None and current.token_count <= params.max_tokens:
         return Selection(document=current, applied=tuple(applied))
-        
+
     for candidate in sorted(plan, key=lambda candidate: candidate.confidence, reverse=True):
         trial = current.apply(candidate)
         if trial is None or trial is current:
             continue
-            
+
         drift = cosine_distance(embedder.embed([trial.text])[0], base)
         if drift <= params.drift_budget:
             current = trial
             applied.append(candidate)
-            
-            
+
             if params.max_tokens is not None and current.token_count <= params.max_tokens:
                 break
-                
+
     return Selection(document=current, applied=tuple(applied))
 
 
