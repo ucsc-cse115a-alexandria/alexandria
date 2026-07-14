@@ -57,6 +57,24 @@ class Candidate(BaseModel):
 Plan = tuple[Candidate, ...]
 
 
+class DiffSpan(BaseModel):
+    """One sentence an edit removes or rewrites: its id, section location, and original text."""
+
+    model_config = ConfigDict(frozen=True)
+    sentence_id: SentenceId
+    section_path: tuple[str, ...]  # Section.header values from the root section down to the sentence's parent
+    original: str
+
+
+class Diff(BaseModel):
+    """A displayable rendering of one Candidate: where it applies, what it removes, what replaces it."""
+
+    model_config = ConfigDict(frozen=True)
+    candidate: Candidate
+    spans: tuple[DiffSpan, ...] = Field(min_length=1)
+    replacement: str  # "" for Delete; reserved for Replace
+
+
 class Scorer(Protocol):
     def __call__(self, document: Document) -> list[float]: ...
 

@@ -114,24 +114,26 @@ from the swappable strategies and makes the plugin convention visible.
 ```
 src/
   alexandria/
-    __init__.py         # public API: represent, score, optimize, select, compare, reduce, score_report, Document
+    __init__.py         # public API: represent, score, optimize, select, compare, diffs, propose, reduce, score_report, Document
     __main__.py         # `python -m alexandria` → the CLI
     cli/                # layer 1 — thin wrapper; verbs represent / score / optimize / select / compare / reduce
       main.py           #   click commands; parse args, move text in/out, call the library
       envelope.py       #   the JSON wire envelopes between piped verbs (schema_version=1)
+      interactive.py    #   reduce --interactive: ReviewState machine + render + the getchar review loop
     ops/                # layer 2 — the library body
-      pipe.py           #   chain features where composing several is convenient — reduce / score_report
+      pipe.py           #   chain features where composing several is convenient — reduce / propose / score_report
       features/         #   the standalone features; each imports ir, plus utils only for the default embedder
         represent.py    #     phase 1 — prompt → Document (split + tiktoken + injected Embedder)
         score.py        #     phase 2 — @register_scorer("redundancy"); score(...) -> Scores, score_rows
         optimize.py     #     phase 3 — @register_optimizer("greedy_pairwise", requires=("redundancy",))
         select.py       #     phase 4 — @register_selector("auto"); fold a Plan → reduced Document
         compare.py      #     compare(original, edited) → CompareResult (similarity + token reduction)
+        diff.py         #     diffs(document, plan) → displayable Diffs, one per candidate, confidence order
     utils/              # layer 3 — the imperative shell
       embedders.py      #   Embedder implementations; the only place a model is built (default_embedder)
     ir/                 # layer 4 — the contract; depends on nothing else in alexandria
       document.py       #   Document / Section / Sentence + validation + Document.apply (the only rewrite)
-      contracts.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan
+      contracts.py      #   Scorer/Optimizer/Selector/Embedder Protocols + Scores/Params/SentenceId/Edit/Candidate/Plan/Diff
       registry.py       #   @register_* (rejects dup names) + lookup + requires-check
       similarity.py     #   cosine helpers shared by score, optimize, and select
 pyproject.toml          # import-linter layering contracts
@@ -588,12 +590,12 @@ A few single-purpose verbs, built with [`click`](https://github.com/pallets/clic
 phases is its own verb, and they **compose over a Unix pipe**: every phase emits a self-contained JSON
 **envelope** carrying the `Document` (and, downstream, the `Scores` or `Plan`) the next phase needs.
 
-- `alexandria represent [FILE] [--model MODEL]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
-- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table]` — `DocumentEnvelope` in, a
+- `alexandria represent [FILE] [--model MODEL] [--out PATH]` — raw prompt in, a **`DocumentEnvelope`** (JSON) out.
+- `alexandria score [FILE] [--scorer NAME[,NAME...]] [--table] [--out PATH]` — `DocumentEnvelope` in, a
   **`ScoredEnvelope`** out; `--table` prints a human-readable per-instruction report instead. Run
   several scorers and their columns are the `Scores` bundle. No embedder is needed — it scores the
   Document it is handed.
-- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T]` — `ScoredEnvelope` in, a
+- `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T] [--out PATH]` — `ScoredEnvelope` in, a
   **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
 - `alexandria select [FILE] [--model MODEL] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
   **reduced prompt** out (or a JSON reduction summary with `--json`). The `auto` selector folds the
@@ -604,6 +606,10 @@ phases is its own verb, and they **compose over a Unix pipe**: every phase emits
   path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
   (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each
   chosen optimizer declares the scorer(s) it needs.
+
+`--out PATH` saves the JSON envelope while preserving stdout for a pipe; the next compatible phase can
+read that saved file as its `FILE` argument. See the [CLI guide](cli.md) for user-facing examples and
+the complete workflow reference.
 
 So `alexandria represent < p.txt | alexandria score | alexandria optimize | alexandria select`
 reproduces `alexandria reduce < p.txt`, and any prefix of that pipe is a useful stop

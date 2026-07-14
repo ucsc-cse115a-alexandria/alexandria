@@ -6,7 +6,7 @@ Label-free prompt optimization: shorten instruction-heavy prompts while preservi
 using sentence embeddings. Alexandria finds which instructions overlap (a redundancy score) and
 drops the redundant ones — no labels, no training, no target output to compare against.
 
-See [docs/spec.md](docs/spec.md) for the design.
+See [the design specification](docs/spec.md) for the implementation architecture.
 
 ## Install
 
@@ -18,50 +18,18 @@ uv sync
 
 ## CLI
 
-Each verb reads from a `FILE` argument or stdin and writes to stdout; diagnostics go to stderr.
-
-`reduce` runs all four phases end to end — prompt in, reduced prompt out:
+Run the full optimization pipeline with one command:
 
 ```bash
 uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
-The four phases are also separate verbs that compose over a Unix pipe. Each carries the data the next
-one needs as a self-contained JSON envelope (`represent` → `score` → `optimize` → `select`):
-
-```bash
-uv run alexandria represent < prompt.txt \
-  | uv run alexandria score \
-  | uv run alexandria optimize \
-  | uv run alexandria select > reduced.txt
-```
-
-`score --table` prints a per-instruction redundancy report instead of a `ScoredEnvelope`:
-
-```bash
-uv run alexandria represent < prompt.txt | uv run alexandria score --table
-```
-
-`reduce --json` and `select --json` emit a summary (`text`, `applied`, `source_tokens`, `reduced_tokens`).
-
-By default the embeddings come from `sentence-transformers` (`all-MiniLM-L6-v2`), downloaded on first
-use. Pass `--model deterministic` for a fast, offline run with a non-semantic hash embedder. Because
-that embedder re-embeds edited text to an unrelated vector, an offline run needs a generous
-`--drift-budget` to accept deletions (a semantic model dedupes within the default budget):
-
-```bash
-$ printf 'Be concise.\nBe concise.\nUse examples.\n' | uv run alexandria reduce --model deterministic --drift-budget 2.0
-Be concise.
-Use examples.
-```
-
-`represent`, `select`, and `reduce` take `--model`; `optimize` and `reduce` take `--threshold`;
-`select` and `reduce` take `--drift-budget`. Envelopes are JSON today (`schema_version=1`).
+For phase-by-phase execution, saving and resuming JSON envelopes, options, and offline runs, see
+[the CLI guide](docs/cli.md).
 
 ## Library
 
-The CLI is a thin wrapper; everything is importable. `reduce` runs all four phases end to end and
-needs no setup — the default `all-MiniLM-L6-v2` model is downloaded and built on first use:
+The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python:
 
 ```python
 import alexandria
@@ -70,31 +38,8 @@ result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n")
 print(result.text)
 ```
 
-See `examples/reduce_prompt.py` for a runnable sample.
-
-For an offline, deterministic run (tests, CI), pass an embedder explicitly:
-
-```python
-import alexandria
-from alexandria.utils.embedders import HashEmbedder
-
-result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n", HashEmbedder())
-```
-
-Each CLI verb maps to a function of the same name, so you can also compose the phases directly —
-the same `represent` → `score` → `optimize` → `select` pipeline as the Unix pipe above:
-
-```python
-from alexandria import represent, score, optimize, select
-from alexandria.utils.embedders import default_embedder
-
-embedder = default_embedder()
-document = represent("Be concise.\nBe concise.\nUse examples.\n", embedder)
-scores = score(document)
-plan = optimize(document, scores)
-selection = select(document, plan, embedder)
-reduced = selection.document.text
-```
+See [the library guide](docs/library.md) for deterministic and offline embedding, direct phase
+composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## How it works
 
