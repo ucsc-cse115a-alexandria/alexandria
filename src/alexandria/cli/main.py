@@ -63,11 +63,15 @@ def _emit_envelope(payload: str, out_path: Path | None) -> None:
 
 
 def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens: int) -> str:
+
+    reduction_pct = 1.0 - (reduced_tokens / source_tokens) if source_tokens > 0 else 0.0
+
     payload = {
         "text": text,
         "applied": [candidate.model_dump(mode="json") for candidate in applied],
         "source_tokens": source_tokens,
         "reduced_tokens": reduced_tokens,
+        "reduction_pct": reduction_pct,
     }
     return json.dumps(payload, indent=2)
 
@@ -289,7 +293,15 @@ def reduce_cmd(
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
     else:
-        click.echo(result.text, nl=False)
+        reduction_pct = 1.0 - (result.reduced_tokens / result.source_tokens) if result.source_tokens > 0 else 0.0
+
+        # Print the stats to stderr (err=True) so it doesn't break terminal piping
+        click.echo(
+            f"Tokens: {result.source_tokens} -> {result.reduced_tokens} ({reduction_pct:.1%} reduction)", err=True
+        )
+
+        # Print the actual reduced text to stdout
+        click.echo(result.text)
 
 
 @cli.command(name="tokens")
