@@ -301,7 +301,7 @@ def reduce_cmd(
         )
 
         # Print the actual reduced text to stdout
-        click.echo(result.text)
+        click.echo(result.text, nl=False)
 
 
 @cli.command(name="tokens")
