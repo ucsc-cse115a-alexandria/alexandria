@@ -10,12 +10,12 @@ import pytest
 
 from alexandria.cli.browser_review import (
     ReviewServer,
-    _reserve_port,
-    _validate_selection_payload,
     accepted_candidates,
     inject_bridge,
     parse_selection,
+    reserve_port,
     run_browser_review,
+    validate_selection_payload,
 )
 from alexandria.cli.review_html import render_review_page
 from alexandria.ops import DETERMINISTIC, Proposal, build_embedder, diffs, optimize, represent, score
@@ -63,12 +63,12 @@ def test_inject_bridge_adds_apply_cancel_and_port() -> None:
 
 def test_validate_selection_payload_rejects_bad_schema_version() -> None:
     with pytest.raises(click.ClickException, match="schema_version"):
-        _validate_selection_payload({"schema_version": 2, "accepted_indices": [], "total_count": 1}, total_count=1)
+        validate_selection_payload({"schema_version": 2, "accepted_indices": [], "total_count": 1}, total_count=1)
 
 
 def test_validate_selection_payload_rejects_out_of_range_index() -> None:
     with pytest.raises(click.ClickException, match="out of range"):
-        _validate_selection_payload(
+        validate_selection_payload(
             {"schema_version": 1, "accepted_indices": [99], "total_count": 2},
             total_count=2,
         )
@@ -85,7 +85,7 @@ def test_accepted_candidates_preserves_confidence_order() -> None:
 
 def test_review_server_returns_accepted_candidates_on_done() -> None:
     proposal = _reviewable_proposal()
-    port = _reserve_port()
+    port = reserve_port()
     html = inject_bridge(render_review_page(proposal), port=port)
     server = ReviewServer(html, port=port)
     server.start()
@@ -104,7 +104,7 @@ def test_review_server_returns_accepted_candidates_on_done() -> None:
         assert status == 204
 
         result = server.wait_for_selection()
-        indices = _validate_selection_payload(
+        indices = validate_selection_payload(
             {
                 "schema_version": 1,
                 "accepted_indices": list(result.accepted_indices),
@@ -120,7 +120,7 @@ def test_review_server_returns_accepted_candidates_on_done() -> None:
 
 def test_review_server_returns_none_on_abort() -> None:
     proposal = _reviewable_proposal()
-    port = _reserve_port()
+    port = reserve_port()
     html = inject_bridge(render_review_page(proposal), port=port)
     server = ReviewServer(html, port=port)
     server.start()
@@ -135,7 +135,7 @@ def test_review_server_returns_none_on_abort() -> None:
 
 def test_review_server_rejects_invalid_done_payload() -> None:
     proposal = _reviewable_proposal()
-    port = _reserve_port()
+    port = reserve_port()
     html = inject_bridge(render_review_page(proposal), port=port)
     server = ReviewServer(html, port=port)
     server.start()
@@ -199,7 +199,10 @@ def test_run_browser_review_success_cleans_temp_dir(monkeypatch: pytest.MonkeyPa
     def done_wait(_self: ReviewServer) -> Any:
         return type("R", (), {"status": "done", "accepted_indices": ()})()
 
-    monkeypatch.setattr("alexandria.cli.browser_review.tempfile.mkdtemp", lambda *_a, **_k: str(temp_dir))
+    def fake_mkdtemp_success(*_args: object, **_kwargs: object) -> str:
+        return str(temp_dir)
+
+    monkeypatch.setattr("alexandria.cli.browser_review.tempfile.mkdtemp", fake_mkdtemp_success)
     monkeypatch.setattr(ReviewServer, "wait_for_selection", done_wait)
 
     assert run_browser_review(proposal, open_browser=False) == ()
@@ -214,7 +217,10 @@ def test_run_browser_review_error_keeps_temp_dir(monkeypatch: pytest.MonkeyPatch
     def fail_start(_self: ReviewServer) -> None:
         raise RuntimeError("server failed to start")
 
-    monkeypatch.setattr("alexandria.cli.browser_review.tempfile.mkdtemp", lambda *_a, **_k: str(temp_dir))
+    def fake_mkdtemp_success(*_args: object, **_kwargs: object) -> str:
+        return str(temp_dir)
+
+    monkeypatch.setattr("alexandria.cli.browser_review.tempfile.mkdtemp", fake_mkdtemp_success)
     monkeypatch.setattr(ReviewServer, "start", fail_start)
 
     with pytest.raises(RuntimeError, match="server failed to start"):

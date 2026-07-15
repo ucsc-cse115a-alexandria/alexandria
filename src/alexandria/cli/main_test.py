@@ -280,13 +280,17 @@ def test_reduce_interactive_rejects_selector_knobs() -> None:
 
 def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
-    from alexandria.ops.pipe import propose
+    from alexandria.ir.contracts import Candidate
+    from alexandria.ops.pipe import Proposal, propose
 
     prompt = "keep one\nkeep one\nunique\n"
     proposal = propose(prompt, build_embedder(DETERMINISTIC))
     accepted = (proposal.diffs[0].candidate,)
 
-    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, **_: accepted)
+    def fake_run_browser_review(_proposal: Proposal, **_: object) -> tuple[Candidate, ...]:
+        return accepted
+
+    monkeypatch.setattr(main_module, "run_browser_review", fake_run_browser_review)
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -300,8 +304,12 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
 
 def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
+    from alexandria.ops.pipe import Proposal
 
-    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, **_: None)
+    def fake_run_browser_review(_proposal: Proposal, **_: object) -> None:
+        return None
+
+    monkeypatch.setattr(main_module, "run_browser_review", fake_run_browser_review)
 
     runner = CliRunner()
     with runner.isolated_filesystem():

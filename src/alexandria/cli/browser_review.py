@@ -12,7 +12,7 @@ import webbrowser
 from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any, Literal, TypeIs
 
 import click
 
@@ -42,20 +42,33 @@ def parse_selection(html: str) -> dict[str, Any]:
     return json.loads(match.group(1))
 
 
-def _validate_selection_payload(payload: dict[str, Any], *, total_count: int) -> tuple[int, ...]:
+def _is_object_list(value: object) -> TypeIs[list[object]]:
+    return isinstance(value, list)
+
+
+def _coerce_int_list(value: object, *, label: str) -> list[int]:
+    if not _is_object_list(value):
+        raise click.ClickException(f"{label} must be a list of integers")
+    indices: list[int] = []
+    for item in value:
+        if not isinstance(item, int):
+            raise click.ClickException(f"{label} must be a list of integers")
+        indices.append(item)
+    return indices
+
+
+def validate_selection_payload(payload: dict[str, Any], *, total_count: int) -> tuple[int, ...]:
     schema_version = payload.get("schema_version")
     if schema_version != SCHEMA_VERSION:
         raise click.ClickException(f"unsupported selection schema_version: {schema_version!r}")
 
-    raw_indices = payload.get("accepted_indices")
-    if not isinstance(raw_indices, list) or not all(isinstance(index, int) for index in raw_indices):
-        raise click.ClickException("accepted_indices must be a list of integers")
+    accepted_indices = _coerce_int_list(payload.get("accepted_indices"), label="accepted_indices")
 
     total = payload.get("total_count")
     if total != total_count:
         raise click.ClickException(f"selection total_count {total!r} does not match {total_count} proposed edits")
 
-    accepted = tuple(raw_indices)
+    accepted = tuple(accepted_indices)
     if len(accepted) != len(set(accepted)):
         raise click.ClickException("accepted_indices contains duplicates")
 
@@ -135,7 +148,7 @@ def inject_bridge(html: str, port: int) -> str:
     return html.replace(marker, bridge + marker, 1)
 
 
-def _reserve_port() -> int:
+def reserve_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
@@ -157,7 +170,7 @@ class ReviewServer:
         parent = self
 
         class Handler(BaseHTTPRequestHandler):
-            def log_message(self, _format: str, *_args: object) -> None:
+            def log_message(self, format: str, *args: object) -> None:  # noqa: ARG002
                 return
 
             def do_GET(self) -> None:
@@ -186,11 +199,18 @@ class ReviewServer:
                 if status == "aborted":
                     parent._result = SelectionResult(status="aborted")
                 elif status == "done":
-                    accepted = payload.get("accepted_indices", [])
-                    if not isinstance(accepted, list) or not all(isinstance(index, int) for index in accepted):
-                        self.send_error(400, explain="accepted_indices must be a list of integers")
+                    try:
+                        accepted_indices = _coerce_int_list(
+                            payload.get("accepted_indices", []),
+                            label="accepted_indices",
+                        )
+                    except click.ClickException as error:
+                        self.send_error(400, explain=str(error))
                         return
-                    parent._result = SelectionResult(status="done", accepted_indices=tuple(accepted))
+                    parent._result = SelectionResult(
+                        status="done",
+                        accepted_indices=tuple(accepted_indices),
+                    )
                 else:
                     self.send_error(400, explain="status must be 'done' or 'aborted'")
                     return
@@ -225,7 +245,7 @@ def run_browser_review(proposal: Proposal, *, open_browser: bool = True) -> tupl
     server: ReviewServer | None = None
     server_started = False
     try:
-        port = _reserve_port()
+        port = reserve_port()
         html = inject_bridge(render_review_page(proposal), port)
         (temp_dir / "review.html").write_text(html, encoding="utf-8")
 
@@ -241,7 +261,7 @@ def run_browser_review(proposal: Proposal, *, open_browser: bool = True) -> tupl
         if result.status == "aborted":
             return None
 
-        indices = _validate_selection_payload(
+        indices = validate_selection_payload(
             {
                 "schema_version": SCHEMA_VERSION,
                 "accepted_indices": list(result.accepted_indices),
