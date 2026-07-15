@@ -278,6 +278,83 @@ def test_reduce_interactive_rejects_selector_knobs() -> None:
     assert "--interactive" in result.output
 
 
+def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
+    from alexandria.cli import main as main_module
+    from alexandria.ops.pipe import propose
+
+    prompt = "keep one\nkeep one\nunique\n"
+    proposal = propose(prompt, build_embedder(DETERMINISTIC))
+    accepted = (proposal.diffs[0].candidate,)
+
+    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, open_browser=True: accepted)
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text(prompt)
+        result = runner.invoke(cli, ["reduce", "--browser", "--model", "deterministic", "p.md"])
+
+    assert result.exit_code == 0
+    assert result.stdout.count("keep one") == 1
+    assert "unique" in result.stdout
+
+
+def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
+    from alexandria.cli import main as main_module
+
+    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, open_browser=True: None)
+
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("keep one\nkeep one\nunique\n")
+        result = runner.invoke(cli, ["reduce", "--browser", "--model", "deterministic", "p.md"])
+
+    assert result.exit_code == 0
+    assert result.stdout.count("keep one") == 2
+    assert "aborted" in result.stderr
+
+
+def test_reduce_browser_rejects_stdin_prompt() -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--browser", "--model", "deterministic"], input="a\nb\n")
+
+    assert result.exit_code == 2
+    assert "--browser" in result.output
+    assert "stdin" in result.output
+
+
+def test_reduce_browser_rejects_selector_knobs() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("a\nb\n")
+        result = runner.invoke(
+            cli, ["reduce", "--browser", "--min-similarity", "0.99", "--model", "deterministic", "p.md"]
+        )
+
+    assert result.exit_code == 2
+    assert "--browser" in result.output
+
+
+def test_reduce_browser_and_interactive_mutually_exclusive() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("a\nb\n")
+        result = runner.invoke(
+            cli, ["reduce", "--browser", "--interactive", "--model", "deterministic", "p.md"]
+        )
+
+    assert result.exit_code == 2
+    assert "mutually exclusive" in result.output
+
+
+def test_reduce_no_open_requires_browser() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("a\nb\n")
+        result = runner.invoke(cli, ["reduce", "--no-open", "--model", "deterministic", "p.md"])
+
+    assert result.exit_code == 2
+    assert "--no-open requires --browser" in result.output
+
+
 def test_compare_min_similarity_gates_the_exit_code() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
