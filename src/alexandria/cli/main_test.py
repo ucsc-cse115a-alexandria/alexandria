@@ -337,9 +337,7 @@ def test_reduce_browser_and_interactive_mutually_exclusive() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("a\nb\n")
-        result = runner.invoke(
-            cli, ["reduce", "--browser", "--interactive", "--model", "deterministic", "p.md"]
-        )
+        result = runner.invoke(cli, ["reduce", "--browser", "--interactive", "--model", "deterministic", "p.md"])
 
     assert result.exit_code == 2
     assert "mutually exclusive" in result.output

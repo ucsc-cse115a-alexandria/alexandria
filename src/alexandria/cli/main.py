@@ -298,9 +298,7 @@ def reduce_cmd(
     review_flag = "--interactive" if interactive else "--browser"
 
     if manual_review and getattr(file, "name", None) == "<stdin>":
-        raise click.UsageError(
-            f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path."
-        )
+        raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
     if manual_review and (
         min_similarity is not None or drift_budget != _DEFAULTS.drift_budget or selector != DEFAULT_SELECTOR
     ):
