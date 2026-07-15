@@ -286,7 +286,7 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
     proposal = propose(prompt, build_embedder(DETERMINISTIC))
     accepted = (proposal.diffs[0].candidate,)
 
-    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, open_browser=True: accepted)
+    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, **_: accepted)
 
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -301,7 +301,7 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
 def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
 
-    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, open_browser=True: None)
+    monkeypatch.setattr(main_module, "run_browser_review", lambda _proposal, **_: None)
 
     runner = CliRunner()
     with runner.isolated_filesystem():
