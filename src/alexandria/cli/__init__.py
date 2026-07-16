@@ -1,4 +1,4 @@
-"""Thin CLI wrapper over ops: five verbs composable over a Unix pipe."""
+"""Thin CLI wrapper over ops, including the machine-readable optimization report."""
 
 from alexandria.cli.main import cli
 

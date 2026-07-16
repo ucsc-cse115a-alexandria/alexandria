@@ -26,6 +26,10 @@ def _constant_scorer(document: Document) -> list[float]:
 
 register_scorer("cli_test_constant")(_constant_scorer)
 
+_ROOT = Path(__file__).resolve().parents[3]
+_REPORT_FIXTURE = _ROOT / "benchmarks" / "optimization_prompt.txt"
+_REPORT_SNAPSHOT = _ROOT / "benchmarks" / "optimization_baseline.json"
+
 
 def test_phase_verbs_pipe_to_the_same_text_as_reduce() -> None:
     runner = CliRunner()
@@ -207,6 +211,93 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
+
+
+def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
+    result = CliRunner().invoke(
+        cli,
+        ["report", "--model", "deterministic", "--drift-budget", "2.0"],
+        input="keep one\nkeep one\nunique\n",
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["tokens"]["source"] > payload["tokens"]["reduced"]
+    assert "instruction_coverage" in payload["quality"]
+    assert "minimum_instruction_similarity" in payload["quality"]
+
+
+def test_report_matches_the_committed_fixture_snapshot() -> None:
+    result = CliRunner().invoke(
+        cli,
+        [
+            "report",
+            str(_REPORT_FIXTURE),
+            "--model",
+            "deterministic",
+            "--threshold",
+            "0.85",
+            "--drift-budget",
+            "2.0",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output) == json.loads(_REPORT_SNAPSHOT.read_text(encoding="utf-8"))
+
+
+def test_report_passes_against_the_matching_baseline() -> None:
+    result = CliRunner().invoke(
+        cli,
+        [
+            "report",
+            str(_REPORT_FIXTURE),
+            "--model",
+            "deterministic",
+            "--threshold",
+            "0.85",
+            "--drift-budget",
+            "2.0",
+            "--baseline",
+            str(_REPORT_SNAPSHOT),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert json.loads(result.output)["comparison"] == {"passed": True, "regressions": []}
+
+
+def test_report_exits_nonzero_when_the_baseline_regresses(tmp_path: Path) -> None:
+    prompt = "keep one\nkeep one\nunique\n"
+    runner = CliRunner()
+    initial = runner.invoke(
+        cli,
+        ["report", "--model", "deterministic", "--drift-budget", "2.0"],
+        input=prompt,
+    )
+    baseline_payload = json.loads(initial.output)
+    baseline_payload["tokens"]["reduced"] -= 1
+    baseline_path = tmp_path / "baseline.json"
+    baseline_path.write_text(json.dumps(baseline_payload), encoding="utf-8")
+
+    result = runner.invoke(
+        cli,
+        [
+            "report",
+            "--model",
+            "deterministic",
+            "--drift-budget",
+            "2.0",
+            "--baseline",
+            str(baseline_path),
+        ],
+        input=prompt,
+    )
+
+    assert result.exit_code == 1
+    payload = json.loads(result.output.split("\nregression:", maxsplit=1)[0])
+    assert not payload["comparison"]["passed"]
+    assert "tokens.reduced" in result.output
 
 
 def test_reduce_interactive_rejects_a_stdin_prompt() -> None:

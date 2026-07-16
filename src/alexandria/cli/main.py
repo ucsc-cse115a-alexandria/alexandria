@@ -13,7 +13,14 @@ from alexandria.cli.browser_review import run_browser_review
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.cli.interactive import apply_candidates, review
 from alexandria.ir.contracts import Params
-from alexandria.ops import DEFAULT_MODEL, DETERMINISTIC, build_embedder
+from alexandria.ops import (
+    DEFAULT_MODEL,
+    DETERMINISTIC,
+    OptimizationReport,
+    build_embedder,
+    compare_reports,
+    optimization_report,
+)
 from alexandria.ops.features.compare import compare
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.ops.features.represent import represent
@@ -349,6 +356,85 @@ def reduce_cmd(
 
         # Print the actual reduced text to stdout
         click.echo(result.text, nl=False)
+
+
+@cli.command(name="report")
+@click.argument("file", type=click.File("r"), default="-")
+@click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
+@click.option("--selector", default=DEFAULT_SELECTOR, help="selector name")
+@click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
+@click.option(
+    "--drift-budget",
+    type=float,
+    default=_DEFAULTS.drift_budget,
+    help="max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)",
+)
+@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
+@click.option(
+    "--baseline",
+    type=click.File("r"),
+    help="compare against a previously generated report and exit non-zero on regression",
+)
+@click.option(
+    "--quality-tolerance",
+    type=click.FloatRange(min=0.0),
+    default=0.0,
+    show_default=True,
+    help="allowed decrease in each quality score",
+)
+@click.option(
+    "--token-tolerance",
+    type=click.IntRange(min=0),
+    default=0,
+    show_default=True,
+    help="allowed increase in reduced token count",
+)
+def report_cmd(
+    file: IO[str],
+    optimizers: str,
+    selector: str,
+    threshold: float,
+    drift_budget: float,
+    model: str,
+    baseline: IO[str] | None,
+    quality_tolerance: float,
+    token_tolerance: int,
+) -> None:
+    """Run optimization and emit token metrics plus quality scores as JSON."""
+    names = _names(optimizers)
+    params = Params(threshold=threshold, drift_budget=drift_budget)
+    comparison = None
+    with _clean_errors():
+        report = optimization_report(
+            file.read(),
+            build_embedder(model),
+            optimizers=names,
+            selector=selector,
+            params=params,
+        )
+        if baseline is not None:
+            baseline_report = OptimizationReport.model_validate_json(baseline.read())
+            comparison = compare_reports(
+                report,
+                baseline_report,
+                quality_tolerance=quality_tolerance,
+                token_tolerance=token_tolerance,
+            )
+
+    payload = report.model_dump(mode="json")
+    if comparison is not None:
+        payload["comparison"] = comparison.model_dump(mode="json")
+    click.echo(json.dumps(payload, indent=2))
+
+    if comparison is not None and not comparison.passed:
+        for regression in comparison.regressions:
+            relation = ">=" if regression.expected == "at_least" else "<="
+            click.echo(
+                f"regression: {regression.metric}={regression.current} "
+                f"(expected {relation} {regression.baseline} with tolerance {regression.tolerance})",
+                err=True,
+            )
+        raise click.exceptions.Exit(1)
 
 
 @cli.command(name="tokens")

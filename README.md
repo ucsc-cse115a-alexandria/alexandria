@@ -24,6 +24,29 @@ Run the full optimization pipeline with one command:
 uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
+`report` runs the full optimization and always emits machine-readable JSON with token metrics and
+quality scores:
+
+```bash
+uv run alexandria report prompt.txt --model deterministic --drift-budget 2.0
+```
+
+The `tokens` object reports source, reduced, and saved tokens. The `quality` object reports the
+token-weighted mean and minimum best-match cosine similarity for every source instruction. To fail
+when a report is worse than a committed baseline, pass the baseline file:
+
+```bash
+uv run alexandria report benchmarks/optimization_prompt.txt \
+  --model deterministic \
+  --threshold 0.85 \
+  --drift-budget 2.0 \
+  --baseline benchmarks/optimization_baseline.json
+```
+
+The command exits with status 1 when reduced token count rises or either monitored quality score
+falls beyond its tolerance. Use `--token-tolerance` and `--quality-tolerance` for expected numerical
+variation.
+
 For phase-by-phase execution, saving and resuming JSON envelopes, options, and offline runs, see
 [the CLI guide](docs/cli.md).
 

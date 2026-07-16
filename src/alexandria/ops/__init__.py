@@ -7,7 +7,17 @@ from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score, score_rows
 from alexandria.ops.features.select import select
-from alexandria.ops.pipe import Proposal, ReduceResult, propose, reduce, score_report
+from alexandria.ops.pipe import (
+    OptimizationReport,
+    Proposal,
+    ReduceResult,
+    ReportComparison,
+    compare_reports,
+    optimization_report,
+    propose,
+    reduce,
+    score_report,
+)
 
 # ops re-exports embedder construction so the CLI never imports utils directly.
 from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder
@@ -18,11 +28,15 @@ __all__ = [
     "CompareResult",
     "Diff",
     "DiffSpan",
+    "OptimizationReport",
     "Proposal",
     "ReduceResult",
+    "ReportComparison",
     "build_embedder",
     "compare",
+    "compare_reports",
     "diffs",
+    "optimization_report",
     "optimize",
     "propose",
     "reduce",
