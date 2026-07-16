@@ -7,9 +7,9 @@
 | src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
 | src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/interactive.py        |      137 |        6 |       48 |        7 |     93.0% |36, 38, 103, 157-158, 187, 198-\>182, 212-\>210 |
-| src/alexandria/cli/main.py               |      153 |        2 |       30 |        2 |     97.8% |   80, 274 |
+| src/alexandria/cli/main.py               |      154 |        2 |       30 |        2 |     97.8% |   80, 281 |
 | src/alexandria/cli/review\_html.py       |       79 |        6 |       26 |        4 |     88.6% |321, 326, 345-348, 357 |
-| src/alexandria/ir/contracts.py           |       49 |        0 |       10 |        6 |     89.8% |33-\>35, 33-\>exit, 35-\>exit, 78-\>exit, 82-\>exit, 94-\>exit |
+| src/alexandria/ir/contracts.py           |       50 |        0 |       10 |        6 |     90.0% |34-\>36, 34-\>exit, 36-\>exit, 79-\>exit, 83-\>exit, 95-\>exit |
 | src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
 | src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
@@ -18,10 +18,10 @@
 | src/alexandria/ops/features/optimize.py  |       36 |        0 |       10 |        0 |    100.0% |           |
 | src/alexandria/ops/features/represent.py |      151 |        1 |       38 |        1 |     98.9% |       237 |
 | src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
-| src/alexandria/ops/features/select.py    |       28 |        1 |        8 |        1 |     94.4% |        27 |
+| src/alexandria/ops/features/select.py    |       32 |        3 |       12 |        3 |     86.4% |26, 31, 39 |
 | src/alexandria/ops/pipe.py               |       48 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
-| **TOTAL**                                | **1009** |   **21** |  **226** |   **27** | **96.0%** |           |
+| **TOTAL**                                | **1015** |   **23** |  **230** |   **29** | **95.7%** |           |
 
 
 ## Setup coverage badge
