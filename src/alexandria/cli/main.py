@@ -9,6 +9,7 @@ import click
 import tiktoken
 from pydantic import ValidationError
 
+from alexandria.cli.browser_review import run_browser_review
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.cli.interactive import apply_candidates, review
 from alexandria.ir.contracts import Params
@@ -88,6 +89,24 @@ def _interactive_reduce(prompt: str, optimizers: tuple[str, ...], params: Params
     return ReduceResult(document=document, source=proposal.document, applied=accepted)
 
 
+def _browser_reduce(
+    prompt: str, optimizers: tuple[str, ...], params: Params, model: str, *, open_browser: bool
+) -> ReduceResult:
+    """Propose edits, review them in a browser, and apply exactly the accepted ones."""
+    proposal = propose(prompt, build_embedder(model), optimizers=optimizers, params=params)
+    accepted: tuple[Candidate, ...] = ()
+    if not proposal.diffs:
+        click.echo("no proposed edits; the prompt is unchanged", err=True)
+    else:
+        chosen = run_browser_review(proposal, open_browser=open_browser)
+        if chosen is None:
+            click.echo("review aborted; the prompt is unchanged", err=True)
+        else:
+            accepted = chosen
+    document = apply_candidates(proposal.document, accepted)
+    return ReduceResult(document=document, source=proposal.document, applied=accepted)
+
+
 @click.group()
 def cli() -> None:
     """Alexandria — label-free prompt optimization.
@@ -96,6 +115,7 @@ def cli() -> None:
     Quick start:
       alexandria reduce prompt.md                # reduce automatically
       alexandria reduce --interactive prompt.md  # review each edit, apply only what you accept
+      alexandria reduce --browser prompt.md      # review each edit in a browser, apply only what you accept
       alexandria compare original.md reduced.md  # check similarity and token reduction
 
     \b
@@ -238,6 +258,14 @@ def compare_cmd(
 @click.option(
     "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the checked ones"
 )
+@click.option(
+    "--browser", is_flag=True, help="review each proposed edit in a browser and apply only the accepted ones"
+)
+@click.option(
+    "--no-open",
+    is_flag=True,
+    help="with --browser, print the review URL but do not open the default browser",
+)
 def reduce_cmd(
     file: IO[str],
     optimizers: str,
@@ -249,6 +277,8 @@ def reduce_cmd(
     model: str,
     as_json: bool,
     interactive: bool,
+    browser: bool,
+    no_open: bool,
 ) -> None:
     """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json).
 
@@ -257,6 +287,7 @@ def reduce_cmd(
       alexandria reduce prompt.md                    # automatic: the selector applies edits within --drift-budget
       alexandria reduce prompt.md --json             # machine-readable summary of what was applied
       alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
+      alexandria reduce --browser prompt.md          # review each proposed edit in a browser (FILE required)
 
     \b
     Interactive keys:
@@ -265,15 +296,22 @@ def reduce_cmd(
       d               done — apply the checked edits and exit
       q               quit without changing the prompt
     """
-    if interactive and getattr(file, "name", None) == "<stdin>":
-        raise click.UsageError(
-            "--interactive reads keys from the terminal, so FILE cannot be stdin; pass a file path."
-        )
-    if interactive and (
+    if no_open and not browser:
+        raise click.UsageError("--no-open requires --browser.")
+
+    if interactive and browser:
+        raise click.UsageError("--interactive and --browser are mutually exclusive.")
+
+    manual_review = interactive or browser
+    review_flag = "--interactive" if interactive else "--browser"
+
+    if manual_review and getattr(file, "name", None) == "<stdin>":
+        raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
+    if manual_review and (
         min_similarity is not None or drift_budget != _DEFAULTS.drift_budget or selector != DEFAULT_SELECTOR
     ):
         raise click.UsageError(
-            "--interactive replaces the selector with your choices; "
+            f"{review_flag} replaces the selector with your choices; "
             "drop --selector, --drift-budget, and --min-similarity."
         )
     # NEW: Validate mutually exclusive options
@@ -290,6 +328,8 @@ def reduce_cmd(
     with _clean_errors():
         if interactive:
             result = _interactive_reduce(file.read(), names, params, model)
+        elif browser:
+            result = _browser_reduce(file.read(), names, params, model, open_browser=not no_open)
         else:
             result = reduce(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
 
