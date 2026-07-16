@@ -227,6 +227,12 @@ def compare_cmd(
         "Mutually exclusive with --drift-budget."
     ),
 )
+@click.option(
+    "--max-tokens",
+    type=int,
+    default=None,
+    help="Target a specific token budget. Stop reduction once at/under budget.",
+)
 @click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
@@ -239,6 +245,7 @@ def reduce_cmd(
     threshold: float,
     drift_budget: float,
     min_similarity: float | None,
+    max_tokens: int | None,
     model: str,
     as_json: bool,
     interactive: bool,
@@ -278,7 +285,7 @@ def reduce_cmd(
     # NEW: Convert min-similarity to drift budget, or fall back to drift_budget
     final_drift_budget = (1.0 - min_similarity) if min_similarity is not None else drift_budget
 
-    params = Params(threshold=threshold, drift_budget=final_drift_budget)
+    params = Params(threshold=threshold, drift_budget=final_drift_budget, max_tokens=max_tokens)
 
     with _clean_errors():
         if interactive:
