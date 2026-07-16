@@ -16,7 +16,7 @@ compression changes should land.
 
 ## Task listing (by user story, priority order)
 
-### User story 1: Publish the default benchmark result (Customer/User value · Priority 1)
+### User story 1: Publish the default benchmark result (G2 · Customer/User value · Priority 1)
 
 > As an engineer deciding whether to use Alexandria, I want benchmark numbers for the default
 > compression strategy, so that I can judge whether the shortened prompt keeps accuracy while saving
@@ -42,7 +42,7 @@ Tasks:
 
 **Total for user story 1: 13 hours**
 
-### User story 2: Save more tokens while the benchmark confirms accuracy (Customer/User value · Priority 2)
+### User story 2: Save more tokens while the benchmark confirms accuracy (G1, G2 · Customer/User value · Priority 2)
 
 > As an engineer building an LLM application where every extra token saved is real money, I want
 > Alexandria to compress harder while the benchmark confirms my agent stays as accurate, so that I
@@ -70,7 +70,7 @@ Tasks:
 
 **Total for user story 2: 10 hours**
 
-### User story 3: Monitor optimization quality in CI (Customer/User value · Priority 3)
+### User story 3: Monitor optimization quality in CI (G2 · Customer/User value · Priority 3)
 
 > As an engineer who maintains AI prompt infrastructure, I want the quality report to run in CI, so
 > that regressions in token savings or quality scores are caught before they reach users.
@@ -93,7 +93,7 @@ Tasks:
 
 **Total for user story 3: 3 hours**
 
-### User story 4: Verify the release install path (Customer/User value · Priority 4)
+### User story 4: Verify the release install path (G3 · Customer/User value · Priority 4)
 
 > As an engineer who wants to try Alexandria outside the project checkout, I want a clean install path
 > and runnable CLI/library examples, so that I can reproduce the published benchmark result and start
@@ -115,7 +115,7 @@ Tasks:
 
 **Total for user story 4: 5 hours**
 
-### User story 5: Prepare the project for open-source contributors (Customer/User value · Priority 5)
+### User story 5: Prepare the project for open-source contributors (G3 · Customer/User value · Priority 5)
 
 > As a developer finding Alexandria as an open-source project, I want clear README, contribution, CLI,
 > and library documentation, so that I can understand what the project does, run it locally, use it in
