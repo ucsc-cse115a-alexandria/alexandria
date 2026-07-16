@@ -2,10 +2,17 @@
 
 from alexandria.ir.document import Document
 from alexandria.ops import (
+    CompareResult,
+    Diff,
+    DiffSpan,
     OptimizationReport,
+    Proposal,
     ReduceResult,
+    compare,
+    diffs,
     optimization_report,
     optimize,
+    propose,
     reduce,
     represent,
     score,
@@ -14,11 +21,18 @@ from alexandria.ops import (
 )
 
 __all__ = [
+    "CompareResult",
+    "Diff",
+    "DiffSpan",
     "Document",
     "OptimizationReport",
+    "Proposal",
     "ReduceResult",
+    "compare",
+    "diffs",
     "optimization_report",
     "optimize",
+    "propose",
     "reduce",
     "represent",
     "score",

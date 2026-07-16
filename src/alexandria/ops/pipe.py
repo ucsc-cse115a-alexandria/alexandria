@@ -5,10 +5,11 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.ir.contracts import Params, Plan
+from alexandria.ir.contracts import Diff, Params, Plan
 from alexandria.ir.document import Document
 from alexandria.ir.registry import required_scorers
 from alexandria.ir.similarity import normalize
+from alexandria.ops.features.diff import diffs
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
@@ -119,6 +120,32 @@ def reduce(
     return ReduceResult(document=selection.document, source=document, applied=selection.applied)
 
 
+class Proposal(BaseModel):
+    """The reviewable form of a reduction: the source Document and its proposed edits as diffs."""
+
+    model_config = ConfigDict(frozen=True)
+    document: Document
+    diffs: tuple[Diff, ...]
+
+
+def propose(
+    prompt: str,
+    embedder: Embedder | None = None,
+    *,
+    optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
+    params: Params | None = None,
+) -> Proposal:
+    """Run represent → score → optimize → diffs, stopping before selection.
+
+    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    """
+    embedder = embedder if embedder is not None else default_embedder()
+    document = represent(prompt, embedder)
+    scores = score(document, names=_required_scorers(optimizers))
+    plan = optimize(document, scores, names=optimizers, params=params)
+    return Proposal(document=document, diffs=diffs(document, plan))
+
+
 def optimization_report(
     prompt: str,
     embedder: Embedder | None = None,
@@ -178,9 +205,7 @@ def compare_reports(
     if current.config != baseline.config:
         raise ValueError("baseline config does not match the current report config")
     if current.tokens.source != baseline.tokens.source:
-        raise ValueError(
-            "baseline source token count does not match; regenerate the baseline for this fixture prompt"
-        )
+        raise ValueError("baseline source token count does not match; regenerate the baseline for this fixture prompt")
 
     regressions: list[Regression] = []
     _append_max_regression(

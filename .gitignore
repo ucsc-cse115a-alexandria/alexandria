@@ -9,9 +9,15 @@ wheels/
 # Virtual environments
 .venv
 
+# Secrets — keep every dotenv variant out except the committed placeholder
+.env
+.env.*
+!.env.example
+
 .coverage*
 coverage.*
 
 # Generated artifacts from scripts/
 data/
 corpus/
+.DS_Store

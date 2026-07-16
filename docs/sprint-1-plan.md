@@ -1,149 +1,119 @@
 # Sprint 1 Plan
 
-**Product:** Alexandria ·
+**Product:** Alexandria (Prompt Optimization for LLM Applications / Coding Agent) ·
 **Team:** Alexandria ·
-**Sprint completion date:** Tue, Jul 7, 2026 ·
-**Revision:** 2.0 (2026-07-02)
+**Sprint completion date:** Tue, Jun 30, 2026 ·
+**Revision:** 2.1 (2026-07-09)
 
 ## Goal
 
-Show that a prompt Alexandria shortened keeps the agent as accurate as the original, measured on a
-benchmark that cannot leak. Add CLI options so a user can trade some accuracy for lower cost when
-they want to. Most of the sprint is choosing the benchmark and building the leak-proof dataset the
-proof rests on.
+Ship the optimization pipeline end to end behind one CLI command: turn a prompt into the
+`Document` IR (Represent), compute per-instruction `redundancy` scores (Score), and drop
+redundant instructions with `greedy_pairwise` (Optimize). In parallel, run the research spike
+that prepares the Sprint 2 benchmark, on top of a fresh repo scaffold with CI.
 
 ## Task listing (by user story, priority order)
 
-### User story 1: Trust that a shortened prompt stays accurate (G2 · Customer/User value · Priority 1)
+Estimates are ideal hours (each task ≤ 6h).
 
-> As an engineer who compresses my `CLAUDE.md` / `AGENT.md` with Alexandria, I want to see proof that
-> the shortened prompt keeps my coding agent just as accurate as the original, so that I can switch to
-> the smaller prompt without quietly trading reliability for a lower token bill.
+### User story: Shorten a prompt end to end (G1, G3 · Customer/User value · Priority 1)
 
-- Run the original prompt and its Alexandria-compressed version through the benchmark runner and
-  publish the accuracy difference, so the user can see for themselves that performance holds (4h)
-- Write that result into the user-facing README / docs, so a user can read the evidence before they
-  adopt compression (2h)
+> As an engineer using Cursor or Claude Code whose `CLAUDE.md` / `AGENT.md` has grown bloated,
+> I want a one CLI command that cuts the token count of that agent-instruction file by removing
+> redundant instructions while keeping meaning intact, so that I cut the per-token cost I pay on
+> every request and avoid the accuracy loss that comes with a bloated prompt.
 
-**Total for user story 1: 6 hours**
+> _Built incrementally: first a PoC that runs end to end, then each step is improved
+> (better segmentation, scoring, and optimization) in later increments._
 
-### User story 2: Steer the accuracy/cost trade-off (G3 · Customer/User value · Priority 2)
+- Represent: split the prompt into instructions and embed each one (6h)
+- Score: rate how redundant each instruction is (4h)
+- Optimize: drop redundant instructions while preserving meaning (6h)
+- CLI: run the whole pipeline, prompt in and reduced prompt out (4h)
 
-> As an engineer building an LLM application, I want CLI options to cap how hard Alexandria compresses
-> my prompt (hold similarity above a floor I set, or hit a token budget) and to see the token savings
-> I get, so that I can push compression as far as my cost target needs, even when I am willing to
-> spend a little accuracy for a cheaper API bill.
+**Total for the user story: 20 hours**
 
-- Add a `--min-similarity` option (e.g. `0.99`) to `reduce` so reduction stops before it crosses the
-  similarity floor the user sets (2h). Depends on the compression fidelity check in Enabler B.
-- Add a `--max-tokens N` option so reduction targets a token budget (2h)
-- Add token counting to the CLI: report tokens before and after, plus the reduction percentage (2h)
+### User story: Make the tool easy to spot on GitHub (Customer/User value · Priority 2)
 
-**Total for user story 2: 6 hours**
+> As an engineer searching GitHub for prompt tools, I want the project to have an icon that
+> shows what kind of tool Alexandria is, so that the project catches my eye when I scan
+> search results.
+
+- Design the Alexandria logo and add it to the repository (2h)
+
+**Total for the user story: 2 hours**
 
 ## Enabling work (not user stories)
 
-These items deliver no value to the user on their own, but the user stories cannot land without them.
-Each is an imperative backlog item tagged with the kind of value it delivers. Do them first; they are
-listed in priority order.
+These items deliver no value to the user on their own, but the user story cannot land without
+them, and the spike prepares Sprint 2. Each is an imperative backlog item tagged with the kind
+of value it delivers, listed in priority order. The infrastructure enabler lands first.
 
-### Enabler A: Choose a benchmark that cannot leak (Spike / Technical value · Priority 3)
+### Enabler A: Research spike toward the Sprint 2 benchmark (Spike / Technical value · Priority 3)
 
-Acceptance criteria for the chosen benchmark:
+Survey prompt-optimization work, how token count affects LLM accuracy, and existing prompt/agent
+benchmarks. Each task produces a note following
+[docs/research/TEMPLATE.md](research/TEMPLATE.md).
 
-- **Must have**
-  - Established: at least 20 citations, or at least 100 GitHub stars.
-  - Length-sensitive: inflating a prompt to 2× and 10× its length makes the score worse.
-  - A subset shows a significant result in 10 minutes or less, at $1 or less in LLM cost.
-- **Nice to have**
-  - An even smaller subset shows a significant result in 1 minute or less, at $0.1 or less.
-  - The benchmark bundles multiple prompts.
+- [spike] Prompt optimization: 2-3 works on prompt compression/optimization (5h)
+- [spike] Long-prompt effects: 2-3 papers on long-context degradation (5h)
+- [spike] Prompt-writing techniques (2026 papers only): extract reproducible techniques (5h)
+- [spike] Accuracy benchmarks: find one publishing exact eval prompts + ground truth (6h)
 
-- [spike] Survey candidate benchmarks that clear the must-have bar (20+ citations or 100+ stars) and
-  record each in a research note per [docs/research/TEMPLATE.md](research/TEMPLATE.md) (6h)
-- [spike] Rate each candidate against every acceptance criterion above and shortlist the strongest (4h)
-- [spike] Run a small trial on the top candidate to confirm the time/cost budget and that its score
-  drops on an inflated prompt, then pick the base benchmark and write down the rationale (4h)
+**Total for Enabler A: 21 hours**
 
-**Total for Enabler A: 14 hours**
+### Enabler B: Repo scaffold and CI (Infrastructure / Technical value · Priority 4)
 
-### Enabler B: Leak-proof fidelity dataset (Technical value · Priority 4)
+A project scaffold and a CI pipeline, so that multiple developers can work on the codebase while
+holding a minimum code-quality bar. Lands before the user story's tasks.
 
-- Skill-corpus download script: fetch the SKILL.md of the top N (≤ 100) skill repos into a local
-  corpus, building on [`scripts/search_skill_repos.py`](../scripts/search_skill_repos.py) and its
-  `data/skill_repos.json` output (5h)
-- Redundancy inflation script: given a prompt, produce an n× longer version by adding redundant
-  restatements that carry no new instruction (6h)
-- Dataset generator: take the top 10 skills and emit 1.2×, 1.5×, 2×, and 10× inflated variants as a
-  versioned, label-by-construction dataset the benchmark cannot leak on (4h)
-- Compression fidelity check: for a compressed prompt, compute cosine similarity to the original and
-  the token reduction, and use the 99% similarity gate to confirm each dataset variant keeps its
-  meaning (4h)
+- Set up repo scaffold and packaging (3h)
+- Set up CI to run lint, type check, and tests on every push (4h)
+- Write install / run instructions (2h)
 
-**Total for Enabler B: 19 hours**
-
-### Enabler C: Split the library from the CLI (Refactoring · Priority 5)
-
-Today `cli.py` wires up internals directly: it builds the embedder and picks the default scorer,
-optimizer, and selector. Move that wiring behind the library so the CLI only parses arguments and
-calls the public API. Land this before US2 so the new options sit on the thin CLI layer.
-
-- Widen the public API so `reduce()` and `score_report()` take plain options (model, `min_similarity`,
-  `max_tokens`) and build the embedder and defaults themselves, leaving callers no internals to wire
-  up (4h)
-- Move the CLI into its own `alexandria/cli/` package that imports only `alexandria`'s public API, and
-  drop its direct imports of `core` / `phases` / `runtime` (3h)
-- Add an import contract (or test) that fails if the CLI package reaches into `core` / `phases` /
-  `runtime`, locking the seam (2h)
-
-**Total for Enabler C: 9 hours**
-
-## Capacity sanity check
-
-- Team of 4, one-week sprint, with the Jul 3 holiday cutting into capacity: roughly **32 to 44 ideal
-  hours** at 8 to 12 per person.
-- The five items total **54 hours**, over the band. Commit in priority order: Enabler A → US1 (20h)
-  proves accuracy, then Enabler C → US2 (15h) splits out the library and adds the CLI controls on top,
-  then Enabler B as capacity allows.
-- If Enabler B is cut, keep its compression fidelity check, which US2's `--min-similarity` needs, and
-  push the rest to Sprint 2.
-
-## Deferred to the product backlog
-
-The [release plan](release-plan.md) scopes Sprint 1 to accuracy measurement (G2). This plan also
-pulls the CLI controls (G3) forward as US2, since they deliver direct user value on their own, so the
-release plan should be revised to move G3 into Sprint 1. Improving the compression itself stays out:
-
-- **G1 (save more tokens):** improve the scorer / optimizer / selector to raise token reduction at
-  the fidelity gate → Sprint 2.
+**Total for Enabler B: 9 hours**
 
 ## Team roles
 
 - Masa Ishihara: Product Owner
 - Matthew Zerner: _(TBD)_
 - Virinchi Chintala: _(TBD)_
-- Marc Dylan Tan: Scrum Master
+- Marc Dylan Tan: _(TBD)_
 
 ## Initial task assignment
 
-- Masa Ishihara: Enabler C (split library from CLI), then US2's CLI compression options
-- Matthew Zerner: Enabler B, skill-corpus download script
-- Virinchi Chintala: US1 experiment only — run the before/after accuracy experiment (original vs.
-  compressed); writing the result into the README is assigned separately
-- Marc Dylan Tan: Enabler A, benchmark selection
+- Masa Ishihara: The user story (shorten a prompt end to end), build the end-to-end PoC
+- Matthew Zerner: _(TBD)_
+- Virinchi Chintala: _(TBD)_
+- Marc Dylan Tan: _(TBD)_
+- Jack Dao: _(TBD)_
 
 ## Initial burnup chart
 
-_(TBD)_
+Scope is the full task listing above: 52 ideal hours (user story 1 20h + user story 2 2h +
+Enabler A 21h + Enabler B 9h). The completed line is reconstructed from the GitHub commit
+history; the [Sprint 1 report](sprint-1-report.md)'s chart tracks actual hours spent instead.
+
+```mermaid
+xychart-beta
+    title "Sprint 1 Burnup — Alexandria"
+    x-axis [Jun24, Jun25, Jun26, Jun27, Jun28, Jun29, Jun30]
+    y-axis "Ideal hours" 0 --> 52
+    line [52, 52, 52, 52, 52, 52, 52]
+    line [7, 7, 25, 29, 50, 50, 52]
+```
+
+Upper line: total scope (52h). Lower line: cumulative ideal hours completed. Jun 24: repo
+scaffold, packaging, and CI landed (PR #1, 7h). Jun 26: install/run instructions plus the
+represent, score, and optimize phases (25h). Jun 27: the CLI merged with the select phase
+(PR #4), completing user story 1 (29h). Jun 28: all research-spike notes landed (PR #6, 50h).
+Jun 30: the Alexandria logo merged (PR #8), completing user story 2 and the sprint scope (52h).
 
 ## Initial scrum board
 
-_(TBD)_
+<https://github.com/orgs/ucsc-cse115a-alexandria/projects/1/views/1>
 
 ## Scrum times
 
-Three weekly scrum meetings (daily-scrum equivalent):
-
-- **Monday 5:30pm**, right after the TA meeting with Scott (5:00 to 5:30pm). TA and tutor present.
-- **Thursday 5:15pm**, right after the TA meeting with Scott (4:45 to 5:15pm). TA and tutor present.
-- **Saturday 5:00pm**, team only.
+_(TBD: at least three weekly Scrum meeting days/times; indicate which meeting the TA/tutor attends,
+expected during the lab-time Scrum.)_

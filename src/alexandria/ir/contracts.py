@@ -26,6 +26,7 @@ class Params(BaseModel):
     model_config = ConfigDict(frozen=True)
     threshold: Threshold = 0.85
     drift_budget: Drift = 0.01
+    max_tokens: int | None = Field(default=None, ge=1)
 
 
 class Embedder(Protocol):
@@ -54,6 +55,24 @@ class Candidate(BaseModel):
 
 
 Plan = tuple[Candidate, ...]
+
+
+class DiffSpan(BaseModel):
+    """One sentence an edit removes or rewrites: its id, section location, and original text."""
+
+    model_config = ConfigDict(frozen=True)
+    sentence_id: SentenceId
+    section_path: tuple[str, ...]  # Section.header values from the root section down to the sentence's parent
+    original: str
+
+
+class Diff(BaseModel):
+    """A displayable rendering of one Candidate: where it applies, what it removes, what replaces it."""
+
+    model_config = ConfigDict(frozen=True)
+    candidate: Candidate
+    spans: tuple[DiffSpan, ...] = Field(min_length=1)
+    replacement: str  # "" for Delete; reserved for Replace
 
 
 class Scorer(Protocol):

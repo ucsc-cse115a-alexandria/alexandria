@@ -1,0 +1,104 @@
+name: Discord notifications
+
+on:
+  issues:
+    types: [opened, edited, closed, reopened]
+  issue_comment:
+    types: [created]
+  # pull_request_target (not pull_request) so the default-branch version of this
+  # workflow runs for every PR and the webhook secret is available. Safe here
+  # because we never check out or execute PR code.
+  pull_request_target:
+    types: [opened, closed, reopened, review_requested]
+  pull_request_review:
+    types: [submitted]
+  pull_request_review_comment:
+    types: [created]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions: {}
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build and send Discord message
+        env:
+          WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          event="$GITHUB_EVENT_PATH"
+          msg=""
+
+          case "$GITHUB_EVENT_NAME" in
+            issues)
+              msg=$(jq -r '
+                ({opened: "🆕", closed: "✅", reopened: "♻️", edited: "✏️"}[.action]) as $icon
+                | "\($icon) **\(.sender.login)** \(.action) issue #\(.issue.number): \(.issue.title)\n<\(.issue.html_url)>"
+              ' "$event")
+              ;;
+
+            issue_comment)
+              msg=$(jq -r '
+                (if .issue.pull_request then "PR" else "issue" end) as $kind
+                | (.comment.body | gsub("\r"; "") | .[0:200]) as $body
+                | "💬 **\(.sender.login)** commented on \($kind) #\(.issue.number) (\(.issue.title)):\n> \($body)\n<\(.comment.html_url)>"
+              ' "$event")
+              ;;
+
+            pull_request_target)
+              msg=$(jq -r '
+                (if .action == "closed" then
+                   if .pull_request.merged then "🎉 **\(.sender.login)** merged" else "🚫 **\(.sender.login)** closed" end
+                 elif .action == "review_requested" then
+                   "👀 **\(.sender.login)** requested review from **\(.requested_reviewer.login // .requested_team.name)** on"
+                 elif .action == "reopened" then "♻️ **\(.sender.login)** reopened"
+                 else "🔀 **\(.sender.login)** opened"
+                 end) as $head
+                | "\($head) PR #\(.pull_request.number): \(.pull_request.title)\n<\(.pull_request.html_url)>"
+              ' "$event")
+              ;;
+
+            pull_request_review)
+              # Skip the empty "commented" review GitHub auto-submits with inline comments.
+              msg=$(jq -r '
+                if .review.state == "commented" and ((.review.body // "") == "") then ""
+                else
+                  ({approved: "✅ approved", changes_requested: "🔁 requested changes on", commented: "💬 reviewed"}[.review.state]) as $verb
+                  | (.review.body // "" | gsub("\r"; "") | .[0:200]) as $body
+                  | "**\(.sender.login)** \($verb) PR #\(.pull_request.number): \(.pull_request.title)"
+                    + (if $body != "" then "\n> \($body)" else "" end)
+                    + "\n<\(.review.html_url)>"
+                end
+              ' "$event")
+              ;;
+
+            pull_request_review_comment)
+              msg=$(jq -r '
+                (.comment.body | gsub("\r"; "") | .[0:200]) as $body
+                | "💬 **\(.sender.login)** commented on a review thread in PR #\(.pull_request.number):\n> \($body)\n<\(.comment.html_url)>"
+              ' "$event")
+              ;;
+
+            workflow_run)
+              msg=$(jq -r '
+                if .workflow_run.conclusion == "failure" then
+                  "❌ **CI failed** on `\(.workflow_run.head_branch)` — \(.workflow_run.display_title) (by \(.workflow_run.actor.login))\n<\(.workflow_run.html_url)>"
+                else "" end
+              ' "$event")
+              ;;
+          esac
+
+          if [ -z "$msg" ]; then
+            echo "Nothing to notify for this event/action."
+            exit 0
+          fi
+
+          # allowed_mentions: [] keeps @everyone/@here in user content from pinging.
+          jq -n --arg content "$msg" '{
+            username: "Alexandria GitHub",
+            avatar_url: "https://github.com/github.png",
+            content: $content,
+            allowed_mentions: {parse: []}
+          }' | curl -fsS -H 'Content-Type: application/json' --data @- "$WEBHOOK_URL"
