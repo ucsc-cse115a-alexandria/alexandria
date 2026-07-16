@@ -8,7 +8,7 @@
 | src/alexandria/cli/browser\_review.py    |      151 |       23 |       36 |        8 |     82.4% |41, 51, 69, 73, 147, 177-184, 188-189, 194-196, 215-216, 230-231, 233 |
 | src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/interactive.py        |      137 |        6 |       48 |        7 |     93.0% |36, 38, 103, 157-158, 187, 198-\>182, 212-\>210 |
-| src/alexandria/cli/main.py               |      176 |        3 |       40 |        3 |     97.2% |81, 99, 319 |
+| src/alexandria/cli/main.py               |      179 |        3 |       40 |        3 |     97.3% |85, 103, 323 |
 | src/alexandria/cli/review\_html.py       |       79 |        6 |       26 |        4 |     88.6% |321, 326, 345-348, 357 |
 | src/alexandria/ir/contracts.py           |       50 |        0 |       10 |        6 |     90.0% |34-\>36, 34-\>exit, 36-\>exit, 79-\>exit, 83-\>exit, 95-\>exit |
 | src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
@@ -22,7 +22,7 @@
 | src/alexandria/ops/features/select.py    |       32 |        3 |       12 |        3 |     86.4% |26, 31, 39 |
 | src/alexandria/ops/pipe.py               |       48 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
-| **TOTAL**                                | **1188** |   **47** |  **276** |   **38** | **93.9%** |           |
+| **TOTAL**                                | **1191** |   **47** |  **276** |   **38** | **93.9%** |           |
 
 
 ## Setup coverage badge
