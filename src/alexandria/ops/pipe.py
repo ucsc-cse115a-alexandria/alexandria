@@ -491,10 +491,13 @@ def _target_merge_window(
             end += 1
         if end - start >= 2 and window_tokens >= desired_tokens:
             window = group[start:end]
-            similarity = sum(
-                sentence.token_count * float(np.dot(normalize(sentence.embedding), normalized_document))
-                for sentence in window
-            ) / window_tokens
+            similarity = (
+                sum(
+                    sentence.token_count * float(np.dot(normalize(sentence.embedding), normalized_document))
+                    for sentence in window
+                )
+                / window_tokens
+            )
             if similarity > best_similarity:
                 best = window
                 best_similarity = similarity
