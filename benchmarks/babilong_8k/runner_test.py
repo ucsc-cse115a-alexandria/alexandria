@@ -35,7 +35,14 @@ def compress(prompt: str) -> str:
 def compress_with_metrics(prompt: str) -> CompressionResult:
     return CompressionResult(
         prompt=compress(prompt),
-        merge_metrics=MergeMetrics(calls=3, retries=1, jobs_attempted=2, proposed_edits=1, applied_edits=1),
+        merge_metrics=MergeMetrics(
+            calls=3,
+            retries=1,
+            jobs_attempted=2,
+            candidates_generated=30,
+            proposed_edits=1,
+            applied_edits=1,
+        ),
     )
 
 
@@ -53,6 +60,7 @@ def test_run_experiment_records_compressed_prompt() -> None:
     assert not result.records[0].prompt.startswith("Long irrelevant")
     assert result.merge_calls == 6
     assert result.merge_retries == 2
+    assert result.merge_candidates == 60
 
 
 def test_compare_reports_percentage_point_change() -> None:
@@ -60,7 +68,8 @@ def test_compare_reports_percentage_point_change() -> None:
     worse = run_experiment(CASES, lambda _prompt: "wrong", label="compressed", model="stub")
     table = compare(original, worse)
     assert table.splitlines()[0] == (
-        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |"
+        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Candidates | Task accuracy | "
+        "Accuracy change |"
     )
     assert "| original |" in table
     assert "50.0% (1/2)" in table

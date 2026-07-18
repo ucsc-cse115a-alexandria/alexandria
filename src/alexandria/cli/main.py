@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 _DEFAULTS = Params()
 
-_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)"
+_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (default: 0.5 = 50%)"
 
 
 @contextmanager

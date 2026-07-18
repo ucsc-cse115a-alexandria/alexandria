@@ -36,9 +36,16 @@ class _FakeMerger:
         del second, feedback
         return first.strip()
 
-    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str:
+    def merge_candidates_to_target(
+        self,
+        prompt: str,
+        max_tokens: int,
+        feedback: str | None = None,
+        base_candidate: str | None = None,
+    ) -> tuple[str, ...]:
+        del base_candidate
         del max_tokens, feedback
-        return "\n".join(prompt.splitlines()[:3])
+        return (prompt.splitlines()[0],) * 10
 
 
 @pytest.fixture
@@ -116,6 +123,8 @@ def test_select_json_reports_the_reduction_summary() -> None:
         "calls": 0,
         "retries": 0,
         "jobs_attempted": 0,
+        "candidates_generated": 0,
+        "target_rounds": [],
         "proposed_edits": 1,
         "applied_edits": 1,
     }
@@ -245,6 +254,8 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
         "calls": 0,
         "retries": 0,
         "jobs_attempted": 0,
+        "candidates_generated": 0,
+        "target_rounds": [],
         "proposed_edits": 1,
         "applied_edits": 1,
     }

@@ -3,7 +3,7 @@ import tiktoken
 from alexandria.ir.similarity import cosine_distance
 from alexandria.utils.embedders import default_embedder
 
-DRIFT_BUDGET = 0.01
+DRIFT_BUDGET = 0.5
 SIMILARITY_GATE = 1.0 - DRIFT_BUDGET
 
 

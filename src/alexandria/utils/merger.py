@@ -5,6 +5,8 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import TYPE_CHECKING
 
+from pydantic import BaseModel, ConfigDict, Field
+
 from alexandria.utils.config import require_api_key
 
 if TYPE_CHECKING:
@@ -17,11 +19,29 @@ _INSTRUCTIONS = (
     "Reply with only the rewritten instruction, no explanations."
 )
 _TARGET_INSTRUCTIONS = (
-    "You compress one content segment from a larger prompt by merging and rewriting its contents. Preserve all "
-    "information and representative original terminology within the requested token range. Do not over-compress: "
-    "use nearly the full token budget to maximize semantic and embedding fidelity. Do not add XML tags, Markdown "
-    "headings, wrappers, explanations, or code fences. Reply with only the merged replacement segment."
+    "Generate exactly 10 controlled variants for a token-constrained semantic search. On the first round, create "
+    "diverse compressions from the source. On later rounds, mutate the single current base; do not restart or "
+    "summarize the source from scratch. Copy the base nearly verbatim and make only the localized, token-neutral "
+    "substitution requested by the feedback. Candidate N must use feedback excerpt N, so the 10 outputs explore 10 "
+    "different local edits. Preserve all untouched base wording exactly. Every candidate must stay within the "
+    "requested "
+    "token range. Do not add "
+    "XML tags, Markdown headings, wrappers, explanations, or code fences. Return only the structured output."
 )
+
+
+class TargetMergeCandidates(BaseModel):
+    """Structured output for one target-search generation round."""
+
+    model_config = ConfigDict(frozen=True)
+    candidates: list[str] = Field(
+        min_length=10,
+        max_length=10,
+        description=(
+            "Exactly 10 distinct, meaning-preserving rewritten segments. Every item must fit the requested token "
+            "range."
+        ),
+    )
 
 
 class OpenAIMerger:
@@ -48,7 +68,13 @@ class OpenAIMerger:
             raise ValueError(f"OpenAI merge request failed: {error}") from error
         return response.output_text.strip()
 
-    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str:  # pragma: no cover
+    def merge_candidates_to_target(  # pragma: no cover
+        self,
+        prompt: str,
+        max_tokens: int,
+        feedback: str | None = None,
+        base_candidate: str | None = None,
+    ) -> tuple[str, ...]:
         from openai import OpenAIError
 
         min_tokens = max(1, int(max_tokens * 0.95))
@@ -58,18 +84,28 @@ class OpenAIMerger:
             "Dense paraphrasing is allowed; information deletion is not.\n\n"
             f"<source_segment>\n{prompt}\n</source_segment>"
         )
+        if base_candidate is not None:
+            request += (
+                "\n\nUse this as the single base for all 10 local mutations. Keep every strong part unless the "
+                "feedback identifies a replacement that should improve semantic similarity:\n"
+                f"<current_base>\n{base_candidate}\n</current_base>"
+            )
         if feedback is not None:
-            request += f"\n\nPrevious attempt feedback:\n{feedback}"
+            request += f"\n\nPrevious round feedback:\n{feedback}"
         try:
-            response = self._client.responses.create(
+            response = self._client.responses.parse(
                 model=MERGE_MODEL,
                 reasoning={"effort": "medium"},
                 instructions=_TARGET_INSTRUCTIONS,
                 input=request,
+                text_format=TargetMergeCandidates,
             )
         except OpenAIError as error:
             raise ValueError(f"OpenAI target merge request failed: {error}") from error
-        return response.output_text.strip()
+        parsed = response.output_parsed
+        if parsed is None:
+            raise ValueError("OpenAI target merge request returned no structured output")
+        return tuple(candidate.strip() for candidate in parsed.candidates)
 
 
 @lru_cache(maxsize=2)

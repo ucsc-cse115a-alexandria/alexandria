@@ -43,7 +43,7 @@ uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
 Use `--save-tokens N` to stop once N tokens are saved and `--drift-budget` to cap the cumulative
-whole-document embedding drift the reduction may accept (`0.01` = 1%):
+whole-document embedding drift the reduction may accept (default: `0.5` = 50%):
 
 ```bash
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt

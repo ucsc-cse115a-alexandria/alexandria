@@ -75,6 +75,11 @@ class ExperimentResult(BaseModel):
     def merge_retries(self) -> int:
         return sum(record.merge_metrics.retries for record in self.records)
 
+    @computed_field
+    @property
+    def merge_candidates(self) -> int:
+        return sum(record.merge_metrics.candidates_generated for record in self.records)
+
 
 class CompressionResult(BaseModel):
     """A compressed prompt plus generation work used to produce it."""
@@ -127,9 +132,10 @@ def compare(*results: ExperimentResult) -> str:
     if any(tuple(record.key for record in result.records) != baseline_keys for result in results[1:]):
         raise ValueError("all results must contain the same cases in the same order")
     header = (
-        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |"
+        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Candidates | Task accuracy | "
+        "Accuracy change |"
     )
-    divider = "|---|---:|---:|---:|---:|---:|---:|"
+    divider = "|---|---:|---:|---:|---:|---:|---:|---:|"
     rows: list[str] = []
     for index, result in enumerate(results):
         passed = sum(record.verdict.correct for record in result.records)
@@ -140,7 +146,7 @@ def compare(*results: ExperimentResult) -> str:
             delta = "±0.0 pp" if delta_pp == 0 else f"{delta_pp:+.1f} pp"
         rows.append(
             f"| {result.label} | {result.mean_sent_tokens:,.1f} | {result.token_reduction * 100:.1f}% | "
-            f"{result.merge_calls} | {result.merge_retries} | "
+            f"{result.merge_calls} | {result.merge_retries} | {result.merge_candidates} | "
             f"{result.accuracy * 100:.1f}% ({passed}/{len(result.records)}) | {delta} |"
         )
     return "\n".join([header, divider, *rows])

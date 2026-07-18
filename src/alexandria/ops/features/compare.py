@@ -38,7 +38,7 @@ class CompareResult(BaseModel):
 def compare(original: str, edited: str, embedder: Embedder | None = None) -> CompareResult:
     """Compare two prompts: chunk-pooled cosine similarity and cl100k_base token reduction.
 
-    The caller applies the 99% gate by comparing ``similarity`` against ``1 - Params.drift_budget``.
+    The caller applies the configured gate by comparing ``similarity`` against ``1 - Params.drift_budget``.
     When ``embedder`` is omitted, the default OpenAI embedder is built on first use (requires an API key).
     """
     model = embedder if embedder is not None else default_embedder()
