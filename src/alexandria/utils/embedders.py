@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Protocol, cast
 import numpy as np
 
 from alexandria.ir.similarity import normalize
+from alexandria.utils.config import require_api_key
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -21,6 +22,7 @@ if TYPE_CHECKING:
 _DIM = 64
 DEFAULT_MODEL = "all-MiniLM-L6-v2"
 DETERMINISTIC = "deterministic"
+OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 
 
 class _EncodesText(Protocol):
@@ -61,6 +63,27 @@ class SentenceTransformerEmbedder:
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:  # pragma: no cover
         vectors = self._model.encode(texts, convert_to_numpy=True, normalize_embeddings=True)
         return [np.asarray(row, dtype=np.float32) for row in vectors]
+
+
+class OpenAIEmbedder:
+    def __init__(self, api_key: str | None = None) -> None:  # pragma: no cover
+        from openai import OpenAI
+
+        self._client = OpenAI(api_key=require_api_key(api_key))
+
+    @property
+    def model_id(self) -> str:
+        return OPENAI_EMBEDDING_MODEL
+
+    def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:  # pragma: no cover
+        from openai import OpenAIError
+
+        try:
+            response = self._client.embeddings.create(model=OPENAI_EMBEDDING_MODEL, input=texts)
+        except OpenAIError as error:
+            # cli/ops may not import openai (import-linter), so the boundary error type is ValueError.
+            raise ValueError(f"OpenAI embeddings request failed: {error}") from error
+        return [np.asarray(item.embedding, dtype=np.float32) for item in response.data]
 
 
 # Sentinel model names that map to a built-in embedder; any other name is a real model id.

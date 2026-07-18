@@ -36,6 +36,16 @@ class Embedder(Protocol):
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]: ...
 
 
+class SentenceMerger(Protocol):
+    """Rewrites two overlapping instructions as one that preserves both meanings in fewer tokens.
+
+    feedback carries the caller's rejection of a previous attempt (the rejected rewrite and why
+    it failed), so a retry can correct course; None on the first attempt.
+    """
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str: ...
+
+
 class Delete(BaseModel):
     model_config = ConfigDict(frozen=True)
     op: Literal["delete"] = "delete"
