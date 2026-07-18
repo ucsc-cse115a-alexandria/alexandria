@@ -230,9 +230,76 @@ class Scorer(Protocol):
     def __call__(self, document: Document) -> list[float]: ...
 
 
+class ReportedCandidate(BaseModel):
+    """One generated compression candidate as shown to the user."""
+
+    model_config = ConfigDict(frozen=True)
+    text: str
+    token_count: int
+    drift: float
+    structure_valid: bool
+
+
+class ReductionReporter(Protocol):
+    """Progress sink for a reduction run; ops emits to it, the CLI renders it. Every method is
+    display-only and must not affect the outcome."""
+
+    def redundant_pair(self, first: str, second: str, similarity: float) -> None: ...
+
+    def pair_merged(self, merged: str | None, decision: str) -> None: ...
+
+    def target_group(self, source_segment: str, group_tokens: int, required_savings: int) -> None: ...
+
+    def target_round(
+        self,
+        round_number: int,
+        base: str | None,
+        candidates: tuple[ReportedCandidate, ...],
+        selected: ReportedCandidate,
+        selected_from_generation: bool,
+    ) -> None: ...
+
+    def target_group_done(self, applied: bool, document_tokens: int) -> None: ...
+
+
+class SilentReporter:
+    """A ReductionReporter that discards every event."""
+
+    def redundant_pair(self, first: str, second: str, similarity: float) -> None:
+        pass
+
+    def pair_merged(self, merged: str | None, decision: str) -> None:
+        pass
+
+    def target_group(self, source_segment: str, group_tokens: int, required_savings: int) -> None:
+        pass
+
+    def target_round(
+        self,
+        round_number: int,
+        base: str | None,
+        candidates: tuple[ReportedCandidate, ...],
+        selected: ReportedCandidate,
+        selected_from_generation: bool,
+    ) -> None:
+        pass
+
+    def target_group_done(self, applied: bool, document_tokens: int) -> None:
+        pass
+
+
+SILENT_REPORTER = SilentReporter()
+
+
 class Optimizer(Protocol):
     def __call__(
-        self, document: Document, scores: Scores, embedder: Embedder, merger: SentenceMerger, params: Params
+        self,
+        document: Document,
+        scores: Scores,
+        embedder: Embedder,
+        merger: SentenceMerger,
+        params: Params,
+        reporter: ReductionReporter,
     ) -> Plan: ...
 
 

@@ -62,7 +62,8 @@ the exact budget needed by the complete prompt. The result must satisfy the requ
 the whole-prompt embedding drift budget. Rejected attempts feed their measured token and drift failures back for
 correction. Exact duplicate text in best-effort reduction is still removed without a merge-model call. `--json`
 includes `merge_metrics` with call, retry, job, proposal, and applied-edit counts; text mode prints call and retry
-counts to stderr.
+counts to stderr. Add `-v`/`--verbose` (automatic reduction only) to stream that progress live to stderr instead of
+waiting for the final summary.
 
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
 quality scores:

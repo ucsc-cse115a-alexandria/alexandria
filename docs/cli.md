@@ -47,6 +47,10 @@ the command exits with an error if that target is not reached. It is mutually ex
 1%). `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the
 same in a browser.
 
+Use `-v`/`--verbose` to print compaction progress (redundant pairs, merge attempts, target-search
+rounds) to standard error as the automatic reduction runs; it is not available with `--interactive` or
+`--browser`, and it never changes standard output.
+
 ```bash
 uv run alexandria reduce --keep 95 prompt.txt > reduced.txt
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt

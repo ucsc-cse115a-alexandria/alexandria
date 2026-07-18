@@ -464,6 +464,38 @@ def test_removed_flags_are_gone_from_help() -> None:
         assert flag not in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
+def test_reduce_verbose_writes_progress_to_stderr() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["reduce", "-v", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
+
+    assert result.exit_code == 0
+    assert "redundant pair" in result.stderr
+    assert "keep one" in result.stderr
+    assert result.stdout.count("keep one") == 1
+
+
+@pytest.mark.usefixtures("offline_models")
+def test_reduce_without_verbose_writes_no_progress_to_stderr() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["reduce", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
+
+    assert result.exit_code == 0
+    assert "redundant pair" not in result.stderr
+
+
+def test_reduce_verbose_rejects_interactive() -> None:
+    runner = CliRunner()
+    with runner.isolated_filesystem():
+        Path("p.md").write_text("a\nb\n")
+        result = runner.invoke(cli, ["reduce", "-v", "--interactive", "p.md"])
+
+    assert result.exit_code != 0
+    assert "--verbose" in result.output
+
+
 def test_reduce_interactive_rejects_a_stdin_prompt() -> None:
     result = CliRunner().invoke(cli, ["reduce", "--interactive"], input="a\nb\n")
 
