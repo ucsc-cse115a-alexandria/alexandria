@@ -5,7 +5,8 @@ import re
 from typing import Any
 
 from alexandria.cli.review_html import render_review_page
-from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan
+from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Replace
+from alexandria.ir.document import Encoded
 from alexandria.ops import DETERMINISTIC, Proposal, build_embedder, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
@@ -119,3 +120,17 @@ def test_render_payload_round_trips() -> None:
     assert len(payload["diffs"]) == len(proposal.diffs)
     assert len(payload["document"]["sentences"]) == len(proposal.document.sentences)
     assert payload["initial_selection"] == []
+
+
+def test_render_shows_the_replacement_line_for_a_replace_diff() -> None:
+    document = represent(_REDUNDANT, build_embedder(DETERMINISTIC))
+    ids = [s.id for s in document.sentences]
+    replacement = Encoded(text="merged line\n", token_count=2, embedding=document.sentences[0].embedding)
+    candidate = Candidate(
+        edit=Replace(targets=(ids[1], ids[2]), replacement=replacement), confidence=0.9, source="t", reason="r"
+    )
+    proposal = Proposal(document=document, diffs=diffs(document, (candidate,)))
+
+    page = render_review_page(proposal)
+
+    assert '<div class="line added">+merged line' in page
