@@ -19,7 +19,9 @@ def main() -> None:
     with urllib.request.urlopen(DATA_URL) as response:
         OUT_PATH.write_bytes(response.read())
     print(f"wrote {OUT_PATH} ({OUT_PATH.read_text().count(chr(10))} prompts)")
+    # the vendored checkers load the punkt pickle, which nltk>=3.9 backs with punkt_tab data
     nltk.download("punkt")
+    nltk.download("punkt_tab")
 
 
 if __name__ == "__main__":
