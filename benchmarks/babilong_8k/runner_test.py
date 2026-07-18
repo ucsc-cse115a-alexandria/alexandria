@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from alexandria.ir.contracts import MergeMetrics
 from benchmarks.babilong_8k.cases import BABILongCase
-from benchmarks.babilong_8k.runner import compare, run_experiment
+from benchmarks.babilong_8k.runner import CompressionResult, compare, run_experiment
 
 CASES = (
     BABILongCase(
@@ -31,6 +32,13 @@ def compress(prompt: str) -> str:
     return prompt.replace("Long irrelevant text. ", "")
 
 
+def compress_with_metrics(prompt: str) -> CompressionResult:
+    return CompressionResult(
+        prompt=compress(prompt),
+        merge_metrics=MergeMetrics(calls=3, retries=1, pairs_attempted=2, proposed_edits=1, applied_edits=1),
+    )
+
+
 def test_run_experiment_records_tokens_and_accuracy() -> None:
     result = run_experiment(CASES, generate, label="original", model="stub")
     assert result.accuracy == 0.5
@@ -39,10 +47,12 @@ def test_run_experiment_records_tokens_and_accuracy() -> None:
 
 
 def test_run_experiment_records_compressed_prompt() -> None:
-    result = run_experiment(CASES, generate, label="compressed", model="stub", transform=compress)
+    result = run_experiment(CASES, generate, label="compressed", model="stub", transform=compress_with_metrics)
     assert result.token_reduction > 0
     assert result.records[0].sent_tokens < result.records[0].source_tokens
     assert not result.records[0].prompt.startswith("Long irrelevant")
+    assert result.merge_calls == 6
+    assert result.merge_retries == 2
 
 
 def test_compare_reports_percentage_point_change() -> None:
@@ -50,7 +60,7 @@ def test_compare_reports_percentage_point_change() -> None:
     worse = run_experiment(CASES, lambda _prompt: "wrong", label="compressed", model="stub")
     table = compare(original, worse)
     assert table.splitlines()[0] == (
-        "| Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |"
+        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |"
     )
     assert "| original |" in table
     assert "50.0% (1/2)" in table

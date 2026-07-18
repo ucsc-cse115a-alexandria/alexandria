@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 import tiktoken
 from pydantic import BaseModel, ConfigDict, Field, computed_field
 
+from alexandria.ir.contracts import MergeMetrics
 from benchmarks.babilong_8k.cases import CaseVerdict, TaskName
 
 if TYPE_CHECKING:
@@ -26,6 +27,7 @@ class CaseRecord(BaseModel):
     sent_tokens: int = Field(ge=1)
     response: str
     verdict: CaseVerdict
+    merge_metrics: MergeMetrics = MergeMetrics()
 
     @computed_field
     @property
@@ -63,6 +65,24 @@ class ExperimentResult(BaseModel):
             record.source_tokens for record in self.records
         )
 
+    @computed_field
+    @property
+    def merge_calls(self) -> int:
+        return sum(record.merge_metrics.calls for record in self.records)
+
+    @computed_field
+    @property
+    def merge_retries(self) -> int:
+        return sum(record.merge_metrics.retries for record in self.records)
+
+
+class CompressionResult(BaseModel):
+    """A compressed prompt plus generation work used to produce it."""
+
+    model_config = ConfigDict(frozen=True)
+    prompt: str = Field(min_length=1)
+    merge_metrics: MergeMetrics
+
 
 def run_experiment(
     cases: Sequence[BABILongCase],
@@ -70,12 +90,18 @@ def run_experiment(
     *,
     label: str,
     model: str,
-    transform: Callable[[str], str] | None = None,
+    transform: Callable[[str], str | CompressionResult] | None = None,
 ) -> ExperimentResult:
     """Optionally compress every full input, answer it, and apply the official-equivalent verifier."""
     records: list[CaseRecord] = []
     for case in cases:
-        sent = case.prompt if transform is None else transform(case.prompt)
+        transformed = case.prompt if transform is None else transform(case.prompt)
+        if isinstance(transformed, CompressionResult):
+            sent = transformed.prompt
+            merge_metrics = transformed.merge_metrics
+        else:
+            sent = transformed
+            merge_metrics = MergeMetrics()
         response = generate(sent)
         records.append(
             CaseRecord(
@@ -86,6 +112,7 @@ def run_experiment(
                 sent_tokens=len(_ENCODING.encode(sent)),
                 response=response,
                 verdict=case.verify(response),
+                merge_metrics=merge_metrics,
             )
         )
     return ExperimentResult(label=label, model=model, records=tuple(records))
@@ -99,8 +126,10 @@ def compare(*results: ExperimentResult) -> str:
     baseline_keys = tuple(record.key for record in baseline.records)
     if any(tuple(record.key for record in result.records) != baseline_keys for result in results[1:]):
         raise ValueError("all results must contain the same cases in the same order")
-    header = "| Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |"
-    divider = "|---|---:|---:|---:|---:|"
+    header = (
+        "| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |"
+    )
+    divider = "|---|---:|---:|---:|---:|---:|---:|"
     rows: list[str] = []
     for index, result in enumerate(results):
         passed = sum(record.verdict.correct for record in result.records)
@@ -111,6 +140,7 @@ def compare(*results: ExperimentResult) -> str:
             delta = "±0.0 pp" if delta_pp == 0 else f"{delta_pp:+.1f} pp"
         rows.append(
             f"| {result.label} | {result.mean_sent_tokens:,.1f} | {result.token_reduction * 100:.1f}% | "
+            f"{result.merge_calls} | {result.merge_retries} | "
             f"{result.accuracy * 100:.1f}% ({passed}/{len(result.records)}) | {delta} |"
         )
     return "\n".join([header, divider, *rows])

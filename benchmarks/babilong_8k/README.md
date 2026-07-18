@@ -66,13 +66,15 @@ uv run python -m scripts.babilong_8k_phase1
 
 Results are written under `trial_results/babilong_8k/`. The comparison table uses this format:
 
-The reduction target is strict: if Alexandria cannot reach 90% for any case, the run stops with the source and
-reduced token counts instead of labeling the attempted reduction as a successful 90% condition.
+The reduction target is strict. Alexandria first computes an optimistic floor from the eligible similarity graph;
+if 90% is impossible for the merge-rewrite optimizer, it stops before calling Luna. For reachable targets,
+candidate generation stops as soon as the proposed plan has enough token savings. Each result records merge calls,
+retries, attempted pairs, proposed edits, and applied edits.
 
-| Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |
-|---|---:|---:|---:|---:|
-| original_luna | 7,720.0 | 0.0% | 90.0% (45/50) | — |
-| reduction90_luna | 772.0 | 90.0% | 86.0% (43/50) | -4.0 pp |
+| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |
+|---|---:|---:|---:|---:|---:|---:|
+| original_luna | 7,720.0 | 0.0% | 0 | 0 | 90.0% (45/50) | — |
+| reduction90_luna | 772.0 | 90.0% | 35 | 4 | 86.0% (43/50) | -4.0 pp |
 
 The numbers above illustrate reporting only; they are not benchmark results.
 
