@@ -7,10 +7,9 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import tiktoken
-
 from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
 from alexandria.utils.embedders import default_embedder
+from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -21,7 +20,6 @@ _SEPARATOR = re.compile(r"\n+")
 _MARKDOWN_HEADER = re.compile(r"(#{1,6})\s+\S")
 _XML_OPEN = re.compile(r"<([A-Za-z][\w.-]*)>")
 _XML_CLOSE = re.compile(r"</([A-Za-z][\w.-]*)>")
-_ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
 @dataclass(frozen=True)
@@ -194,7 +192,7 @@ def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
     vectors = embedder.embed([leaf.text for leaf in leaves])
     ids = _assign_ids([leaf.text for leaf in leaves])
     built_sentences = iter(
-        Sentence(id=sid, text=leaf.text, token_count=len(_ENCODING.encode(leaf.text)), embedding=vector)
+        Sentence(id=sid, text=leaf.text, token_count=count_tokens(leaf.text), embedding=vector)
         for sid, leaf, vector in zip(ids, leaves, vectors, strict=True)
     )
     built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
