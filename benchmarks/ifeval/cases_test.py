@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
+from typing import TYPE_CHECKING
 
 import pytest
 from pydantic import ValidationError
 
 from benchmarks.ifeval.cases import InstructionCheck, load_cases
+
+if TYPE_CHECKING:
+    from pathlib import Path
 
 NO_COMMA_LINE = (
     '{"key": 3615, "prompt": "Write a riddle about Camilla that doesn\'t use commas.",'

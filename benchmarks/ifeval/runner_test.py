@@ -55,5 +55,7 @@ def test_result_serializes_summary_fields() -> None:
 def test_compare_renders_one_row_per_result() -> None:
     result = run_experiment(CASES, generate, label="original", model="stub")
     table = compare(result)
-    assert table.splitlines()[0] == "| label | n | prompt_strict | inst_strict | prompt_loose | inst_loose | mean_ratio |"
+    assert (
+        table.splitlines()[0] == "| label | n | prompt_strict | inst_strict | prompt_loose | inst_loose | mean_ratio |"
+    )
     assert "| original | 2 | 0.500 | 0.500 | 0.500 | 0.500 | 1.000 |" in table
