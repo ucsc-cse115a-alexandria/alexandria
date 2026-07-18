@@ -34,6 +34,7 @@ if TYPE_CHECKING:
     from benchmarks.babilong_8k import BABILongCase
 
 MODEL = "gpt-5.6-luna"
+MERGE_REASONING = "low"
 EMBEDDING_MODEL = "text-embedding-3-small"
 DEFAULT_KEEP_PERCENT = 90.0
 GPT_INPUT_PER_MILLION = 1.00
@@ -74,6 +75,7 @@ class RawRun(BaseModel):
     implementation_commit: str
     model: str = MODEL
     answer_reasoning: str = "none"
+    merge_reasoning: str = MERGE_REASONING
     keep_percent: float
     seed: int
     requested_cases: int
@@ -271,7 +273,7 @@ def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
             "keep_percent": run.keep_percent,
             "model": run.model,
             "answer_reasoning": run.answer_reasoning,
-            "merge_reasoning": "none",
+            "merge_reasoning": run.merge_reasoning,
             "tokenizer": "cl100k_base",
             "bootstrap": "paired percentile bootstrap over case indices",
             "pricing_usd_per_million": {

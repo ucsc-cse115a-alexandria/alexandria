@@ -98,7 +98,7 @@ class OpenAIMerger:
         try:
             response = self._client.responses.parse(
                 model=MERGE_MODEL,
-                reasoning={"effort": "none"},
+                reasoning={"effort": "low"},
                 instructions=_TARGET_INSTRUCTIONS,
                 input=request,
                 text_format=TargetMergeCandidates,
