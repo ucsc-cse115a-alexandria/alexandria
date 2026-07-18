@@ -19,23 +19,27 @@ from alexandria.ops.pipe import (
     score_report,
 )
 
-# ops re-exports embedder construction and config writes so the CLI never imports utils directly.
+# ops re-exports embedder/merger construction, token counting, and config writes so the CLI never
+# imports utils directly.
 from alexandria.utils.config import write_config_key
-from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder
+from alexandria.utils.embedders import HashEmbedder, default_embedder
+from alexandria.utils.merger import default_merger
+from alexandria.utils.tokens import count_tokens
 
 __all__ = [
-    "DEFAULT_MODEL",
-    "DETERMINISTIC",
     "CompareResult",
     "Diff",
     "DiffSpan",
+    "HashEmbedder",
     "OptimizationReport",
     "Proposal",
     "ReduceResult",
     "ReportComparison",
-    "build_embedder",
     "compare",
     "compare_reports",
+    "count_tokens",
+    "default_embedder",
+    "default_merger",
     "diffs",
     "optimization_report",
     "optimize",

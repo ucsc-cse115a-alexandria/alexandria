@@ -242,7 +242,7 @@ def _leaf_sentences(sections: tuple[RawSection, ...]) -> list[RawSentence]:
 def represent(prompt: str, embedder: Embedder | None = None) -> Document:
     """Build the Document IR: split losslessly, then tokenize and embed every node.
 
-    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    When embedder is omitted, the OpenAI default (text-embedding-3-small) is built lazily on first use.
     """
     segments = split(prompt)
     if not segments:
