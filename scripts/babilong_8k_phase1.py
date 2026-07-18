@@ -26,16 +26,27 @@ OUT_DIR = Path("trial_results/babilong_8k")
 
 
 def compress_to_reduction(reduction_percent: float) -> Callable[[str], str]:
-    """Build a transform that keeps ``100 - reduction_percent`` of source tokens."""
+    """Build a transform that requires the requested source-token reduction."""
     embedder = default_embedder()
     merger = default_merger()
     keep_ratio = 1 - reduction_percent / 100
 
     def transform(prompt: str) -> str:
         max_tokens = max(1, math.floor(count_tokens(prompt) * keep_ratio))
-        return reduce(prompt, embedder, merger, params=Params(max_tokens=max_tokens)).text
+        result = reduce(prompt, embedder, merger, params=Params(max_tokens=max_tokens))
+        require_target_reduction(result.source_tokens, result.reduced_tokens, reduction_percent)
+        return result.text
 
     return transform
+
+
+def require_target_reduction(source_tokens: int, reduced_tokens: int, target_percent: float) -> None:
+    actual = 1 - reduced_tokens / source_tokens
+    if actual + 1e-12 < target_percent / 100:
+        raise RuntimeError(
+            f"target reduction {target_percent:g}% was not met: achieved {actual:.1%} "
+            f"({source_tokens} -> {reduced_tokens} tokens)"
+        )
 
 
 def main() -> None:

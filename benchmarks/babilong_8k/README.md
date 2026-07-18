@@ -66,6 +66,9 @@ uv run python -m scripts.babilong_8k_phase1
 
 Results are written under `trial_results/babilong_8k/`. The comparison table uses this format:
 
+The reduction target is strict: if Alexandria cannot reach 90% for any case, the run stops with the source and
+reduced token counts instead of labeling the attempted reduction as a successful 90% condition.
+
 | Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |
 |---|---:|---:|---:|---:|
 | original_luna | 7,720.0 | 0.0% | 90.0% (45/50) | — |
