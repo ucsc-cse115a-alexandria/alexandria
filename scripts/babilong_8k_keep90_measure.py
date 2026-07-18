@@ -252,7 +252,35 @@ def _estimated_cost(records: tuple[UsageRecord, ...]) -> dict[str, float]:
     return costs
 
 
-def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
+def _write_baseline(path: Path, baseline: ExperimentResult, measurement: dict[str, Any] | None) -> None:
+    payload = {
+        "schema_version": 1,
+        "label": baseline.label,
+        "model": baseline.model,
+        "accuracy": baseline.accuracy,
+        "mean_input_prompt_tokens": baseline.mean_sent_tokens,
+        "measurement": measurement,
+        "records": [
+            {
+                "key": record.key,
+                "task": record.task,
+                "source_tokens": record.source_tokens,
+                "sent_tokens": record.sent_tokens,
+                "response": record.response,
+                "correct": record.verdict.correct,
+            }
+            for record in baseline.records
+        ],
+    }
+    path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+
+
+def _write_summary(
+    path: Path,
+    run: RawRun,
+    baseline: ExperimentResult,
+    baseline_measurement: dict[str, Any] | None,
+) -> None:
     baseline_by_key = {record.key: record for record in baseline.records}
     if tuple(record.key for record in run.records) != tuple(baseline_by_key):
         raise ValueError("baseline and measured run must contain the same cases in the same order")
@@ -264,6 +292,15 @@ def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
     compression_times = [record.compression_elapsed_seconds for record in run.records]
     answer_times = [record.answer_elapsed_seconds for record in run.records]
     drifts = [record.merge_metrics.final_drift or 0.0 for record in run.records]
+    run_cost = _estimated_cost(run.usage)
+    original_cost = (
+        float(baseline_measurement["api_usage_and_cost"]["total_estimated_usd"])
+        if baseline_measurement is not None
+        else None
+    )
+    original_wall_clock = (
+        float(baseline_measurement["timing_seconds"]["total_wall_clock"]) if baseline_measurement is not None else None
+    )
     payload = {
         "schema_version": 1,
         "method": {
@@ -282,6 +319,7 @@ def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
                 "gpt_output": GPT_OUTPUT_PER_MILLION,
                 "embedding_input": EMBEDDING_INPUT_PER_MILLION,
             },
+            "pricing_source": "https://developers.openai.com/api/docs/pricing",
         },
         "implementation_commit": run.implementation_commit,
         "target": {
@@ -291,12 +329,18 @@ def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
             "reduced_tokens": reduced_tokens,
             "token_reduction": 1.0 - reduced_tokens / source_tokens,
             "mean_input_prompt_tokens": reduced_tokens / len(run.records),
+            "original_mean_input_prompt_tokens": source_tokens / len(run.records),
         },
         "quality": {
             **retention.model_dump(),
             "drift_budget_met": sum(record.merge_metrics.drift_budget_met is True for record in run.records),
             "mean_embedding_drift": float(np.mean(drifts)),
             "p95_embedding_drift": float(np.quantile(drifts, 0.95)),
+            "release_decision": (
+                "PASS: retention confidence interval clears the release threshold"
+                if retention.clears_release_threshold
+                else "FAIL: retention confidence interval does not clear the release threshold"
+            ),
         },
         "performance": {
             "merge_calls": sum(record.merge_metrics.calls for record in run.records),
@@ -310,7 +354,20 @@ def _write_summary(path: Path, run: RawRun, baseline: ExperimentResult) -> None:
             "answer_mean_seconds": float(np.mean(answer_times)),
         },
         "api_usage": _aggregate_usage(run.usage),
-        "estimated_api_cost_usd": _estimated_cost(run.usage),
+        "estimated_api_cost_usd": {
+            **run_cost,
+            "original_baseline": original_cost,
+            "combined_with_original": run_cost["total"] + original_cost if original_cost is not None else None,
+        },
+        "wall_clock_seconds": {
+            "original_baseline": original_wall_clock,
+            "compression_and_compressed_answers": sum(compression_times) + sum(answer_times),
+            "combined_sequential": (
+                original_wall_clock + sum(compression_times) + sum(answer_times)
+                if original_wall_clock is not None
+                else None
+            ),
+        },
         "records": [
             {
                 "key": record.key,
@@ -333,6 +390,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--keep", type=float, default=DEFAULT_KEEP_PERCENT)
     parser.add_argument("--data-dir", type=Path, required=True)
     parser.add_argument("--baseline", type=Path, required=True)
+    parser.add_argument("--baseline-summary", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     return parser.parse_args()
 
@@ -363,7 +421,11 @@ def main() -> None:
                 _write_raw(raw_path, run)
 
     baseline = ExperimentResult.model_validate_json(args.baseline.read_text(encoding="utf-8"))
-    _write_summary(summary_path, run, baseline)
+    baseline_measurement = (
+        json.loads(args.baseline_summary.read_text(encoding="utf-8")) if args.baseline_summary is not None else None
+    )
+    _write_baseline(args.out / "original.json", baseline, baseline_measurement)
+    _write_summary(summary_path, run, baseline, baseline_measurement)
     print(summary_path.read_text(encoding="utf-8"))
 
 

@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "method": {
+    "benchmark": "BABILong 8k qa1-qa5 task-balanced sample",
+    "n_cases": 10,
+    "seed": 42,
+    "keep_percent": 90.0,
+    "model": "gpt-5.6-luna",
+    "answer_reasoning": "none",
+    "merge_reasoning": "low",
+    "tokenizer": "cl100k_base",
+    "bootstrap": "paired percentile bootstrap over case indices",
+    "pricing_usd_per_million": {
+      "gpt_input": 1.0,
+      "gpt_cached_input": 0.1,
+      "gpt_output": 6.0,
+      "embedding_input": 0.02
+    },
+    "pricing_source": "https://developers.openai.com/api/docs/pricing"
+  },
+  "implementation_commit": "e8afb03ad6b0a03b0740b5786c8fa956a9fa6eac",
+  "target": {
+    "successes": 10,
+    "failures": 0,
+    "source_tokens": 73743,
+    "reduced_tokens": 65645,
+    "token_reduction": 0.10981381283647262,
+    "mean_input_prompt_tokens": 6564.5,
+    "original_mean_input_prompt_tokens": 7374.3
+  },
+  "quality": {
+    "n_cases": 10,
+    "original_accuracy": 0.8,
+    "compressed_accuracy": 0.7,
+    "accuracy_change_pp": -10.000000000000009,
+    "retention": 0.8749999999999999,
+    "confidence_level": 0.95,
+    "confidence_low": 0.6,
+    "confidence_high": 1.0,
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 42,
+    "release_threshold": 0.9,
+    "clears_release_threshold": false,
+    "drift_budget_met": 10,
+    "mean_embedding_drift": 0.007799869775772095,
+    "p95_embedding_drift": 0.02007601857185363,
+    "release_decision": "FAIL: retention confidence interval does not clear the release threshold"
+  },
+  "performance": {
+    "merge_calls": 10,
+    "merge_retries": 0,
+    "merge_candidates": 20,
+    "repaired_tokens": 206,
+    "compression_total_seconds": 159.45481133296562,
+    "compression_mean_seconds": 15.945481133296562,
+    "compression_p95_seconds": 18.55802063954834,
+    "answer_total_seconds": 14.516757876001066,
+    "answer_mean_seconds": 1.4516757876001065
+  },
+  "api_usage": {
+    "answer": {
+      "requests": 10,
+      "input_tokens": 65063,
+      "cached_input_tokens": 0,
+      "output_tokens": 106,
+      "total_tokens": 65169,
+      "elapsed_seconds": 14.516567001017393
+    },
+    "embedding": {
+      "requests": 33,
+      "input_tokens": 629268,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 629268,
+      "elapsed_seconds": 56.36951204498473
+    },
+    "target_merge": {
+      "requests": 10,
+      "input_tokens": 17140,
+      "cached_input_tokens": 1831,
+      "output_tokens": 14900,
+      "total_tokens": 32040,
+      "elapsed_seconds": 101.0607597079943
+    }
+  },
+  "estimated_api_cost_usd": {
+    "answer": 0.065699,
+    "target_merge": 0.1048921,
+    "embedding": 0.012585359999999999,
+    "total": 0.18317645999999999,
+    "original_baseline": 0.07373,
+    "combined_with_original": 0.25690646
+  },
+  "wall_clock_seconds": {
+    "original_baseline": 13.583475207997253,
+    "compression_and_compressed_answers": 173.97156920896668,
+    "combined_sequential": 187.55504441696394
+  },
+  "records": [
+    {
+      "key": "qa1:42",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7823,
+      "reduced_tokens": 7035,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the office\u2019."
+    },
+    {
+      "key": "qa1:41",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7820,
+      "reduced_tokens": 7038,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019."
+    },
+    {
+      "key": "qa2:35",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7845,
+      "reduced_tokens": 7050,
+      "response": "The apple is in the kitchen."
+    },
+    {
+      "key": "qa2:67",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7771,
+      "reduced_tokens": 6938,
+      "response": "The football is in the garden."
+    },
+    {
+      "key": "qa3:54",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7820,
+      "reduced_tokens": 6933,
+      "response": "Before the office the apple was in the garden."
+    },
+    {
+      "key": "qa3:31",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 6256,
+      "reduced_tokens": 5608,
+      "response": "Before the garden the milk was in the office."
+    },
+    {
+      "key": "qa4:81",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7670,
+      "reduced_tokens": 6723,
+      "response": "bedroom"
+    },
+    {
+      "key": "qa4:59",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 5424,
+      "reduced_tokens": 4855,
+      "response": "kitchen"
+    },
+    {
+      "key": "qa5:71",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7492,
+      "reduced_tokens": 6603,
+      "response": "Bill"
+    },
+    {
+      "key": "qa5:85",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7822,
+      "reduced_tokens": 6862,
+      "response": "Bill"
+    }
+  ]
+}

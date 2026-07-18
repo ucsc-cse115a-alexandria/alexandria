@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+
 import pytest
 
 from benchmarks.babilong_8k.statistics import paired_retention_bootstrap
+
+_COMMITTED_RESULT = Path(__file__).parent / "results/2026-07-18-keep90-hard-target-n10-v4/summary.json"
 
 
 def test_identical_correct_outcomes_clear_the_retention_gate() -> None:
@@ -35,3 +40,23 @@ def test_bootstrap_requires_comparable_nonempty_outcomes() -> None:
         paired_retention_bootstrap([], [])
     with pytest.raises(ValueError, match="original accuracy is zero"):
         paired_retention_bootstrap([False], [True])
+
+
+def test_committed_release_decision_is_reproducible_from_paired_outcomes() -> None:
+    payload = json.loads(_COMMITTED_RESULT.read_text(encoding="utf-8"))
+    records = payload["records"]
+
+    estimate = paired_retention_bootstrap(
+        [record["original_correct"] for record in records],
+        [record["compressed_correct"] for record in records],
+        samples=payload["quality"]["bootstrap_samples"],
+        seed=payload["quality"]["bootstrap_seed"],
+        confidence_level=payload["quality"]["confidence_level"],
+        release_threshold=payload["quality"]["release_threshold"],
+    )
+
+    expected = {field: payload["quality"][field] for field in type(estimate).model_fields}
+    assert estimate.model_dump() == expected
+    assert payload["target"]["successes"] == len(records)
+    assert payload["target"]["failures"] == 0
+    assert payload["quality"]["release_decision"].startswith("FAIL:")

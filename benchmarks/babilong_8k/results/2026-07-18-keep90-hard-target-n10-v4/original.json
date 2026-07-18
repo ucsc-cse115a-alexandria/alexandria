@@ -1,0 +1,349 @@
+{
+  "schema_version": 1,
+  "label": "original_luna_reasoning_none",
+  "model": "gpt-5.6-luna",
+  "accuracy": 0.8,
+  "mean_input_prompt_tokens": 7374.3,
+  "measurement": {
+    "run": {
+      "condition": "original_only",
+      "model": "gpt-5.6-luna",
+      "reasoning": {
+        "effort": "none"
+      },
+      "n_cases": 10,
+      "seed": 42,
+      "elapsed_seconds": 13.583475207997253,
+      "output_dir": "trial_results/babilong_8k/original_gpt56_luna_reasoning_none_n10_20260718"
+    },
+    "pricing_assumptions": {
+      "gpt-5.6-luna_standard_short_context_per_1m": {
+        "input": 1.0,
+        "cached_input": 0.1,
+        "output": 6.0
+      },
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "notes": [
+        "Cost uses SDK usage fields from this run.",
+        "Cached input discount is applied only to cached_input_tokens reported by usage.",
+        "Estimate excludes regional processing uplift and taxes."
+      ]
+    },
+    "api_usage_and_cost": {
+      "by_model": {
+        "gpt-5.6-luna": {
+          "requests": 10,
+          "input_tokens": 73082,
+          "output_tokens": 108,
+          "total_tokens": 73190,
+          "cached_input_tokens": 0,
+          "uncached_input_tokens": 73082,
+          "estimated_usd": 0.07373
+        }
+      },
+      "total_estimated_usd": 0.07373
+    },
+    "timing_seconds": {
+      "total_wall_clock": 13.583475207997253,
+      "mean_per_case": 1.3448872416018276,
+      "per_case": [
+        {
+          "key": "qa1:42",
+          "task": "qa1",
+          "elapsed_seconds": 3.2467552500020247,
+          "usage": {
+            "input_tokens": 7693,
+            "output_tokens": 17,
+            "total_tokens": 7710,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7693
+          }
+        },
+        {
+          "key": "qa1:41",
+          "task": "qa1",
+          "elapsed_seconds": 1.511623749989667,
+          "usage": {
+            "input_tokens": 7730,
+            "output_tokens": 17,
+            "total_tokens": 7747,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7730
+          }
+        },
+        {
+          "key": "qa2:35",
+          "task": "qa2",
+          "elapsed_seconds": 1.3250904160086066,
+          "usage": {
+            "input_tokens": 7733,
+            "output_tokens": 11,
+            "total_tokens": 7744,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7733
+          }
+        },
+        {
+          "key": "qa2:67",
+          "task": "qa2",
+          "elapsed_seconds": 1.0770708750060294,
+          "usage": {
+            "input_tokens": 7701,
+            "output_tokens": 13,
+            "total_tokens": 7714,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7701
+          }
+        },
+        {
+          "key": "qa3:54",
+          "task": "qa3",
+          "elapsed_seconds": 1.1047361249948153,
+          "usage": {
+            "input_tokens": 7776,
+            "output_tokens": 14,
+            "total_tokens": 7790,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7776
+          }
+        },
+        {
+          "key": "qa3:31",
+          "task": "qa3",
+          "elapsed_seconds": 1.0392144170036772,
+          "usage": {
+            "input_tokens": 6209,
+            "output_tokens": 14,
+            "total_tokens": 6223,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 6209
+          }
+        },
+        {
+          "key": "qa4:81",
+          "task": "qa4",
+          "elapsed_seconds": 1.1864857080072397,
+          "usage": {
+            "input_tokens": 7628,
+            "output_tokens": 6,
+            "total_tokens": 7634,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7628
+          }
+        },
+        {
+          "key": "qa4:59",
+          "task": "qa4",
+          "elapsed_seconds": 1.1207192920119269,
+          "usage": {
+            "input_tokens": 5380,
+            "output_tokens": 6,
+            "total_tokens": 5386,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 5380
+          }
+        },
+        {
+          "key": "qa5:71",
+          "task": "qa5",
+          "elapsed_seconds": 0.8744203329988522,
+          "usage": {
+            "input_tokens": 7461,
+            "output_tokens": 5,
+            "total_tokens": 7466,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7461
+          }
+        },
+        {
+          "key": "qa5:85",
+          "task": "qa5",
+          "elapsed_seconds": 0.9627562499954365,
+          "usage": {
+            "input_tokens": 7771,
+            "output_tokens": 5,
+            "total_tokens": 7776,
+            "cached_input_tokens": 0,
+            "uncached_input_tokens": 7771
+          }
+        }
+      ]
+    },
+    "score": {
+      "accuracy": 0.8,
+      "correct": 8,
+      "n": 10
+    },
+    "input_prompts": {
+      "n_prompts_sent": 10,
+      "mean_input_prompt_tokens_harness": 7374.3,
+      "total_input_prompt_tokens_harness": 73743,
+      "mean_input_tokens_api_usage": 7308.2,
+      "total_input_tokens_api_usage": 73082
+    },
+    "records": [
+      {
+        "key": "qa1:42",
+        "task": "qa1",
+        "source_tokens": 7823,
+        "sent_tokens": 7823,
+        "response": "The most recent location of \u2019Mary\u2019 is \u2019the office\u2019.",
+        "target_correct": true
+      },
+      {
+        "key": "qa1:41",
+        "task": "qa1",
+        "source_tokens": 7820,
+        "sent_tokens": 7820,
+        "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019.",
+        "target_correct": true
+      },
+      {
+        "key": "qa2:35",
+        "task": "qa2",
+        "source_tokens": 7845,
+        "sent_tokens": 7845,
+        "response": "The apple is in the kitchen.",
+        "target_correct": true
+      },
+      {
+        "key": "qa2:67",
+        "task": "qa2",
+        "source_tokens": 7771,
+        "sent_tokens": 7771,
+        "response": "The \u2019football\u2019 is in \u2019garden\u2019.",
+        "target_correct": true
+      },
+      {
+        "key": "qa3:54",
+        "task": "qa3",
+        "source_tokens": 7820,
+        "sent_tokens": 7820,
+        "response": "Before the office the apple was in the garden.",
+        "target_correct": true
+      },
+      {
+        "key": "qa3:31",
+        "task": "qa3",
+        "source_tokens": 6256,
+        "sent_tokens": 6256,
+        "response": "Before the garden the milk was in the kitchen.",
+        "target_correct": true
+      },
+      {
+        "key": "qa4:81",
+        "task": "qa4",
+        "source_tokens": 7670,
+        "sent_tokens": 7670,
+        "response": "bedroom",
+        "target_correct": false
+      },
+      {
+        "key": "qa4:59",
+        "task": "qa4",
+        "source_tokens": 5424,
+        "sent_tokens": 5424,
+        "response": "kitchen",
+        "target_correct": false
+      },
+      {
+        "key": "qa5:71",
+        "task": "qa5",
+        "source_tokens": 7492,
+        "sent_tokens": 7492,
+        "response": "Bill",
+        "target_correct": true
+      },
+      {
+        "key": "qa5:85",
+        "task": "qa5",
+        "source_tokens": 7822,
+        "sent_tokens": 7822,
+        "response": "Bill",
+        "target_correct": true
+      }
+    ]
+  },
+  "records": [
+    {
+      "key": "qa1:42",
+      "task": "qa1",
+      "source_tokens": 7823,
+      "sent_tokens": 7823,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:41",
+      "task": "qa1",
+      "source_tokens": 7820,
+      "sent_tokens": 7820,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa2:35",
+      "task": "qa2",
+      "source_tokens": 7845,
+      "sent_tokens": 7845,
+      "response": "The apple is in the kitchen.",
+      "correct": true
+    },
+    {
+      "key": "qa2:67",
+      "task": "qa2",
+      "source_tokens": 7771,
+      "sent_tokens": 7771,
+      "response": "The \u2019football\u2019 is in \u2019garden\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa3:54",
+      "task": "qa3",
+      "source_tokens": 7820,
+      "sent_tokens": 7820,
+      "response": "Before the office the apple was in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa3:31",
+      "task": "qa3",
+      "source_tokens": 6256,
+      "sent_tokens": 6256,
+      "response": "Before the garden the milk was in the kitchen.",
+      "correct": true
+    },
+    {
+      "key": "qa4:81",
+      "task": "qa4",
+      "source_tokens": 7670,
+      "sent_tokens": 7670,
+      "response": "bedroom",
+      "correct": false
+    },
+    {
+      "key": "qa4:59",
+      "task": "qa4",
+      "source_tokens": 5424,
+      "sent_tokens": 5424,
+      "response": "kitchen",
+      "correct": false
+    },
+    {
+      "key": "qa5:71",
+      "task": "qa5",
+      "source_tokens": 7492,
+      "sent_tokens": 7492,
+      "response": "Bill",
+      "correct": true
+    },
+    {
+      "key": "qa5:85",
+      "task": "qa5",
+      "source_tokens": 7822,
+      "sent_tokens": 7822,
+      "response": "Bill",
+      "correct": true
+    }
+  ]
+}
