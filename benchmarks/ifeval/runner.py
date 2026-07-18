@@ -100,16 +100,39 @@ def run_experiment(
     return ExperimentResult(label=label, model=model, records=tuple(records))
 
 
-_COLUMNS = ("label", "n", "prompt_strict", "inst_strict", "prompt_loose", "inst_loose", "mean_ratio")
+_METRICS = ("prompt_strict", "inst_strict", "prompt_loose", "inst_loose")
+
+
+def _counts(result: ExperimentResult) -> dict[str, tuple[int, int]]:
+    strict_flags = [flag for record in result.records for flag in record.verdict.strict]
+    loose_flags = [flag for record in result.records for flag in record.verdict.loose]
+    return {
+        "prompt_strict": (sum(all(record.verdict.strict) for record in result.records), len(result.records)),
+        "inst_strict": (sum(strict_flags), len(strict_flags)),
+        "prompt_loose": (sum(all(record.verdict.loose) for record in result.records), len(result.records)),
+        "inst_loose": (sum(loose_flags), len(loose_flags)),
+    }
 
 
 def compare(*results: ExperimentResult) -> str:
-    """A markdown table of the four accuracies and mean compression ratio per experiment."""
-    header = "| " + " | ".join(_COLUMNS) + " |"
-    divider = "|" + "|".join("---" for _ in _COLUMNS) + "|"
-    rows = [
-        f"| {result.label} | {len(result.records)} | {result.prompt_strict:.3f} | {result.inst_strict:.3f}"
-        f" | {result.prompt_loose:.3f} | {result.inst_loose:.3f} | {result.mean_ratio:.3f} |"
-        for result in results
-    ]
+    """A markdown table of accuracies against the first result (the baseline) and mean tokens saved.
+
+    Baseline cells read `passed/total (percent)`; later rows show the change against the
+    baseline in percentage points, so the accuracy cost of each compression level is explicit.
+    """
+    baseline = _counts(results[0])
+    header = "| condition | tokens saved | " + " | ".join(_METRICS) + " |"
+    divider = "|" + "|".join("---" for _ in range(len(_METRICS) + 2)) + "|"
+    rows: list[str] = []
+    for index, result in enumerate(results):
+        cells = [result.label, f"{(1 - result.mean_ratio) * 100:.1f}%"]
+        for metric, (passed, total) in _counts(result).items():
+            percent = 100 * passed / total
+            if index == 0:
+                cells.append(f"{passed}/{total} ({percent:.1f}%)")
+            else:
+                base_passed, base_total = baseline[metric]
+                delta = percent - 100 * base_passed / base_total
+                cells.append(f"{passed}/{total} ({'±0.0pt' if delta == 0 else f'{delta:+.1f}pt'})")
+        rows.append("| " + " | ".join(cells) + " |")
     return "\n".join([header, divider, *rows])

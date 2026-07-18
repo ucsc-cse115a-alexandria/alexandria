@@ -52,10 +52,28 @@ def test_result_serializes_summary_fields() -> None:
     assert dumped["records"][0]["ratio"] == 1.0
 
 
-def test_compare_renders_one_row_per_result() -> None:
+def test_compare_baseline_row_shows_fractions_and_percent() -> None:
     result = run_experiment(CASES, generate, label="original", model="stub")
     table = compare(result)
     assert (
-        table.splitlines()[0] == "| label | n | prompt_strict | inst_strict | prompt_loose | inst_loose | mean_ratio |"
+        table.splitlines()[0]
+        == "| condition | tokens saved | prompt_strict | inst_strict | prompt_loose | inst_loose |"
     )
-    assert "| original | 2 | 0.500 | 0.500 | 0.500 | 0.500 | 1.000 |" in table
+    assert "| original | 0.0% | 1/2 (50.0%) | 1/2 (50.0%) | 1/2 (50.0%) | 1/2 (50.0%) |" in table
+
+
+def test_compare_later_rows_show_delta_vs_baseline() -> None:
+    original = run_experiment(CASES, generate, label="original", model="stub")
+    compressed = run_experiment(CASES, generate, label="c95", model="stub", transform=truncate)
+    row = compare(original, compressed).splitlines()[3]
+    # same 1/2 strict outcome as baseline -> ±0.0pt; tokens were actually saved
+    assert row.startswith("| c95 | ")
+    assert "| 1/2 (±0.0pt) |" in row
+    assert "| 0.0% |" not in row
+
+
+def test_compare_delta_is_signed_percentage_points() -> None:
+    passing = run_experiment(CASES[:1], generate, label="original", model="stub")
+    failing = run_experiment(CASES[1:], generate, label="worse", model="stub")
+    row = compare(passing, failing).splitlines()[3]
+    assert "| 0/1 (-100.0pt) |" in row
