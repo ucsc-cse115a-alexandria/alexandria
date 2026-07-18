@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 from contextlib import contextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -232,6 +233,12 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     default=None,
     help="reduce the prompt by N tokens (applied least-drift-first)",
 )
+@click.option(
+    "--keep",
+    type=click.FloatRange(min=0.0, max=100.0, min_open=True, max_open=True),
+    default=None,
+    help="keep P percent of the prompt's source tokens",
+)
 @click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
@@ -248,6 +255,7 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
 def reduce_cmd(
     file: IO[str],
     save_tokens: int | None,
+    keep: float | None,
     drift_budget: float,
     as_json: bool,
     interactive: bool,
@@ -259,6 +267,7 @@ def reduce_cmd(
     \b
     Examples:
       alexandria reduce prompt.md                    # automatic: apply every edit within --drift-budget
+      alexandria reduce --keep 95 prompt.md          # aim to keep 95% of the source tokens
       alexandria reduce prompt.md --save-tokens 200  # stop once 200 tokens are saved (least-drift-first)
       alexandria reduce prompt.md --json             # machine-readable summary of what was applied
       alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
@@ -275,13 +284,17 @@ def reduce_cmd(
         raise click.UsageError("--no-open requires --browser.")
     if interactive and browser:
         raise click.UsageError("--interactive and --browser are mutually exclusive.")
+    if keep is not None and save_tokens is not None:
+        raise click.UsageError("--keep and --save-tokens are mutually exclusive.")
 
     manual_review = interactive or browser
     review_flag = "--interactive" if interactive else "--browser"
     if manual_review and getattr(file, "name", None) == "<stdin>":
         raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
-    if manual_review and save_tokens is not None:
-        raise click.UsageError(f"{review_flag} replaces the selector with your choices; drop --save-tokens.")
+    if manual_review and (save_tokens is not None or keep is not None):
+        raise click.UsageError(
+            f"{review_flag} replaces the selector with your choices; drop --save-tokens and --keep."
+        )
 
     with _clean_errors():
         embedder = default_embedder()
@@ -294,7 +307,11 @@ def reduce_cmd(
                 prompt, embedder, merger, Params(drift_budget=drift_budget), open_browser=not no_open
             )
         else:
-            max_tokens = max(count_tokens(prompt) - save_tokens, 1) if save_tokens is not None else None
+            source_tokens = count_tokens(prompt)
+            if keep is not None:
+                max_tokens = math.floor(source_tokens * keep / 100)
+            else:
+                max_tokens = max(source_tokens - save_tokens, 1) if save_tokens is not None else None
             params = Params(drift_budget=drift_budget, max_tokens=max_tokens)
             result = reduce(prompt, embedder, merger, params=params)
 
