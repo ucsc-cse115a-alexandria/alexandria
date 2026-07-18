@@ -127,6 +127,11 @@ def test_select_json_reports_the_reduction_summary() -> None:
         "target_rounds": [],
         "proposed_edits": 1,
         "applied_edits": 1,
+        "pruned_sentences": 0,
+        "pruned_tokens": 0,
+        "embed_calls": 0,
+        "embed_texts": 0,
+        "elapsed_seconds": 0.0,
     }
 
 
@@ -250,12 +255,15 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
-    assert payload["merge_metrics"] == {
+    metrics = payload["merge_metrics"]
+    assert metrics["elapsed_seconds"] > 0.0
+    assert metrics["embed_calls"] > 0
+    assert {
+        key: metrics[key] for key in ("calls", "retries", "jobs_attempted", "proposed_edits", "applied_edits")
+    } == {
         "calls": 0,
         "retries": 0,
         "jobs_attempted": 0,
-        "candidates_generated": 0,
-        "target_rounds": [],
         "proposed_edits": 1,
         "applied_edits": 1,
     }
@@ -400,7 +408,7 @@ def test_target_reduction_fails_when_the_drift_gate_prevents_the_target() -> Non
     )
 
     assert result.exit_code == 1
-    assert "target merge failed after 5 calls (4 retries)" in result.output
+    assert "target merge failed after 3 calls (2 retries)" in result.output
 
 
 def test_budget_options_are_mutually_exclusive() -> None:

@@ -1,10 +1,18 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-from alexandria.ir.document import SectionKind
+from alexandria.ir.document import Section, SectionKind
 from alexandria.ops.features.represent import RawSection, RawSentence, represent, split
 from alexandria.utils.embedders import HashEmbedder
+
+if TYPE_CHECKING:
+    import numpy as np
+    from numpy.typing import NDArray
+
+    from alexandria.ir.document import Node
 
 
 def _leaf_text(sections: tuple[RawSection, ...]) -> str:
@@ -155,3 +163,31 @@ def test_identical_lines_get_unique_deterministic_ids() -> None:
     ids = [s.id for s in represent("same\nsame\nsame\n", HashEmbedder()).sentences]
     assert len(set(ids)) == 3
     assert ids == [ids[0], f"{ids[0]}-2", f"{ids[0]}-3"]
+
+
+class _CallRecordingEmbedder:
+    def __init__(self) -> None:
+        self._inner = HashEmbedder()
+        self.calls: list[list[str]] = []
+
+    @property
+    def model_id(self) -> str:
+        return self._inner.model_id
+
+    def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
+        self.calls.append(list(texts))
+        return self._inner.embed(texts)
+
+
+def _count_sections(nodes: tuple[Node, ...]) -> int:
+    return sum(1 + _count_sections(node.children) for node in nodes if isinstance(node, Section))
+
+
+def test_represent_embeds_in_two_batched_calls() -> None:
+    embedder = _CallRecordingEmbedder()
+
+    document = represent("# A\nline one\n## B\nline two\n<x>\nline three\n</x>\n", embedder)
+
+    assert len(embedder.calls) == 2
+    assert embedder.calls[1][-1] == document.text  # the second batch ends with the document text
+    assert len(embedder.calls[1]) == _count_sections(document.sections) + 1
