@@ -526,9 +526,7 @@ def test_tokens_counts_instruction_files_accurately() -> None:
         assert "Total:" in result.output
 
 
-def test_config_set_prompts_hidden_and_saves_a_key_resolve_can_read(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_config_set_prompts_hidden_and_saves_the_key(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     runner = CliRunner()
