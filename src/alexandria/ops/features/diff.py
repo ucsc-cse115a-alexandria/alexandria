@@ -29,7 +29,7 @@ def diffs(document: Document, plan: Plan) -> tuple[Diff, ...]:
         Diff(
             candidate=candidate,
             spans=tuple(spans[target] for target in candidate.edit.targets),
-            replacement="",
+            replacement=candidate.edit.replacement.text if candidate.edit.op == "replace" else "",
         )
         for candidate in sorted(plan, key=lambda candidate: candidate.confidence, reverse=True)
     )
