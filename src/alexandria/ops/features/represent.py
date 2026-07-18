@@ -27,6 +27,7 @@ class RawSentence:
     """A leaf text segment, with its original separators, before tokenizing and embedding."""
 
     text: str
+    optimizable: bool = True
 
 
 @dataclass(frozen=True)
@@ -66,8 +67,8 @@ class _Builder:
         (self.stack[-1].children if self.stack else self.roots).append(section)
         self.stack.append(section)
 
-    def append(self, segment: str) -> None:
-        self.stack[-1].children.append(RawSentence(segment))
+    def append(self, segment: str, *, optimizable: bool = True) -> None:
+        self.stack[-1].children.append(RawSentence(segment, optimizable=optimizable))
 
     def drop_open_plain(self) -> None:
         if self.stack and self.stack[-1].kind is SectionKind.PLAIN:
@@ -97,7 +98,7 @@ def _markdown_rule(line: str, segment: str, builder: _Builder) -> bool:
     while builder.stack and builder.stack[-1].kind is SectionKind.MARKDOWN and (builder.stack[-1].depth or 0) >= depth:
         builder.stack.pop()
     builder.open(_Open(SectionKind.MARKDOWN, line.lstrip("#").strip(), depth, None))
-    builder.append(segment)
+    builder.append(segment, optimizable=False)
     return True
 
 
@@ -107,7 +108,7 @@ def _xml_open_rule(line: str, segment: str, builder: _Builder) -> bool:
         return False
     builder.drop_open_plain()
     builder.open(_Open(SectionKind.XML, opening.group(1), None, opening.group(1)))
-    builder.append(segment)
+    builder.append(segment, optimizable=False)
     return True
 
 
@@ -118,7 +119,7 @@ def _xml_close_rule(line: str, segment: str, builder: _Builder) -> bool:
     tag = closing.group(1)
     while not (builder.stack[-1].kind is SectionKind.XML and builder.stack[-1].tag == tag):
         builder.stack.pop()
-    builder.append(segment)
+    builder.append(segment, optimizable=False)
     builder.stack.pop()
     return True
 
@@ -192,7 +193,13 @@ def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
     vectors = embedder.embed([leaf.text for leaf in leaves])
     ids = _assign_ids([leaf.text for leaf in leaves])
     built_sentences = iter(
-        Sentence(id=sid, text=leaf.text, token_count=count_tokens(leaf.text), embedding=vector)
+        Sentence(
+            id=sid,
+            text=leaf.text,
+            token_count=count_tokens(leaf.text),
+            embedding=vector,
+            optimizable=leaf.optimizable,
+        )
         for sid, leaf, vector in zip(ids, leaves, vectors, strict=True)
     )
     built = tuple(_build_section(section, embedder, built_sentences) for section in sections)

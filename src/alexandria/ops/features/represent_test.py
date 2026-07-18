@@ -50,7 +50,7 @@ def test_markdown_header_starts_a_section() -> None:
     section = sections[0]
     assert section.kind is SectionKind.MARKDOWN
     assert section.header == "Goal"
-    assert section.children == (RawSentence("# Goal\n"), RawSentence("Do Z.\n"))
+    assert section.children == (RawSentence("# Goal\n", optimizable=False), RawSentence("Do Z.\n"))
 
 
 def test_deeper_header_nests_under_shallower() -> None:
@@ -58,13 +58,16 @@ def test_deeper_header_nests_under_shallower() -> None:
     assert len(sections) == 1
     setup = sections[0]
     assert setup.header == "Setup"
-    assert setup.children[0] == RawSentence("# Setup\n")
+    assert setup.children[0] == RawSentence("# Setup\n", optimizable=False)
     assert setup.children[1] == RawSentence("Install deps.\n")
     database = setup.children[2]
     assert isinstance(database, RawSection)
     assert database.kind is SectionKind.MARKDOWN
     assert database.header == "Database"
-    assert database.children == (RawSentence("## Database\n"), RawSentence("Run migrations.\n"))
+    assert database.children == (
+        RawSentence("## Database\n", optimizable=False),
+        RawSentence("Run migrations.\n"),
+    )
 
 
 def test_same_depth_header_is_a_sibling() -> None:
@@ -79,9 +82,9 @@ def test_xml_tag_starts_a_section() -> None:
     assert section.kind is SectionKind.XML
     assert section.header == "instructions"
     assert section.children == (
-        RawSentence("<instructions>\n"),
+        RawSentence("<instructions>\n", optimizable=False),
         RawSentence("Do X.\n"),
-        RawSentence("</instructions>\n"),
+        RawSentence("</instructions>\n", optimizable=False),
     )
 
 
@@ -94,7 +97,7 @@ def test_xml_block_is_a_hard_boundary_for_markdown() -> None:
     assert isinstance(steps, RawSection)
     assert steps.kind is SectionKind.MARKDOWN
     assert steps.header == "Steps"
-    assert task.children[-1] == RawSentence("</task>\n")
+    assert task.children[-1] == RawSentence("</task>\n", optimizable=False)
     # 'after' falls back to a top-level plain section, outside the xml block.
     assert sections[1].kind is SectionKind.PLAIN
     assert sections[1].children == (RawSentence("after\n"),)
@@ -114,6 +117,18 @@ def test_represent_builds_a_document() -> None:
     assert all(sid.startswith("s") for sid in ids)
     assert document.text == "first\nsecond\n"
     assert document.token_count > 0
+
+
+def test_represent_marks_markup_boundaries_as_not_optimizable() -> None:
+    document = represent("# Goal\n<example>\nDo X.\n</example>\n", HashEmbedder())
+
+    by_text = {sentence.text.strip(): sentence.optimizable for sentence in document.sentences}
+    assert by_text == {
+        "# Goal": False,
+        "<example>": False,
+        "Do X.": True,
+        "</example>": False,
+    }
 
 
 def test_represent_rejects_an_empty_prompt() -> None:

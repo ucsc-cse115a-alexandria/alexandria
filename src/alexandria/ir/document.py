@@ -61,6 +61,7 @@ class Encoded(BaseModel):
 class Sentence(Encoded):
     node: Literal["sentence"] = "sentence"
     id: SentenceId
+    optimizable: bool = True
 
 
 class Section(Encoded):
@@ -192,6 +193,7 @@ def _rebuild_section(section: Section, surviving: set[SentenceId], replacements:
                     text=replacement.text,
                     token_count=replacement.token_count,
                     embedding=replacement.embedding,
+                    optimizable=child.optimizable,
                 )
             )
         else:

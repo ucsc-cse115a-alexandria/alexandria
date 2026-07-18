@@ -43,7 +43,7 @@ uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
 Use `--save-tokens N` to stop once N tokens are saved and `--drift-budget` to cap the cumulative
-whole-document embedding drift the reduction may accept (`0.01` = 1%):
+whole-document embedding drift the reduction may accept (default: `0.5` = 50%):
 
 ```bash
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
@@ -56,6 +56,13 @@ cannot be mistaken for success:
 ```bash
 uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
 ```
+
+Strict targets keep Markdown/XML boundaries fixed and ask the merge model to rewrite the largest content groups to
+the exact budget needed by the complete prompt. The result must satisfy the requested token count and stay within
+the whole-prompt embedding drift budget. Rejected attempts feed their measured token and drift failures back for
+correction. Exact duplicate text in best-effort reduction is still removed without a merge-model call. `--json`
+includes `merge_metrics` with call, retry, job, proposal, and applied-edit counts; text mode prints call and retry
+counts to stderr.
 
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
 quality scores:

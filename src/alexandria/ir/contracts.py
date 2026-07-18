@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Annotated, Literal, Protocol
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -17,7 +17,7 @@ Scores = dict[str, dict[SentenceId, float]]  # scorer name -> sentence id -> sco
 Peers = Callable[[Document], list[tuple[SentenceId | None, float]]]
 
 Threshold = Annotated[float, Field(ge=0.0, le=1.0)]
-Drift = Annotated[float, Field(ge=0.0)]  # cosine distance from the original prompt; 0.01 == 1%
+Drift = Annotated[float, Field(ge=0.0)]  # cosine distance from the original prompt; 0.5 == 50%
 
 
 class Params(BaseModel):
@@ -25,8 +25,36 @@ class Params(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     threshold: Threshold = 0.85
-    drift_budget: Drift = 0.01
+    drift_budget: Drift = 0.5
     max_tokens: int | None = Field(default=None, ge=1)
+    require_target: bool = False
+
+
+class TargetMergeRoundMetrics(BaseModel):
+    """The selected base before and after one target-search generation call."""
+
+    model_config = ConfigDict(frozen=True)
+    round: int = Field(ge=1)
+    base_tokens: int = Field(ge=1)
+    selected_tokens: int = Field(ge=1)
+    base_drift: float = Field(ge=0.0)
+    selected_drift: float = Field(ge=0.0)
+    generated_best_tokens: int = Field(ge=1)
+    generated_best_drift: float = Field(ge=0.0)
+    improved: bool
+
+
+class MergeMetrics(BaseModel):
+    """Generation work performed by a sentence merger during one reduction."""
+
+    model_config = ConfigDict(frozen=True)
+    calls: int = Field(default=0, ge=0)
+    retries: int = Field(default=0, ge=0)
+    jobs_attempted: int = Field(default=0, ge=0)
+    candidates_generated: int = Field(default=0, ge=0)
+    target_rounds: tuple[TargetMergeRoundMetrics, ...] = ()
+    proposed_edits: int = Field(default=0, ge=0)
+    applied_edits: int = Field(default=0, ge=0)
 
 
 class Embedder(Protocol):
@@ -44,6 +72,77 @@ class SentenceMerger(Protocol):
     """
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str: ...
+
+
+@runtime_checkable
+class TargetedMerger(Protocol):
+    """Generate diverse compressions for a hard token budget, using prior elites and feedback."""
+
+    def merge_candidates_to_target(
+        self,
+        prompt: str,
+        max_tokens: int,
+        feedback: str | None = None,
+        base_candidate: str | None = None,
+    ) -> tuple[str, ...]: ...
+
+
+class TrackedMerger:
+    """Decorate any sentence merger with request and retry counters."""
+
+    def __init__(self, merger: SentenceMerger) -> None:
+        self._merger = merger
+        self._cache: dict[tuple[str, str, str | None], str] = {}
+        self.calls = 0
+        self.retries = 0
+        self.jobs_attempted = 0
+        self.candidates_generated = 0
+        self.target_rounds: list[TargetMergeRoundMetrics] = []
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        key = (first, second, feedback)
+        if key in self._cache:
+            return self._cache[key]
+        self.calls += 1
+        if feedback is None:
+            self.jobs_attempted += 1
+        else:
+            self.retries += 1
+        merged = self._merger.merge(first, second, feedback)
+        self._cache[key] = merged
+        return merged
+
+    def merge_candidates_to_target(
+        self,
+        prompt: str,
+        max_tokens: int,
+        feedback: str | None = None,
+        base_candidate: str | None = None,
+    ) -> tuple[str, ...]:
+        if not isinstance(self._merger, TargetedMerger):
+            raise TypeError("strict token targets require a merger with merge_candidates_to_target support")
+        self.calls += 1
+        if feedback is None:
+            self.jobs_attempted += 1
+        else:
+            self.retries += 1
+        candidates = self._merger.merge_candidates_to_target(prompt, max_tokens, feedback, base_candidate)
+        self.candidates_generated += len(candidates)
+        return candidates
+
+    def record_target_round(self, metrics: TargetMergeRoundMetrics) -> None:
+        self.target_rounds.append(metrics)
+
+    def metrics(self, *, proposed_edits: int, applied_edits: int) -> MergeMetrics:
+        return MergeMetrics(
+            calls=self.calls,
+            retries=self.retries,
+            jobs_attempted=self.jobs_attempted,
+            candidates_generated=self.candidates_generated,
+            target_rounds=tuple(self.target_rounds),
+            proposed_edits=proposed_edits,
+            applied_edits=applied_edits,
+        )
 
 
 def _reject_duplicate_targets(targets: tuple[SentenceId, ...]) -> tuple[SentenceId, ...]:

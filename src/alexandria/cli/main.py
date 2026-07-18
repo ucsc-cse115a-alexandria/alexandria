@@ -12,7 +12,7 @@ from pydantic import ValidationError
 from alexandria.cli.browser_review import run_browser_review
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.cli.interactive import apply_candidates, review
-from alexandria.ir.contracts import Params
+from alexandria.ir.contracts import MergeMetrics, Params, TrackedMerger
 from alexandria.ops import (
     OptimizationReport,
     compare_reports,
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
 
 _DEFAULTS = Params()
 
-_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)"
+_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (default: 0.5 = 50%)"
 
 
 @contextmanager
@@ -68,7 +68,13 @@ def _emit_envelope(payload: str, out_path: Path | None) -> None:
     click.echo(payload)
 
 
-def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens: int) -> str:
+def _reduction_json(
+    text: str,
+    applied: Plan,
+    source_tokens: int,
+    reduced_tokens: int,
+    merge_metrics: MergeMetrics | None = None,
+) -> str:
     reduction_pct = 1.0 - (reduced_tokens / source_tokens) if source_tokens > 0 else 0.0
     payload = {
         "text": text,
@@ -76,6 +82,7 @@ def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens
         "source_tokens": source_tokens,
         "reduced_tokens": reduced_tokens,
         "reduction_pct": reduction_pct,
+        "merge_metrics": (merge_metrics or MergeMetrics()).model_dump(),
     }
     return json.dumps(payload, indent=2)
 
@@ -173,9 +180,20 @@ def optimize_cmd(file: IO[str], drift_budget: float, out_path: Path | None) -> N
     with _clean_errors():
         embedder = default_embedder()
         merger = default_merger()
+        tracked_merger = TrackedMerger(merger)
         scored = ScoredEnvelope.model_validate_json(file.read())
-        plan = optimize(scored.document, scored.scores, embedder, merger, params=Params(drift_budget=drift_budget))
-        payload = PlanEnvelope(document=scored.document, plan=plan).model_dump_json()
+        plan = optimize(
+            scored.document,
+            scored.scores,
+            embedder,
+            tracked_merger,
+            params=Params(drift_budget=drift_budget),
+        )
+        payload = PlanEnvelope(
+            document=scored.document,
+            plan=plan,
+            merge_metrics=tracked_merger.metrics(proposed_edits=len(plan), applied_edits=0),
+        ).model_dump_json()
     _emit_envelope(payload, out_path)
 
 
@@ -196,6 +214,7 @@ def select_cmd(file: IO[str], drift_budget: float, as_json: bool) -> None:
                 selection.applied,
                 envelope.document.token_count,
                 selection.document.token_count,
+                envelope.merge_metrics.model_copy(update={"applied_edits": len(selection.applied)}),
             )
         )
     else:
@@ -325,7 +344,11 @@ def reduce_cmd(
                 max_tokens = max(math.floor(source_tokens * (100 - target_reduction) / 100), 1)
             else:
                 max_tokens = max(source_tokens - save_tokens, 1) if save_tokens is not None else None
-            params = Params(drift_budget=drift_budget, max_tokens=max_tokens)
+            params = Params(
+                drift_budget=drift_budget,
+                max_tokens=max_tokens,
+                require_target=target_reduction is not None,
+            )
             result = reduce(prompt, embedder, merger, params=params)
 
     if target_reduction is not None:
@@ -338,12 +361,25 @@ def reduce_cmd(
             )
 
     if as_json:
-        click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
+        click.echo(
+            _reduction_json(
+                result.text,
+                result.applied,
+                result.source_tokens,
+                result.reduced_tokens,
+                result.merge_metrics,
+            )
+        )
     else:
         reduction_pct = 1.0 - (result.reduced_tokens / result.source_tokens) if result.source_tokens > 0 else 0.0
         # Stats go to stderr so piping the reduced text on stdout stays clean.
         click.echo(
             f"Tokens: {result.source_tokens} -> {result.reduced_tokens} ({reduction_pct:.1%} reduction)", err=True
+        )
+        click.echo(
+            f"Merge calls: {result.merge_metrics.calls} "
+            f"({result.merge_metrics.retries} retries across {result.merge_metrics.jobs_attempted} jobs)",
+            err=True,
         )
         click.echo(result.text, nl=False)
 

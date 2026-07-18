@@ -11,12 +11,13 @@ class _CannedMerger:
         return "repeat"
 
 
-def test_reduce_merges_a_duplicate_pair_into_the_first_occurrence() -> None:
+def test_reduce_removes_an_exact_duplicate_without_calling_the_merger() -> None:
     embedder = HashEmbedder()
-    # HashEmbedder only scores exact duplicates as redundant, and re-embeds edited text to an
-    # unrelated vector, so a generous drift budget is needed to accept the merge.
+    # HashEmbedder only scores exact duplicates as redundant. The deterministic fast path keeps
+    # the first verbatim and removes the second without spending a generation call.
     result = reduce("repeat me\nrepeat me\nunique line\n", embedder, _CannedMerger(), params=Params(drift_budget=2.0))
 
-    assert result.text == "repeat\nunique line\n"
+    assert result.text == "repeat me\nunique line\n"
     assert result.reduced_tokens < result.source_tokens
     assert len(result.applied) == 1
+    assert result.merge_metrics.calls == 0
