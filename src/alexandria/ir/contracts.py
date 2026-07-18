@@ -80,7 +80,7 @@ class Diff(BaseModel):
     model_config = ConfigDict(frozen=True)
     candidate: Candidate
     spans: tuple[DiffSpan, ...] = Field(min_length=1)
-    replacement: str  # "" for Delete; reserved for Replace
+    replacement: str  # "" for Delete; the merged text for Replace
 
 
 class Scorer(Protocol):
