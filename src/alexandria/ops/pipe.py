@@ -15,9 +15,10 @@ from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import DEFAULT_SELECTOR, select
 from alexandria.utils.embedders import default_embedder
+from alexandria.utils.merger import default_merger
 
 if TYPE_CHECKING:
-    from alexandria.ir.contracts import Embedder
+    from alexandria.ir.contracts import Embedder, SentenceMerger
 
 
 class ReduceResult(BaseModel):
@@ -103,19 +104,23 @@ class ReportComparison(BaseModel):
 def reduce(
     prompt: str,
     embedder: Embedder | None = None,
+    merger: SentenceMerger | None = None,
     *,
+    api_key: str | None = None,
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     selector: str = DEFAULT_SELECTOR,
     params: Params | None = None,
 ) -> ReduceResult:
     """Run represent → score → optimize → select end to end and return the reduction.
 
-    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    When embedder or merger is omitted, the OpenAI defaults are built lazily (requires an API
+    key: pass api_key, export OPENAI_API_KEY, or run `alexandria config set openai-api-key`).
     """
-    embedder = embedder if embedder is not None else default_embedder()
+    embedder = embedder if embedder is not None else default_embedder(api_key)
+    merger = merger if merger is not None else default_merger(api_key)
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, names=optimizers, params=params)
+    plan = optimize(document, scores, embedder, merger, names=optimizers, params=params)
     selection = select(document, plan, embedder, selector, params=params)
     return ReduceResult(document=selection.document, source=document, applied=selection.applied)
 
@@ -131,25 +136,31 @@ class Proposal(BaseModel):
 def propose(
     prompt: str,
     embedder: Embedder | None = None,
+    merger: SentenceMerger | None = None,
     *,
+    api_key: str | None = None,
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     params: Params | None = None,
 ) -> Proposal:
     """Run represent → score → optimize → diffs, stopping before selection.
 
-    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    When embedder or merger is omitted, the OpenAI defaults are built lazily (requires an API
+    key: pass api_key, export OPENAI_API_KEY, or run `alexandria config set openai-api-key`).
     """
-    embedder = embedder if embedder is not None else default_embedder()
+    embedder = embedder if embedder is not None else default_embedder(api_key)
+    merger = merger if merger is not None else default_merger(api_key)
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, names=optimizers, params=params)
+    plan = optimize(document, scores, embedder, merger, names=optimizers, params=params)
     return Proposal(document=document, diffs=diffs(document, plan))
 
 
 def optimization_report(
     prompt: str,
     embedder: Embedder | None = None,
+    merger: SentenceMerger | None = None,
     *,
+    api_key: str | None = None,
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     selector: str = DEFAULT_SELECTOR,
     params: Params | None = None,
@@ -159,9 +170,10 @@ def optimization_report(
     The reduced prompt is represented again so its instruction embeddings are fresh; ``Document.apply``
     intentionally keeps pre-edit embeddings because the IR itself has no model access.
     """
-    embedder = embedder if embedder is not None else default_embedder()
+    embedder = embedder if embedder is not None else default_embedder(api_key)
+    merger = merger if merger is not None else default_merger(api_key)
     params = params or Params()
-    result = reduce(prompt, embedder, optimizers=optimizers, selector=selector, params=params)
+    result = reduce(prompt, embedder, merger, optimizers=optimizers, selector=selector, params=params)
     reduced = represent(result.text, embedder)
 
     saved = result.source_tokens - result.reduced_tokens
@@ -237,8 +249,10 @@ def score_report(
 ) -> list[dict[str, object]]:
     """Represent then score into display rows: id, text, each scorer's value, and its peer (if any).
 
-    When embedder is omitted, the default all-MiniLM-L6-v2 model is downloaded and built on first use.
+    When embedder is omitted, the OpenAI default is built lazily (requires an API key: export
+    OPENAI_API_KEY or run `alexandria config set openai-api-key`).
     """
+    embedder = embedder if embedder is not None else default_embedder()
     document = represent(prompt, embedder)
     return score_rows(document, score(document, names=scorers), scorers)
 

@@ -5,6 +5,14 @@ from alexandria.ops.pipe import compare_reports, optimization_report, propose, s
 from alexandria.utils.embedders import HashEmbedder
 
 
+class _FirstWinsMerger:
+    """Offline merger that returns the first sentence, so every merge lands as a Delete of the second."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
+
+
 def test_score_report_adds_the_redundant_peer() -> None:
     rows = score_report("repeat me\nrepeat me\nunique line\n", HashEmbedder())
     assert rows[0]["most_similar_id"] == rows[1]["id"]
@@ -24,6 +32,7 @@ def test_optimization_report_includes_compression_and_quality_metrics() -> None:
     report = optimization_report(
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
+        _FirstWinsMerger(),
         params=Params(drift_budget=2.0),
     )
 
@@ -37,6 +46,7 @@ def test_compare_reports_flags_token_and_quality_regressions() -> None:
     baseline = optimization_report(
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
+        _FirstWinsMerger(),
         params=Params(drift_budget=2.0),
     )
     current = baseline.model_copy(
@@ -58,7 +68,12 @@ def test_compare_reports_flags_token_and_quality_regressions() -> None:
 
 
 def test_propose_returns_the_document_and_one_diff_per_candidate() -> None:
-    proposal = propose("# A\nrepeat me\nrepeat me\n# B\necho twice\necho twice\n", HashEmbedder())
+    proposal = propose(
+        "# A\nrepeat me\nrepeat me\n# B\necho twice\necho twice\n",
+        HashEmbedder(),
+        _FirstWinsMerger(),
+        params=Params(drift_budget=2.0),
+    )
 
     assert len(proposal.diffs) == 2
     originals = {diff.spans[0].original for diff in proposal.diffs}

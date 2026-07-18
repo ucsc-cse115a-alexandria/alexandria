@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Phase 1 shakedown: the 10 longest IFEval cases, original vs ~95%-budget compression."""
+"""Phase 1 shakedown: the longest IFEval cases, original vs ~95%-budget compression."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ import math
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-import tiktoken
-
 from alexandria.ir.contracts import Params
 from alexandria.ops.pipe import reduce
 from alexandria.utils.embedders import default_embedder
+from alexandria.utils.merger import default_merger
+from alexandria.utils.tokens import count_tokens
 from benchmarks.ifeval import compare, load_cases, run_experiment
 from scripts.inflate_redundancy import build_generate
 
@@ -26,12 +26,12 @@ OUT_DIR = Path("trial_results/ifeval")
 
 def compress_to(target_ratio: float) -> Callable[[str], str]:
     """A transform that asks the pipeline to fit each prompt into target_ratio of its tokens."""
-    encoding = tiktoken.get_encoding("cl100k_base")
     embedder = default_embedder()
+    merger = default_merger()
 
     def transform(prompt: str) -> str:
-        max_tokens = math.floor(len(encoding.encode(prompt)) * target_ratio)
-        return reduce(prompt, embedder, params=Params(max_tokens=max_tokens)).text
+        max_tokens = math.floor(count_tokens(prompt) * target_ratio)
+        return reduce(prompt, embedder, merger, params=Params(max_tokens=max_tokens)).text
 
     return transform
 

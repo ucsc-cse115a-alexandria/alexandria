@@ -15,6 +15,8 @@ from alexandria.utils.embedders import HashEmbedder
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+_GENEROUS = Params(drift_budget=2.0)
+
 
 class _CountingEmbedder:
     """Deterministic Embedder: a text embeds to its (a, b, c) letter counts, so each deletion
@@ -28,12 +30,20 @@ class _CountingEmbedder:
         return [np.array([t.count("a"), t.count("b"), t.count("c")], dtype=np.float32) for t in texts]
 
 
+class _FirstWinsMerger:
+    """Offline merger that returns the first sentence, so every merge lands as a Delete of the second."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback  # required by SentenceMerger; this merger keeps the first instruction only
+        return first.strip()
+
+
 def test_generous_budget_applies_the_delete() -> None:
     embedder = HashEmbedder()
     document = represent("repeat me\nrepeat me\nunique line\n", embedder)
-    plan = optimize(document, score(document, names=("redundancy",)))
+    plan = optimize(document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=_GENEROUS)
 
-    reduced = select(document, plan, embedder, params=Params(drift_budget=2.0))
+    reduced = select(document, plan, embedder, params=_GENEROUS)
 
     assert reduced.document.text.count("repeat me") == 1
     assert "unique line" in reduced.document.text
@@ -43,7 +53,7 @@ def test_generous_budget_applies_the_delete() -> None:
 def test_tight_budget_keeps_everything() -> None:
     embedder = HashEmbedder()
     document = represent("repeat me\nrepeat me\nunique line\n", embedder)
-    plan = optimize(document, score(document, names=("redundancy",)))
+    plan = optimize(document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=_GENEROUS)
 
     reduced = select(document, plan, embedder, params=Params(drift_budget=0.01))
 
@@ -55,23 +65,38 @@ def test_empty_plan_returns_document_unchanged() -> None:
     embedder = HashEmbedder()
     document = represent("alpha\nbeta\n", embedder)
 
-    reduced = select(document, (), embedder, params=Params(drift_budget=2.0))
+    reduced = select(document, (), embedder, params=_GENEROUS)
 
     assert reduced.document.text == document.text
 
 
-def test_applies_higher_confidence_first_under_a_tight_budget() -> None:
+def test_applies_least_drift_first_regardless_of_confidence() -> None:
     embedder = _CountingEmbedder()
-    document = represent("a\nb\nc\n", embedder)
+    document = represent("a\naa\nb\n", embedder)
     ids = [s.id for s in document.sentences]
-    drop_a = Candidate(edit=Delete(targets=(ids[0],)), confidence=0.9, source="t", reason="r")
-    drop_b = Candidate(edit=Delete(targets=(ids[1],)), confidence=0.5, source="t", reason="r")
+    # Base count-vector is (3, 1, 0). Deleting "a\n" leaves (2, 1, 0) — drift ~0.010;
+    # deleting "b\n" leaves (3, 0, 0) — drift ~0.051. The bigger-drift candidate gets the
+    # higher confidence to prove ordering is by drift, not confidence.
+    drop_a = Candidate(edit=Delete(targets=(ids[0],)), confidence=0.5, source="t", reason="r")
+    drop_b = Candidate(edit=Delete(targets=(ids[2],)), confidence=0.9, source="t", reason="r")
 
-    # One deletion drifts ~0.18, two drift ~0.42; the 0.25 budget admits only the higher-confidence drop.
-    reduced = select(document, (drop_b, drop_a), embedder, params=Params(drift_budget=0.25))
+    reduced = select(document, (drop_b, drop_a), embedder, params=Params(drift_budget=0.06))
 
-    assert reduced.document.text == "b\nc\n"
-    assert reduced.applied == (drop_a,)
+    assert reduced.applied[0] == drop_a
+
+
+def test_stops_once_the_token_target_is_met() -> None:
+    embedder = HashEmbedder()
+    document = represent("repeat me\nrepeat me\nrepeat me\nunique line\n", embedder)
+    ids = [s.id for s in document.sentences]
+    first = Candidate(edit=Delete(targets=(ids[1],)), confidence=0.9, source="t", reason="r")
+    second = Candidate(edit=Delete(targets=(ids[2],)), confidence=0.9, source="t", reason="r")
+    target = document.token_count - document.sentences[1].token_count  # one deletion is enough
+
+    reduced = select(document, (first, second), embedder, params=Params(drift_budget=2.0, max_tokens=target))
+
+    assert len(reduced.applied) == 1
+    assert reduced.document.token_count <= target
 
 
 def test_select_rejects_an_embedder_model_mismatch() -> None:
@@ -79,4 +104,4 @@ def test_select_rejects_an_embedder_model_mismatch() -> None:
     mismatched = HashEmbedder(dim=32)  # model_id 'hash-32' != the document's 'hash-64'
 
     with pytest.raises(ValueError, match="does not match document embedding model"):
-        select(document, (), mismatched, params=Params(drift_budget=2.0))
+        select(document, (), mismatched, params=_GENEROUS)

@@ -16,7 +16,7 @@ from alexandria.ir.registry import (
 )
 
 if TYPE_CHECKING:
-    from alexandria.ir.contracts import Embedder, Params, Plan, Scores
+    from alexandria.ir.contracts import Embedder, Params, Plan, Scores, SentenceMerger
     from alexandria.ir.document import Document
 
 
@@ -44,8 +44,8 @@ def test_duplicate_name_raises() -> None:
 
 def test_optimizer_with_unregistered_requires_raises() -> None:
     @register_optimizer("reg_test_opt", requires=("does_not_exist",))
-    def opt(document: Document, scores: Scores, params: Params) -> Plan:
-        del document, scores, params
+    def opt(document: Document, scores: Scores, embedder: Embedder, merger: SentenceMerger, params: Params) -> Plan:
+        del document, scores, embedder, merger, params
         return ()
 
     assert callable(opt)

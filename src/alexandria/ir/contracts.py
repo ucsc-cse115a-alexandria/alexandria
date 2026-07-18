@@ -3,9 +3,9 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from alexandria.ir.document import Document, SentenceId
+from alexandria.ir.document import Document, Encoded, SentenceId
 
 if TYPE_CHECKING:
     import numpy as np
@@ -36,14 +36,43 @@ class Embedder(Protocol):
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]: ...
 
 
+class SentenceMerger(Protocol):
+    """Rewrites two overlapping instructions as one that preserves both meanings in fewer tokens.
+
+    feedback carries the caller's rejection of a previous attempt (the rejected rewrite and why
+    it failed), so a retry can correct course; None on the first attempt.
+    """
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str: ...
+
+
+def _reject_duplicate_targets(targets: tuple[SentenceId, ...]) -> tuple[SentenceId, ...]:
+    """One edit must never name the same sentence twice — that would delete-then-miss or double-count."""
+    if len(set(targets)) != len(targets):
+        raise ValueError(f"edit targets must be unique, got {list(targets)}")
+    return targets
+
+
 class Delete(BaseModel):
     model_config = ConfigDict(frozen=True)
     op: Literal["delete"] = "delete"
     targets: tuple[SentenceId, ...] = Field(min_length=1)
 
+    _no_duplicate_targets = field_validator("targets")(_reject_duplicate_targets)
 
-# The one edit shape today; widen to `Delete | Replace` later. Delete.op is the discriminator.
-Edit = Delete
+
+class Replace(BaseModel):
+    """Swap the first target's text for the merged replacement and remove the remaining targets."""
+
+    model_config = ConfigDict(frozen=True)
+    op: Literal["replace"] = "replace"
+    targets: tuple[SentenceId, ...] = Field(min_length=2)
+    replacement: Encoded  # merged text with its token count and embedding, precomputed at plan time
+
+    _no_duplicate_targets = field_validator("targets")(_reject_duplicate_targets)
+
+
+Edit = Annotated[Delete | Replace, Field(discriminator="op")]
 
 
 class Candidate(BaseModel):
@@ -72,7 +101,7 @@ class Diff(BaseModel):
     model_config = ConfigDict(frozen=True)
     candidate: Candidate
     spans: tuple[DiffSpan, ...] = Field(min_length=1)
-    replacement: str  # "" for Delete; reserved for Replace
+    replacement: str  # "" for Delete; the merged text for Replace
 
 
 class Scorer(Protocol):
@@ -80,7 +109,9 @@ class Scorer(Protocol):
 
 
 class Optimizer(Protocol):
-    def __call__(self, document: Document, scores: Scores, params: Params) -> Plan: ...
+    def __call__(
+        self, document: Document, scores: Scores, embedder: Embedder, merger: SentenceMerger, params: Params
+    ) -> Plan: ...
 
 
 class Selection(BaseModel):

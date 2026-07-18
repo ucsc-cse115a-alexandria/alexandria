@@ -1,14 +1,14 @@
 import tiktoken
 
 from alexandria.ir.similarity import cosine_distance
-from alexandria.utils.embedders import build_embedder
+from alexandria.utils.embedders import default_embedder
 
 DRIFT_BUDGET = 0.01
 SIMILARITY_GATE = 1.0 - DRIFT_BUDGET
 
 
 def check_compression(original: str, compressed: str) -> dict:
-    embedder = build_embedder("all-MiniLM-L6-v2")
+    embedder = default_embedder()
     enc = tiktoken.get_encoding("cl100k_base")
 
     orig_vec, comp_vec = embedder.embed([original, compressed])

@@ -60,9 +60,15 @@ class ReviewState(BaseModel):
 def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str:
     """One complete frame: header, list viewport, live diff preview, and key help."""
     columns, lines = size
-    removed = frozenset(target for candidate in state.accepted_candidates() for target in candidate.edit.targets)
+    accepted = state.accepted_candidates()
+    removed = frozenset(target for candidate in accepted for target in candidate.edit.targets)
+    merged = {c.edit.targets[0]: c.edit.replacement for c in accepted if c.edit.op == "replace"}
     # Arithmetic instead of applying the edits: rebuilding a large Document on every keypress is slow.
-    reduced_tokens = document.token_count - sum(s.token_count for s in document.sentences if s.id in removed)
+    reduced_tokens = (
+        document.token_count
+        - sum(s.token_count for s in document.sentences if s.id in removed)
+        + sum(encoded.token_count for encoded in merged.values())
+    )
     header = (
         f"Alexandria — {len(state.accepted)}/{len(state.diffs)} accepted"
         f" · {document.token_count} → {reduced_tokens} tokens"
@@ -76,7 +82,7 @@ def render(state: ReviewState, document: Document, size: tuple[int, int]) -> str
         pane = _detail_lines(document, state.diffs[state.cursor], pane_rows)
     else:
         pane_title = "─ diff (original → selection) "
-        pane = _preview_lines(document, removed, pane_rows)
+        pane = _preview_lines(document, removed, pane_rows, {sid: e.text for sid, e in merged.items()})
     return "\n".join(
         [
             click.style(header, bold=True),
@@ -98,7 +104,8 @@ def _detail_lines(document: Document, diff: Diff, rows: int) -> list[str]:
         f"location: {location}",
     ]
     targets = frozenset(candidate.edit.targets)
-    lines.extend(_preview_lines(document, targets, max(rows - len(lines), 3)))
+    added = {candidate.edit.targets[0]: candidate.edit.replacement.text} if candidate.edit.op == "replace" else None
+    lines.extend(_preview_lines(document, targets, max(rows - len(lines), 3), added))
     if len(lines) > rows:
         lines = [*lines[: max(rows - 1, 1)], click.style("… truncated", dim=True)]
     return lines
@@ -122,12 +129,16 @@ def _list_lines(state: ReviewState, rows: int, columns: int) -> list[str]:
         row = f"{marker} {box} {diff.candidate.confidence:.2f}  {location}"[:columns]
         lines.append(click.style(row, bold=True) if index == state.cursor else row)
         lines.append(click.style(f"      - {span.original.strip()}"[:columns], fg="red"))
+        if diff.replacement:
+            lines.append(click.style(f"      + {diff.replacement.strip()}"[:columns], fg="green"))
     if end < total:
         lines.append(click.style(f"  ↓ {total - end} more", dim=True))
     return lines
 
 
-def _preview_lines(document: Document, removed: frozenset[SentenceId], rows: int) -> list[str]:
+def _preview_lines(
+    document: Document, removed: frozenset[SentenceId], rows: int, added: dict[SentenceId, str] | None = None
+) -> list[str]:
     """Hunks built from the sentences the selection removes, each with one sentence of context.
 
     The removals are known exactly, so the preview never guesses with a text diff — on large
@@ -152,6 +163,7 @@ def _preview_lines(document: Document, removed: frozenset[SentenceId], rows: int
                 body.append(click.style(f"-{line}", fg="red"))
             else:
                 body.append(f" {line}")
+        body.extend(click.style(f"+{line}", fg="green") for line in (added or {}).get(sentence.id, "").splitlines())
         previous = index
     if len(body) > rows:
         hidden = len(body) - max(rows - 1, 1)
