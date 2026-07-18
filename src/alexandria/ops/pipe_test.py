@@ -10,7 +10,7 @@ from alexandria.ir.document import Sentence, SentenceId
 from alexandria.ops.pipe import (
     MAX_TARGET_MERGE_ROUNDS,
     InfeasibleTargetError,
-    _target_merge_window,
+    _target_merge_window,  # pyright: ignore[reportPrivateUsage]
     compare_reports,
     optimization_report,
     propose,
@@ -120,6 +120,29 @@ def test_target_merge_window_does_not_hide_one_semantic_outlier_in_a_good_averag
     )
 
     selected = _target_merge_window(group, required_savings=1, document_embedding=np.array([1.0, 0.0]))
+
+    assert tuple(sentence.id for sentence in selected) == (SentenceId("s2"), SentenceId("s3"))
+
+
+def test_target_merge_window_avoids_lines_matching_query_anchor_terms() -> None:
+    group = tuple(
+        Sentence(
+            id=SentenceId(f"s{index}"),
+            text=text,
+            token_count=1,
+            embedding=np.array([1.0, 0.0], dtype=np.float32),
+        )
+        for index, text in enumerate(
+            ("generic one\n", "Mary moved to the office.\n", "generic two\n", "generic three\n")
+        )
+    )
+
+    selected = _target_merge_window(
+        group,
+        required_savings=1,
+        document_embedding=np.array([1.0, 0.0]),
+        protected_terms=frozenset({"mary"}),
+    )
 
     assert tuple(sentence.id for sentence in selected) == (SentenceId("s2"), SentenceId("s3"))
 

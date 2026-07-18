@@ -44,6 +44,45 @@ TARGET_GENERATION_HEADROOM = 0.0
 MAX_REPAIR_VARIANTS = 6
 _GENERATED_MARKUP = re.compile(r"(?m)^\s*(?:#{1,6}\s+\S|</?[A-Za-z][\w.-]*>)\s*$")
 _REPAIR_BOUNDARY = re.compile(r"(?<=[.!?])(?:[ \t]+|\n+)|\n+")
+_CONTENT_WORD = re.compile(r"[A-Za-z0-9][A-Za-z0-9_'-]*")
+_QUERY_STOPWORDS = frozenset(
+    {
+        "a",
+        "after",
+        "an",
+        "and",
+        "answer",
+        "are",
+        "at",
+        "be",
+        "been",
+        "before",
+        "did",
+        "do",
+        "does",
+        "from",
+        "how",
+        "in",
+        "is",
+        "of",
+        "on",
+        "or",
+        "please",
+        "question",
+        "the",
+        "to",
+        "was",
+        "were",
+        "what",
+        "when",
+        "where",
+        "which",
+        "who",
+        "whom",
+        "whose",
+        "why",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -290,7 +329,12 @@ def _merge_to_target(
             )
         full_group = max(groups, key=lambda sentences: sum(sentence.token_count for sentence in sentences))
         required_savings = current.token_count - params.max_tokens
-        group = _target_merge_window(full_group, required_savings, document.embedding)
+        group = _target_merge_window(
+            full_group,
+            required_savings,
+            document.embedding,
+            protected_terms=_target_anchor_terms(current, full_group),
+        )
         group_tokens = sum(sentence.token_count for sentence in group)
         fixed_tokens = current.token_count - group_tokens
         group_max_tokens = max(1, params.max_tokens - fixed_tokens)
@@ -752,8 +796,30 @@ def _compressible_groups(document: Document) -> list[tuple[Sentence, ...]]:
     return groups
 
 
+def _content_terms(text: str) -> frozenset[str]:
+    return frozenset(
+        word
+        for match in _CONTENT_WORD.finditer(text.lower())
+        if len(word := match.group()) >= 3 and word not in _QUERY_STOPWORDS
+    )
+
+
+def _target_anchor_terms(document: Document, group: tuple[Sentence, ...]) -> frozenset[str]:
+    group_ids = {sentence.id for sentence in group}
+    outside = [
+        sentence
+        for sentence in document.sentences
+        if sentence.optimizable and sentence.id not in group_ids and sentence.text.strip()
+    ]
+    return _content_terms(outside[-1].text) if outside else frozenset()
+
+
 def _target_merge_window(
-    group: tuple[Sentence, ...], required_savings: int, document_embedding: np.ndarray
+    group: tuple[Sentence, ...],
+    required_savings: int,
+    document_embedding: np.ndarray,
+    *,
+    protected_terms: frozenset[str] = frozenset(),
 ) -> tuple[Sentence, ...]:
     """Choose only enough contiguous content to make the requested saving practical.
 
@@ -768,7 +834,7 @@ def _target_merge_window(
         return group
     normalized_document = normalize(document_embedding)
     best: tuple[Sentence, ...] | None = None
-    best_similarity = (float("-inf"), float("-inf"))
+    best_similarity = (False, float("-inf"), float("-inf"))
     end = 0
     window_tokens = 0
     for start in range(len(group)):
@@ -781,6 +847,7 @@ def _target_merge_window(
                 float(np.dot(normalize(sentence.embedding), normalized_document)) for sentence in window
             ]
             similarity = (
+                not any(_content_terms(sentence.text) & protected_terms for sentence in window),
                 min(sentence_similarities),
                 sum(
                     sentence.token_count * sentence_similarity
