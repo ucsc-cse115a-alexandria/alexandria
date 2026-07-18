@@ -52,8 +52,8 @@ def require_target_reduction(source_tokens: int, reduced_tokens: int, target_per
 def main() -> None:
     cases = load_cases(n=N_CASES, seed=SEED)
     compress = compress_to_reduction(TARGET_REDUCTION_PERCENT)
-    # Validate and cache every strict compression before spending answer-model calls. A target
-    # that merge-rewrite cannot reach therefore fails with zero Luna answer or merge generations.
+    # Validate and cache every strict compression before spending answer-model calls. Failed
+    # target merges therefore record their own retries without also spending answer generations.
     prepared = tuple(compress(case.prompt) for case in cases)
     prepared_iter = iter(prepared)
 

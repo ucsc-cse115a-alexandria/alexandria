@@ -36,6 +36,10 @@ class _FakeMerger:
         del second, feedback
         return first.strip()
 
+    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str:
+        del max_tokens, feedback
+        return "\n".join(prompt.splitlines()[:3])
+
 
 @pytest.fixture
 def offline_models(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -111,7 +115,7 @@ def test_select_json_reports_the_reduction_summary() -> None:
     assert payload["merge_metrics"] == {
         "calls": 0,
         "retries": 0,
-        "pairs_attempted": 0,
+        "jobs_attempted": 0,
         "proposed_edits": 1,
         "applied_edits": 1,
     }
@@ -240,7 +244,7 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["merge_metrics"] == {
         "calls": 0,
         "retries": 0,
-        "pairs_attempted": 0,
+        "jobs_attempted": 0,
         "proposed_edits": 1,
         "applied_edits": 1,
     }
@@ -385,7 +389,7 @@ def test_target_reduction_fails_when_the_drift_gate_prevents_the_target() -> Non
     )
 
     assert result.exit_code == 1
-    assert "target reduction 10% was not met: achieved 0.0%" in result.output
+    assert "target merge failed after 5 calls (4 retries)" in result.output
 
 
 def test_budget_options_are_mutually_exclusive() -> None:

@@ -35,7 +35,7 @@ def compress(prompt: str) -> str:
 def compress_with_metrics(prompt: str) -> CompressionResult:
     return CompressionResult(
         prompt=compress(prompt),
-        merge_metrics=MergeMetrics(calls=3, retries=1, pairs_attempted=2, proposed_edits=1, applied_edits=1),
+        merge_metrics=MergeMetrics(calls=3, retries=1, jobs_attempted=2, proposed_edits=1, applied_edits=1),
     )
 
 

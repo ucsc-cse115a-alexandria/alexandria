@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Literal
 
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.ir.contracts import Diff, MergeMetrics, Params, Plan, TrackedMerger
-from alexandria.ir.document import Document
+from alexandria.ir.contracts import Candidate, Diff, MergeMetrics, Params, Plan, Replace, TrackedMerger
+from alexandria.ir.document import Document, Encoded, Section, Sentence
 from alexandria.ir.registry import required_scorers
 from alexandria.ir.similarity import normalize
 from alexandria.ops.features.diff import diffs
@@ -16,9 +17,12 @@ from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import DEFAULT_SELECTOR, select
 from alexandria.utils.embedders import default_embedder
 from alexandria.utils.merger import default_merger
+from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, SentenceMerger
+
+MAX_TARGET_MERGE_ATTEMPTS = 5
 
 
 class ReduceResult(BaseModel):
@@ -41,6 +45,16 @@ class ReduceResult(BaseModel):
     @property
     def reduced_tokens(self) -> int:
         return self.document.token_count
+
+
+class TargetMergeError(ValueError):
+    """A strict target failure with machine-readable merge usage and best observed quality."""
+
+    def __init__(self, message: str, metrics: MergeMetrics, *, best_tokens: int, best_drift: float) -> None:
+        super().__init__(message)
+        self.metrics = metrics
+        self.best_tokens = best_tokens
+        self.best_drift = best_drift
 
 
 class ReportConfig(BaseModel):
@@ -121,6 +135,17 @@ def reduce(
     merger = merger if merger is not None else default_merger(api_key)
     tracked_merger = TrackedMerger(merger)
     document = represent(prompt, embedder)
+    if params is not None and params.require_target and params.max_tokens is not None:
+        reduced, applied_groups = _merge_to_target(document, embedder, tracked_merger, params)
+        return ReduceResult(
+            document=reduced,
+            source=document,
+            applied=(),
+            merge_metrics=tracked_merger.metrics(
+                proposed_edits=applied_groups,
+                applied_edits=applied_groups,
+            ),
+        )
     scores = score(document, names=_required_scorers(optimizers))
     plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params)
     selection = select(document, plan, embedder, selector, params=params)
@@ -136,6 +161,115 @@ def reduce(
         applied=selection.applied,
         merge_metrics=tracked_merger.metrics(proposed_edits=len(plan), applied_edits=len(selection.applied)),
     )
+
+
+def _merge_to_target(
+    document: Document, embedder: Embedder, merger: TrackedMerger, params: Params
+) -> tuple[Document, int]:
+    """Merge the largest content groups until token, structure, and embedding constraints pass."""
+    if params.max_tokens is None:
+        raise ValueError("target merge requires max_tokens")
+    expected_structure = tuple(sentence.text.strip() for sentence in document.sentences if not sentence.optimizable)
+    min_document_tokens = max(1, math.floor(params.max_tokens * 0.95))
+    current = document
+    applied_groups = 0
+    best_tokens = document.token_count
+    best_drift = float("inf")
+    last_issues: list[str] = []
+    while current.token_count > params.max_tokens:
+        groups = _compressible_groups(current)
+        if not groups:
+            metrics = merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups)
+            raise TargetMergeError(
+                f"target merge cannot continue at {current.token_count} tokens: "
+                "no multi-sentence content group remains",
+                metrics,
+                best_tokens=best_tokens,
+                best_drift=best_drift,
+            )
+        group = max(groups, key=lambda sentences: sum(sentence.token_count for sentence in sentences))
+        group_tokens = sum(sentence.token_count for sentence in group)
+        fixed_tokens = current.token_count - group_tokens
+        group_max_tokens = max(1, params.max_tokens - fixed_tokens)
+        group_min_tokens = max(1, min_document_tokens - fixed_tokens)
+        feedback: str | None = None
+        accepted: Document | None = None
+        for _ in range(MAX_TARGET_MERGE_ATTEMPTS):
+            merged = merger.merge_to_target("".join(sentence.text for sentence in group), group_max_tokens, feedback)
+            merged = merged.rstrip() + group[0].text[len(group[0].text.rstrip()) :]
+            merged_tokens = count_tokens(merged)
+            issues: list[str] = []
+            if merged_tokens > group_max_tokens:
+                issues.append(f"output used {merged_tokens} tokens; the hard limit is {group_max_tokens}")
+            elif fixed_tokens + merged_tokens < min_document_tokens:
+                issues.append(
+                    f"output used only {merged_tokens} tokens; "
+                    f"use the available budget of {group_min_tokens}-{group_max_tokens}"
+                )
+            replacement = Encoded(
+                text=merged,
+                token_count=merged_tokens,
+                embedding=embedder.embed([merged])[0],
+            )
+            edit = Candidate(
+                edit=Replace(targets=tuple(sentence.id for sentence in group), replacement=replacement),
+                confidence=1.0,
+                source="target_merge",
+                reason=f"merged a content group to meet the {params.max_tokens}-token target",
+            )
+            trial = current.apply(edit)
+            candidate = represent(trial.text, embedder) if trial is not None else None
+            if candidate is None:
+                issues.append("merge would empty a structural section")
+            else:
+                actual_structure = tuple(
+                    sentence.text.strip() for sentence in candidate.sentences if not sentence.optimizable
+                )
+                if actual_structure != expected_structure:
+                    issues.append("XML/Markdown boundary lines changed")
+                drift = 1.0 - float(np.dot(normalize(candidate.embedding), normalize(document.embedding)))
+                best_tokens = min(best_tokens, candidate.token_count)
+                best_drift = min(best_drift, drift)
+                if drift > params.drift_budget:
+                    issues.append(
+                        f"whole-prompt embedding drift was {drift:.4f}; maximum is {params.drift_budget:.4f}"
+                    )
+                if not issues:
+                    accepted = candidate
+                    break
+            last_issues = issues
+            feedback = "The previous compression was rejected: " + "; ".join(issues) + ". Correct every issue."
+        if accepted is None:
+            break
+        current = accepted
+        applied_groups += 1
+    if min_document_tokens <= current.token_count <= params.max_tokens:
+        return current, applied_groups
+    details = "; ".join(last_issues) or "no acceptable output"
+    metrics = merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups)
+    raise TargetMergeError(
+        f"target merge failed after {merger.calls} calls ({merger.retries} retries): {details}; "
+        f"best output was {best_tokens} tokens with {best_drift:.4f} embedding drift",
+        metrics,
+        best_tokens=best_tokens,
+        best_drift=best_drift,
+    )
+
+
+def _compressible_groups(document: Document) -> list[tuple[Sentence, ...]]:
+    groups: list[tuple[Sentence, ...]] = []
+
+    def walk(section: Section) -> None:
+        direct = tuple(child for child in section.children if isinstance(child, Sentence) and child.optimizable)
+        if len(direct) >= 2:
+            groups.append(direct)
+        for child in section.children:
+            if isinstance(child, Section):
+                walk(child)
+
+    for section in document.sections:
+        walk(section)
+    return groups
 
 
 class Proposal(BaseModel):

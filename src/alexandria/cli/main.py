@@ -378,7 +378,7 @@ def reduce_cmd(
         )
         click.echo(
             f"Merge calls: {result.merge_metrics.calls} "
-            f"({result.merge_metrics.retries} retries across {result.merge_metrics.pairs_attempted} pairs)",
+            f"({result.merge_metrics.retries} retries across {result.merge_metrics.jobs_attempted} jobs)",
             err=True,
         )
         click.echo(result.text, nl=False)

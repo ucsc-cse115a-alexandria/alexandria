@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Annotated, Literal, Protocol
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol, runtime_checkable
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
@@ -36,7 +36,7 @@ class MergeMetrics(BaseModel):
     model_config = ConfigDict(frozen=True)
     calls: int = Field(default=0, ge=0)
     retries: int = Field(default=0, ge=0)
-    pairs_attempted: int = Field(default=0, ge=0)
+    jobs_attempted: int = Field(default=0, ge=0)
     proposed_edits: int = Field(default=0, ge=0)
     applied_edits: int = Field(default=0, ge=0)
 
@@ -58,6 +58,13 @@ class SentenceMerger(Protocol):
     def merge(self, first: str, second: str, feedback: str | None = None) -> str: ...
 
 
+@runtime_checkable
+class TargetedMerger(Protocol):
+    """Compress a prompt content segment to a hard token budget, using feedback on retries."""
+
+    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str: ...
+
+
 class TrackedMerger:
     """Decorate any sentence merger with request and retry counters."""
 
@@ -66,7 +73,7 @@ class TrackedMerger:
         self._cache: dict[tuple[str, str, str | None], str] = {}
         self.calls = 0
         self.retries = 0
-        self.pairs_attempted = 0
+        self.jobs_attempted = 0
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str:
         key = (first, second, feedback)
@@ -74,18 +81,28 @@ class TrackedMerger:
             return self._cache[key]
         self.calls += 1
         if feedback is None:
-            self.pairs_attempted += 1
+            self.jobs_attempted += 1
         else:
             self.retries += 1
         merged = self._merger.merge(first, second, feedback)
         self._cache[key] = merged
         return merged
 
+    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str:
+        if not isinstance(self._merger, TargetedMerger):
+            raise TypeError("strict token targets require a merger with merge_to_target support")
+        self.calls += 1
+        if feedback is None:
+            self.jobs_attempted += 1
+        else:
+            self.retries += 1
+        return self._merger.merge_to_target(prompt, max_tokens, feedback)
+
     def metrics(self, *, proposed_edits: int, applied_edits: int) -> MergeMetrics:
         return MergeMetrics(
             calls=self.calls,
             retries=self.retries,
-            pairs_attempted=self.pairs_attempted,
+            jobs_attempted=self.jobs_attempted,
             proposed_edits=proposed_edits,
             applied_edits=applied_edits,
         )

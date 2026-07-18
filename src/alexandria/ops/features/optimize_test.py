@@ -166,23 +166,6 @@ def test_token_target_stops_merge_generation_once_the_plan_can_reach_it() -> Non
     assert unconstrained_merger.calls > merger.calls
 
 
-def test_strict_unreachable_target_fails_before_calling_the_merger() -> None:
-    embedder = HashEmbedder()
-    document = represent("dup line\ndup line\nunique line\n", embedder)
-    merger = _CannedMerger("dup line")
-
-    with pytest.raises(ValueError, match=r"unreachable.*no merge model calls"):
-        optimize(
-            document,
-            score(document, names=("redundancy",)),
-            embedder,
-            merger,
-            params=Params(drift_budget=2.0, max_tokens=1, require_target=True),
-        )
-
-    assert merger.calls == 0
-
-
 def test_an_over_budget_rewrite_is_retried_with_drift_feedback() -> None:
     embedder = _CountingEmbedder()
     # The near-duplicate pair is not text-identical, so it exercises the merger retry path.

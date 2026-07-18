@@ -3,9 +3,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
+import pytest
 
 from alexandria.ir.contracts import Params
-from alexandria.ops.pipe import compare_reports, optimization_report, propose, reduce, score_report
+from alexandria.ops.pipe import (
+    MAX_TARGET_MERGE_ATTEMPTS,
+    TargetMergeError,
+    compare_reports,
+    optimization_report,
+    propose,
+    reduce,
+    score_report,
+)
 from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
@@ -26,6 +35,21 @@ class _RetryOnceMerger:
         if feedback is None:
             return "this rewrite is deliberately longer than both source sentences combined"
         return first.strip()
+
+
+class _TargetMerger:
+    def __init__(self, *outputs: str) -> None:
+        self._outputs = list(outputs)
+        self.feedback: list[str | None] = []
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
+
+    def merge_to_target(self, prompt: str, max_tokens: int, feedback: str | None = None) -> str:
+        del prompt, max_tokens
+        self.feedback.append(feedback)
+        return self._outputs.pop(0) if len(self._outputs) > 1 else self._outputs[0]
 
 
 class _CountingEmbedder:
@@ -62,9 +86,59 @@ def test_reduce_records_merge_calls_and_retries() -> None:
 
     assert result.merge_metrics.calls == 2
     assert result.merge_metrics.retries == 1
-    assert result.merge_metrics.pairs_attempted == 1
+    assert result.merge_metrics.jobs_attempted == 1
     assert result.merge_metrics.proposed_edits == 1
     assert result.merge_metrics.applied_edits == 1
+
+
+def test_strict_target_retries_until_token_and_drift_constraints_pass() -> None:
+    merger = _TargetMerger("too many tokens remain here\n", "short\n")
+    result = reduce(
+        "source prompt with tokens\nsecond source line\n",
+        HashEmbedder(),
+        merger,
+        params=Params(drift_budget=2.0, max_tokens=3, require_target=True),
+    )
+
+    assert result.text == "short\n"
+    assert result.reduced_tokens <= 3
+    assert result.merge_metrics.calls == 2
+    assert result.merge_metrics.retries == 1
+    assert merger.feedback[0] is None
+    assert merger.feedback[1] is not None and "hard limit" in merger.feedback[1]
+
+
+def test_strict_target_preserves_markup_structure() -> None:
+    merger = _TargetMerger("compressed\n")
+    result = reduce(
+        "<context>\nlong source text here\nsecond source line\n</context>\n",
+        HashEmbedder(),
+        merger,
+        params=Params(drift_budget=2.0, max_tokens=8, require_target=True),
+    )
+
+    assert result.text.startswith("<context>")
+    assert result.text.rstrip().endswith("</context>")
+    assert result.merge_metrics.calls == 1
+
+
+def test_strict_target_exhausts_retries_when_embedding_drift_stays_over_budget() -> None:
+    merger = _TargetMerger("short\n")
+
+    with pytest.raises(TargetMergeError, match=rf"failed after {MAX_TARGET_MERGE_ATTEMPTS} calls") as captured:
+        reduce(
+            "source prompt with tokens\nsecond source line\n",
+            HashEmbedder(),
+            merger,
+            params=Params(drift_budget=0.0, max_tokens=3, require_target=True),
+        )
+
+    assert len(merger.feedback) == MAX_TARGET_MERGE_ATTEMPTS
+    assert all(feedback is not None for feedback in merger.feedback[1:])
+    assert captured.value.metrics.calls == MAX_TARGET_MERGE_ATTEMPTS
+    assert captured.value.metrics.retries == MAX_TARGET_MERGE_ATTEMPTS - 1
+    assert captured.value.best_tokens == 2
+    assert captured.value.best_drift > 0
 
 
 def test_optimization_report_includes_compression_and_quality_metrics() -> None:

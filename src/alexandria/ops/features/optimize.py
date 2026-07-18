@@ -52,14 +52,6 @@ def merge_rewrite(
     ]
     pairs.sort(key=lambda pair: pair[0], reverse=True)
 
-    if params.require_target and params.max_tokens is not None:
-        optimistic_floor = _optimistic_token_floor(document, pairs)
-        if optimistic_floor > params.max_tokens:
-            raise ValueError(
-                f"token target {params.max_tokens} is unreachable by {DEFAULT_OPTIMIZER}: "
-                f"the optimistic floor is {optimistic_floor} tokens; no merge model calls were made"
-            )
-
     present = {s.id for s in sentences}
     candidates: list[Candidate] = []
     projected = document
@@ -82,38 +74,6 @@ def merge_rewrite(
                 if params.max_tokens is not None and projected.token_count <= params.max_tokens:
                     break
     return tuple(candidates)
-
-
-def _optimistic_token_floor(document: Document, pairs: list[tuple[float, int, int]]) -> int:
-    """Lower bound on tokens reachable by merging only connected eligible sentences.
-
-    Every similarity-graph component may optimistically collapse to one token. Isolated and
-    structural sentences are immutable, making this deliberately more permissive than the real
-    optimizer so a strict target is rejected only when it is certainly impossible.
-    """
-    parent: dict[int, int] = {}
-
-    def find(index: int) -> int:
-        parent.setdefault(index, index)
-        if parent[index] != index:
-            parent[index] = find(parent[index])
-        return parent[index]
-
-    def union(first: int, second: int) -> None:
-        left, right = find(first), find(second)
-        if left != right:
-            parent[right] = left
-
-    for _, first, second in pairs:
-        union(first, second)
-
-    components: dict[int, list[int]] = {}
-    for index in parent:
-        components.setdefault(find(index), []).append(index)
-    removable = sum(
-        sum(document.sentences[index].token_count for index in component) - 1 for component in components.values()
-    )
-    return document.token_count - removable
 
 
 def _merge_pair(

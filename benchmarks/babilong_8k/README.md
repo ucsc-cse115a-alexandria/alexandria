@@ -66,10 +66,10 @@ uv run python -m scripts.babilong_8k_phase1
 
 Results are written under `trial_results/babilong_8k/`. The comparison table uses this format:
 
-The reduction target is strict. Alexandria first computes an optimistic floor from the eligible similarity graph;
-if 90% is impossible for the merge-rewrite optimizer, it stops before calling Luna. For reachable targets,
-candidate generation stops as soon as the proposed plan has enough token savings. Each result records merge calls,
-retries, attempted pairs, proposed edits, and applied edits.
+The reduction target is strict. Alexandria keeps instruction, example, format, and Markdown/XML boundaries fixed,
+then asks Luna to merge the largest content group to the remaining token budget. It verifies the complete prompt's
+token count and embedding drift. A rejected attempt is retried with the measured failures as feedback. Each result
+records merge calls, retries, attempted jobs, proposed edits, and applied edits.
 
 | Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |
 |---|---:|---:|---:|---:|---:|---:|

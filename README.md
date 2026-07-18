@@ -57,11 +57,12 @@ cannot be mistaken for success:
 uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
 ```
 
-Strict targets avoid unnecessary generation: Alexandria fails before calling the merge model when the eligible
-similarity graph cannot possibly reach the requested size, and otherwise stops proposing merges once the plan has
-enough token savings. Exact duplicate text is removed without a merge-model call, while Markdown and XML boundary
-lines are always preserved. `--json` includes `merge_metrics` with call, retry, pair, proposal, and applied-edit
-counts; the text mode prints the call and retry counts to stderr.
+Strict targets keep Markdown/XML boundaries fixed and ask the merge model to rewrite the largest content groups to
+the exact budget needed by the complete prompt. The result must satisfy the requested token count and stay within
+the whole-prompt embedding drift budget. Rejected attempts feed their measured token and drift failures back for
+correction. Exact duplicate text in best-effort reduction is still removed without a merge-model call. `--json`
+includes `merge_metrics` with call, retry, job, proposal, and applied-edit counts; text mode prints call and retry
+counts to stderr.
 
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
 quality scores:
