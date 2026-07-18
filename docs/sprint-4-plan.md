@@ -3,7 +3,7 @@
 **Product:** Alexandria ·
 **Team:** Alexandria ·
 **Sprint completion date:** Tue, Jul 21, 2026 ·
-**Revision:** 2.0 (2026-07-16)
+**Revision:** 2.1 (2026-07-18)
 
 ## Goal
 
@@ -32,10 +32,11 @@ Acceptance criteria:
 
 Tasks:
 
-- Freeze the Sprint 4 evaluation protocol and command log, using the IFEval benchmark selected by the
-  Sprint 2/3 benchmark work rather than reopening the benchmark survey (2h)
-- Run the original prompts and Alexandria's default compressed prompts through the benchmark, recording
-  prompt-level and instruction-level accuracy, token reduction, wall-clock time, and API cost (5h)
+- Freeze the Sprint 4 protocol around BABILong 8k: 50 seed-42 cases balanced across `qa1`-`qa5`,
+  `gpt-5.6-luna`, original versus 90%-retained prompts (strict 10% reduction), and a predeclared
+  acceptable task-accuracy change (2h)
+- Run both conditions with `scripts.babilong_8k_phase1`, recording task accuracy, token reduction,
+  merge calls/retries/candidates, wall-clock time, and API cost (5h)
 - Repeat the run or bootstrap confidence intervals enough to state whether accuracy retention clears
   the release threshold (3h)
 - Publish the result in the README or docs with exact commands, assumptions, and caveats (3h)
@@ -63,7 +64,7 @@ Tasks:
 
 - Define the sweep matrix for the available controls (`--min-similarity`, drift budget, thresholds, or
   token targets) and write the exact commands in a runbook (2h)
-- Run the sweep on the selected benchmark subset and save raw outputs for every point (4h)
+- Run the sweep on the same balanced BABILong 8k subset and save raw outputs for every point (4h)
 - Make at most one narrow default/parameter change if the sweep shows a better benchmark-backed
   operating point; do not refactor the optimizer in this sprint (2h)
 - Summarize the curve and record the final default accuracy/token numbers in the docs (2h)
@@ -177,9 +178,9 @@ them. Keep them small; the sprint should not turn into another implementation sp
 The [release plan](release-plan.md) scopes Sprint 4 to package release and broader accuracy
 evaluation. This plan keeps that direction but incorporates the Sprint 3 unfinished work explicitly:
 quality monitoring must run in CI, and the compression-strength work must be measured against the
-benchmark before any stronger default is kept. Packaging work is limited to the smallest install path
-needed for Release 1.0; PyPI publication is behind the benchmark result and depends on credentials and
-remaining capacity.
+canonical BABILong 8k benchmark before any stronger default is kept. Packaging work is limited to the
+smallest install path needed for Release 1.0; PyPI publication is behind the benchmark result and
+depends on credentials and remaining capacity.
 
 ## Team roles
 

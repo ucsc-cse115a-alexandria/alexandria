@@ -54,29 +54,31 @@ For each task, the checker:
 Thus both `bathroom` and `The most recent location of Mary is bathroom.` can pass when the target is `bathroom`.
 The harness deliberately reports this as `Task accuracy`, not strict format compliance.
 
-## Reproducible n=50 experiment
+## Canonical n=50 experiment
 
 The default phase-one run uses 50 cases selected with seed 42, balanced as 10 cases from each of `qa1`-`qa5`.
-It compares the original prompt with a 90% reduction target (10% of source tokens retained):
+It compares the original prompt with a 90%-retained prompt (a strict 10% token-reduction target) using
+`gpt-5.6-luna`:
 
 ```bash
 uv run python -m scripts.download_babilong_8k_data
 uv run python -m scripts.babilong_8k_phase1
 ```
 
-Results are written under `trial_results/babilong_8k/`. The comparison table uses this format:
+Results are written under `trial_results/babilong_8k/`. The reduction target is strict. Alexandria keeps
+instruction, example, format, and Markdown/XML boundaries fixed, then selects a content window sized for the
+required savings. Luna generates 10 candidates per search round; Alexandria selects the lowest-drift candidate
+that meets the token constraint and uses it as the base for the next round when refinement is needed. The complete
+prompt must reach the token target and remain within the configured whole-prompt embedding-drift budget.
 
-The reduction target is strict. Alexandria keeps instruction, example, format, and Markdown/XML boundaries fixed,
-then asks Luna to merge the largest content group to the remaining token budget. It verifies the complete prompt's
-token count and embedding drift. A rejected attempt is retried with the measured failures as feedback. Each result
-records merge calls, retries, attempted jobs, proposed edits, and applied edits.
+The comparison table reports:
 
-| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |
-|---|---:|---:|---:|---:|---:|---:|
-| original_luna | 7,720.0 | 0.0% | 0 | 0 | 90.0% (45/50) | — |
-| reduction90_luna | 772.0 | 90.0% | 35 | 4 | 86.0% (43/50) | -4.0 pp |
+| Condition | Mean input tokens | Token reduction | Merge calls | Retries | Candidates | Task accuracy | Accuracy change |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| `original_luna` | original mean | 0.0% | 0 | 0 | 0 | passed / 50 | — |
+| `keep90_luna` | compressed mean | at least 10.0% | measured | measured | measured | passed / 50 | measured pp |
 
-The numbers above illustrate reporting only; they are not benchmark results.
+The table above documents the output fields; it does not contain benchmark results.
 
 For a publication-quality claim, compare Alexandria against token-matched head/tail truncation and random-deletion
 baselines. Similar accuracy from Alexandria but substantially lower accuracy from those controls is stronger

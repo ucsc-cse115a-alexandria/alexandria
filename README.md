@@ -108,6 +108,26 @@ print(result.text)
 See [the library guide](docs/library.md) for injecting your own embedder and merger for offline tests,
 direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
+## Benchmark
+
+The canonical compression evaluation is **BABILong 8k**. Its inputs contain task instructions, few-shot examples,
+an answer format, and roughly 8k tokens of mostly irrelevant PG-19 text with a small set of bAbI facts embedded in
+the context. This makes it long enough to measure prompt compression, while the official-equivalent label checker
+provides deterministic downstream task accuracy.
+
+The release protocol uses 50 seed-42 cases balanced across `qa1`-`qa5`. It compares the original input with a
+90%-retained input (a strict 10% token reduction) using `gpt-5.6-luna`:
+
+```bash
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.babilong_8k_phase1
+```
+
+See the [BABILong 8k benchmark runbook](benchmarks/babilong_8k/README.md) for the prompt structure, verifier,
+metrics, provenance, reporting limits, and result-artifact location. The previous IFEval harness remains in the
+repository for historical comparison, but it is not the canonical release benchmark because its prompts are too
+short to demonstrate meaningful compression.
+
 ## How it works
 
 Four pure phases over one intermediate representation (`Document` → `Section` → `Sentence`):

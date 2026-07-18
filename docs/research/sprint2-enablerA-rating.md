@@ -1,5 +1,10 @@
 # Enabler A: Candidate Rating and Shortlist
 
+> **Decision update (2026-07-18):** This document records the Sprint 2 shortlist before BABILong was evaluated.
+> The release benchmark is now [BABILong 8k](../../benchmarks/babilong_8k/README.md): its roughly 8k-token prompts
+> provide meaningful compression headroom, and its `qa1`-`qa5` labels have a deterministic verifier. IFEval remains
+> useful for instruction-format compliance, but its short prompts are not the canonical compression benchmark.
+
 ## Overview
 Rates the four surveyed candidates, IFEval, RULER, NIAH, and LongBench, against Enabler A's acceptance criteria and shortlists the strongest for our project's benchmark selection.
 

@@ -257,13 +257,21 @@ output — precisely the MC-disguised-as-MP cases the gate exists to catch.
 
 ## Layer A — system evaluation
 
+**Canonical release benchmark.** BABILong 8k is the primary end-to-end compression evaluation. Each complete input
+contains instructions, few-shot examples, an answer format, and a long PG-19 context containing sparse bAbI facts.
+The `qa1`-`qa5` answer labels are checked programmatically. The release protocol compares 50 balanced original
+inputs with 90%-retained inputs; see the [benchmark runbook](../benchmarks/babilong_8k/README.md). This validates
+task-relevant information retention, not lossless preservation of every context detail.
+
 **Corpus.** Instruction-heavy, genuinely redundant prompts: Super-NaturalInstructions [2204.07705]
 (definitions restated in examples), Unnatural Instructions' paraphrase expansions [2212.09689], and
 real system/agent prompts (leaked-system-prompt collections — research-only, **check licensing per
 source, do not redistribute derived text**). Few-shot blocks harvested from the above.
 
-**Downstream tasks with labels.** IFEval [2311.07911] (programmatic), LongBench-v2 [2412.15204]
-(multiple-choice → clean accuracy, no free-form-metric noise), GSM8K, BBH, MeetingBank [2305.17529].
+**Supplementary downstream tasks with labels.** IFEval [2311.07911] (programmatic instruction-format
+compliance), LongBench-v2 [2412.15204] (multiple-choice → clean accuracy, no free-form-metric noise), GSM8K, BBH,
+and MeetingBank [2305.17529]. These can broaden the evidence later, but do not replace BABILong 8k in the canonical
+release protocol.
 
 **Behavioral ground truth without labels (the differential oracle).** Where no programmatic verifier
 exists, "behavior changed" = **consensus shift across K proxy-independent deployment models**

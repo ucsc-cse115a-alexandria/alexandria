@@ -1,5 +1,9 @@
 # [IFEval](https://arxiv.org/abs/2311.07911)
 
+> **Decision update (2026-07-18):** IFEval was investigated as an instruction-compliance benchmark, but its short
+> prompts do not provide enough compression headroom for the release experiment. The canonical compression
+> benchmark is now [BABILong 8k](../../benchmarks/babilong_8k/README.md). This note remains as candidate research.
+
 ## Overview
 Note covers IFEval (Zhou et al. 2023), a benchmark that checks instruction compliance using code verifiers instead of human or LLM judges.
 

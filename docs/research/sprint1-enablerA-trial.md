@@ -1,5 +1,11 @@
 # Enabler A, Task 3: IFEval Trial and Benchmark Rationale
 
+> **Decision update (2026-07-18):** This note preserves the original IFEval trial. The release benchmark was later
+> changed to [BABILong 8k](../../benchmarks/babilong_8k/README.md). IFEval's short prompts did not provide enough
+> removable context to demonstrate compression; BABILong supplies roughly 8k-token inputs and deterministic
+> downstream label verification. The canonical protocol retains 90% of each input (10% reduction) on 50 balanced
+> `qa1`-`qa5` cases.
+
 ## Trial setup
 
 - Benchmark: IFEval (Zhou et al. 2023), installed locally, scored with the original

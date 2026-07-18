@@ -4,7 +4,7 @@
 - **Team:** Alexandria Team
 - **Release:** 1.0
 - **Release date:** 2026-07-21 (end of Sprint 4)
-- **Revision:** 5 (2026-07-03)
+- **Revision:** 6 (2026-07-18)
 
 See [`spec.md`](spec.md) for the design and [`tech-stack.md`](tech-stack.md) for the stack.
 
@@ -12,8 +12,9 @@ See [`spec.md`](spec.md) for the design and [`tech-stack.md`](tech-stack.md) for
 
 - **G1 Reduction**: compress a prompt as efficiently as possible — cut tokens without dropping
   instructions.
-- **G2 Accuracy**: on a benchmark that cannot leak, show the shortened prompt keeps the agent at
-  least as accurate as the original — and raise that accuracy as far as the token savings allow.
+- **G2 Accuracy**: on BABILong 8k's programmatically verified long-context tasks, show the shortened
+  prompt keeps the model at least as accurate as the original — and raise that accuracy as far as
+  the token savings allow.
 - **G3 Usability**: make the library and CLI easy enough that anyone can compress a prompt and see
   the accuracy/cost trade-off they get.
 
@@ -61,8 +62,8 @@ See [`sprint-2-plan.md`](sprint-2-plan.md) for the detailed task breakdown.
 ### Sprint 4: Release and broaden the accuracy evaluation
 
 - **User story 1** (G3): As an engineer who wants to drop Alexandria into my own scripts and pipelines, I want to install it in one command and use it as both a CLI and a Python library, with clear setup docs and published benchmark numbers on the default strategy, so that I get verified prompt compression and know the accuracy and cost I am getting.
-- **User story 2** (G2): As an engineer weighing Alexandria for my own setup, I want the accuracy proof to generalize beyond a single benchmark (e.g. additional benchmarks or tasks and a compression-strength sweep that shows the accuracy/cost curve), so that I can trust the result applies to my prompts. The evaluations to add are decided in the Sprint 4 Plan.
-- **Infrastructure**: Re-run and extend the benchmark evaluation for the chosen default strategy to
+- **User story 2** (G2): As an engineer weighing Alexandria for my own setup, I want the accuracy proof to cover multiple BABILong tasks and a compression-strength sweep that shows the accuracy/cost curve, so that I can trust the result is not tied to one task or compression setting. The exact protocol is defined in the Sprint 4 Plan.
+- **Infrastructure**: Run and extend the balanced BABILong 8k evaluation for the chosen default strategy to
   confirm its accuracy/compression numbers, then publish the package to PyPI so it installs in one command.
 
 ## Capacity sanity check

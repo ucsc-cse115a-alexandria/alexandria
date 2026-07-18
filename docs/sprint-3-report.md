@@ -1,5 +1,9 @@
 # Sprint 3 Report
 
+> **Post-sprint update (2026-07-18):** The IFEval trial listed below was the benchmark decision at sprint close.
+> Sprint 4 subsequently adopted [BABILong 8k](../benchmarks/babilong_8k/README.md) because its long inputs provide
+> enough room to measure compression while retaining deterministic task verification.
+
 **Product:** Alexandria (Prompt Optimization for LLM Applications / Coding Agent) ·
 **Team:** Alexandria ·
 **Date:** Jul 16, 2026
