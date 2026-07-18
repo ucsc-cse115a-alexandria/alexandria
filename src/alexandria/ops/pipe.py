@@ -10,6 +10,7 @@ import numpy as np
 from pydantic import BaseModel, ConfigDict
 
 from alexandria.ir.contracts import (
+    SILENT_REPORTER,
     Candidate,
     Delete,
     Diff,
@@ -17,6 +18,7 @@ from alexandria.ir.contracts import (
     Params,
     Plan,
     Replace,
+    ReportedCandidate,
     TargetMergeRoundMetrics,
     TrackedEmbedder,
     TrackedMerger,
@@ -34,7 +36,7 @@ from alexandria.utils.merger import TARGET_CANDIDATES_PER_CALL, default_merger
 from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
-    from alexandria.ir.contracts import Embedder, SentenceMerger
+    from alexandria.ir.contracts import Embedder, ReductionReporter, SentenceMerger
     from alexandria.ir.document import SentenceId
 
 MAX_TARGET_MERGE_ROUNDS = 3
@@ -164,6 +166,7 @@ def reduce(
     optimizers: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     selector: str = DEFAULT_SELECTOR,
     params: Params | None = None,
+    reporter: ReductionReporter = SILENT_REPORTER,
 ) -> ReduceResult:
     """Run represent → score → optimize → select end to end and return the reduction.
 
@@ -177,7 +180,7 @@ def reduce(
     document = represent(prompt, embedder)
     if params is not None and params.require_target and params.max_tokens is not None:
         try:
-            outcome = _merge_to_target(document, embedder, tracked_merger, params)
+            outcome = _merge_to_target(document, embedder, tracked_merger, params, reporter)
         except TargetMergeError as error:
             error.metrics = _finalize_metrics(error.metrics, embedder, started)
             raise
@@ -191,13 +194,15 @@ def reduce(
             merge_metrics=_finalize_metrics(metrics, embedder, started),
         )
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params)
+    plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params, reporter=reporter)
     selection = select(document, plan, embedder, selector, params=params)
     if params is not None and params.max_tokens is not None and selection.document.token_count > params.max_tokens:
         # A target-sized proposal can still miss after cumulative drift checks. Resume exhaustively,
         # reusing every prior merger response from TrackedMerger instead of paying for the same call twice.
         exhaustive = params.model_copy(update={"max_tokens": None, "require_target": False})
-        plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=exhaustive)
+        plan = optimize(
+            document, scores, embedder, tracked_merger, names=optimizers, params=exhaustive, reporter=reporter
+        )
         selection = select(document, plan, embedder, selector, params=params)
     return ReduceResult(
         document=selection.document,
@@ -223,7 +228,7 @@ def _finalize_metrics(metrics: MergeMetrics, embedder: TrackedEmbedder, started:
 
 
 def _merge_to_target(
-    document: Document, embedder: Embedder, merger: TrackedMerger, params: Params
+    document: Document, embedder: Embedder, merger: TrackedMerger, params: Params, reporter: ReductionReporter
 ) -> _TargetMergeOutcome:
     """Prune redundant sentences, then merge the largest content groups until token, structure,
     and embedding constraints pass."""
@@ -262,6 +267,7 @@ def _merge_to_target(
         group_max_tokens = max(1, params.max_tokens - fixed_tokens)
         group_min_tokens = max(1, min_document_tokens - fixed_tokens)
         source_segment = "".join(sentence.text for sentence in group)
+        reporter.target_group(source_segment, group_tokens, required_savings)
         feedback: str | None = None
         accepted: Document | None = None
         base: _TargetCandidate | None = None
@@ -338,6 +344,28 @@ def _merge_to_target(
             best_tokens = base.document.token_count
             best_drift = base.drift
             last_issues = base.issues
+            candidate_list = tuple(
+                ReportedCandidate(
+                    text=c.text,
+                    token_count=c.document.token_count,
+                    drift=c.drift,
+                    structure_valid=c.structure_valid,
+                )
+                for c in evaluated
+            )
+            selected = ReportedCandidate(
+                text=base.text,
+                token_count=base.document.token_count,
+                drift=base.drift,
+                structure_valid=base.structure_valid,
+            )
+            reporter.target_round(
+                round_number,
+                previous.text if previous is not None else None,
+                candidate_list,
+                selected,
+                base is not previous,
+            )
             if base.target_distance == 0 and base.drift <= params.drift_budget:
                 accepted = base.document
                 break
@@ -347,6 +375,8 @@ def _merge_to_target(
                     break
             if round_number < MAX_TARGET_MERGE_ROUNDS:  # the final round's feedback would go unread
                 feedback = _target_feedback(base, group, embedder)
+        applied_document_tokens = accepted.token_count if accepted is not None else current.token_count
+        reporter.target_group_done(applied=accepted is not None, document_tokens=applied_document_tokens)
         if accepted is None:
             break
         current = accepted
