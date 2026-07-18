@@ -178,6 +178,22 @@ def test_render_shows_the_merged_line_and_token_math_for_an_accepted_replace() -
 
     frame = render(state, document, (120, 40))
 
-    assert "+ab" in frame  # the merged line, in the list row and the preview hunk
+    assert "+ab" in frame  # the merged line in the preview hunk
+    assert "+ ab" in frame  # the merged line in the list row (indented "      + ab")
     pair_tokens = document.sentences[0].token_count + document.sentences[1].token_count
     assert f"{document.token_count} → {document.token_count - pair_tokens + 1} tokens" in frame
+
+
+def test_render_detail_shows_the_merged_line_for_a_replace() -> None:
+    document = represent("aaa\nbbb\nccc\n", build_embedder("deterministic"))
+    ids = [s.id for s in document.sentences]
+    replacement = Encoded(text="ab\n", token_count=1, embedding=document.sentences[0].embedding)
+    candidate = Candidate(
+        edit=Replace(targets=(ids[0], ids[1]), replacement=replacement), confidence=0.9, source="t", reason="r"
+    )
+    (diff,) = diffs(document, (candidate,))
+    state = ReviewState(diffs=(diff,), cursor=0, accepted=frozenset(), detail=True)
+
+    frame = render(state, document, (120, 40))
+
+    assert "+ab" in frame  # the detail pane renders the merged line via _detail_lines
