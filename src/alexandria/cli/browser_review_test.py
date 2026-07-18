@@ -18,14 +18,26 @@ from alexandria.cli.browser_review import (
     validate_selection_payload,
 )
 from alexandria.cli.review_html import render_review_page
-from alexandria.ops import DETERMINISTIC, Proposal, build_embedder, diffs, optimize, represent, score
+from alexandria.ir.contracts import Params
+from alexandria.ops import HashEmbedder, Proposal, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
 
 
+class _FirstWinsMerger:
+    """Offline merger: the first sentence wins, so an exact-duplicate pair becomes a delete."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
+
+
 def _reviewable_proposal() -> Proposal:
-    document = represent(_REDUNDANT, build_embedder(DETERMINISTIC))
-    plan = optimize(document, score(document, names=("redundancy",)))
+    embedder = HashEmbedder()
+    document = represent(_REDUNDANT, embedder)
+    plan = optimize(
+        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+    )
     return Proposal(document=document, diffs=diffs(document, plan))
 
 

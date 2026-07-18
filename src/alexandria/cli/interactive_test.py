@@ -3,16 +3,27 @@ from __future__ import annotations
 import re
 
 from alexandria.cli.interactive import ReviewState, apply_candidates, render, review
-from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Replace
+from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Params, Replace
 from alexandria.ir.document import Document, Encoded, SentenceId
-from alexandria.ops import DETERMINISTIC, build_embedder, diffs, optimize, represent, score
+from alexandria.ops import HashEmbedder, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
 
 
+class _FirstWinsMerger:
+    """Offline merger: the first sentence wins, so an exact-duplicate pair becomes a delete."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
+
+
 def _reviewable() -> tuple[Document, tuple[Diff, ...]]:
-    document = represent(_REDUNDANT, build_embedder(DETERMINISTIC))
-    plan = optimize(document, score(document, names=("redundancy",)))
+    embedder = HashEmbedder()
+    document = represent(_REDUNDANT, embedder)
+    plan = optimize(
+        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+    )
     return document, diffs(document, plan)
 
 
@@ -102,8 +113,11 @@ def test_render_preview_builds_hunks_from_the_removed_sentences() -> None:
     filler_a = "".join(f"alpha paragraph {i} says something unique.\n\n" for i in range(80))
     filler_b = "".join(f"beta paragraph {i} says something else entirely.\n\n" for i in range(80))
     prompt = f"repeat me\nrepeat me\n{filler_a}{filler_b}echo twice\necho twice\n"
-    document = represent(prompt, build_embedder(DETERMINISTIC))
-    plan = optimize(document, score(document, names=("redundancy",)))
+    embedder = HashEmbedder()
+    document = represent(prompt, embedder)
+    plan = optimize(
+        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+    )
     proposed = diffs(document, plan)
     state = ReviewState(diffs=proposed, cursor=0, accepted=frozenset(range(len(proposed))))
 
@@ -167,7 +181,7 @@ def test_render_marks_hidden_rows_when_the_list_overflows() -> None:
 
 
 def test_render_shows_the_merged_line_and_token_math_for_an_accepted_replace() -> None:
-    document = represent("aaa\nbbb\nccc\n", build_embedder("deterministic"))
+    document = represent("aaa\nbbb\nccc\n", HashEmbedder())
     ids = [s.id for s in document.sentences]
     replacement = Encoded(text="ab\n", token_count=1, embedding=document.sentences[0].embedding)
     candidate = Candidate(
@@ -185,7 +199,7 @@ def test_render_shows_the_merged_line_and_token_math_for_an_accepted_replace() -
 
 
 def test_render_detail_shows_the_merged_line_for_a_replace() -> None:
-    document = represent("aaa\nbbb\nccc\n", build_embedder("deterministic"))
+    document = represent("aaa\nbbb\nccc\n", HashEmbedder())
     ids = [s.id for s in document.sentences]
     replacement = Encoded(text="ab\n", token_count=1, embedding=document.sentences[0].embedding)
     candidate = Candidate(

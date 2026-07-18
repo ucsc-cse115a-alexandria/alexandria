@@ -12,8 +12,9 @@ from alexandria.cli import cli
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.ir.contracts import Params
 from alexandria.ir.registry import register_scorer
-from alexandria.ops import DETERMINISTIC, build_embedder
+from alexandria.ops import HashEmbedder, count_tokens, default_embedder, default_merger
 from alexandria.ops.features.represent import represent
+from alexandria.ops.features.score import score
 from alexandria.ops.pipe import reduce
 
 if TYPE_CHECKING:
@@ -26,68 +27,80 @@ def _constant_scorer(document: Document) -> list[float]:
 
 register_scorer("cli_test_constant")(_constant_scorer)
 
-_ROOT = Path(__file__).resolve().parents[3]
-_REPORT_FIXTURE = _ROOT / "benchmarks" / "optimization_prompt.txt"
-_REPORT_SNAPSHOT = _ROOT / "benchmarks" / "optimization_baseline.json"
+
+class _FakeMerger:
+    """Offline merger: the first sentence wins, so exact-duplicate pairs become deletes."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
 
 
+@pytest.fixture
+def offline_models(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("alexandria.cli.main.default_embedder", lambda: HashEmbedder())
+    monkeypatch.setattr("alexandria.cli.main.default_merger", lambda: _FakeMerger())
+
+
+@pytest.mark.usefixtures("offline_models")
 def test_phase_verbs_pipe_to_the_same_text_as_reduce() -> None:
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique line\n"
 
-    document = runner.invoke(cli, ["represent", "--model", "deterministic"], input=prompt)
+    document = runner.invoke(cli, ["represent"], input=prompt)
     scored = runner.invoke(cli, ["score"], input=document.output)
-    plan = runner.invoke(cli, ["optimize"], input=scored.output)
-    reduced = runner.invoke(cli, ["select", "--model", "deterministic", "--drift-budget", "2.0"], input=plan.output)
+    plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0"], input=scored.output)
+    reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0"], input=plan.output)
 
     assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
-    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
     assert reduced.output == expected.text
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_out_is_a_tee_so_the_piped_run_still_matches_reduce() -> None:
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique line\n"
     with runner.isolated_filesystem():
-        document = runner.invoke(cli, ["represent", "--model", "deterministic", "--out", "doc.json"], input=prompt)
+        document = runner.invoke(cli, ["represent", "--out", "doc.json"], input=prompt)
         scored = runner.invoke(cli, ["score", "--out", "scored.json"], input=document.output)
-        plan = runner.invoke(cli, ["optimize", "--out", "plan.json"], input=scored.output)
-        reduced = runner.invoke(
-            cli, ["select", "--model", "deterministic", "--drift-budget", "2.0"], input=plan.output
-        )
+        plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "--out", "plan.json"], input=scored.output)
+        reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0"], input=plan.output)
 
         assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
         assert [Path(name).exists() for name in ("doc.json", "scored.json", "plan.json")] == [True, True, True]
 
-    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
     assert reduced.output == expected.text
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_a_phase_starts_from_a_saved_file_matching_the_in_memory_reduce() -> None:
     # #60: each phase can be rerun alone by loading the previous phase's saved envelope from a file.
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique line\n"
     with runner.isolated_filesystem():
-        Path("d.json").write_text(runner.invoke(cli, ["represent", "--model", "deterministic"], input=prompt).output)
+        Path("d.json").write_text(runner.invoke(cli, ["represent"], input=prompt).output)
         Path("s.json").write_text(runner.invoke(cli, ["score", "d.json"]).output)  # starts from the saved file
-        Path("pl.json").write_text(runner.invoke(cli, ["optimize", "s.json"]).output)  # starts from the saved file
-        reduced = runner.invoke(cli, ["select", "pl.json", "--model", "deterministic", "--drift-budget", "2.0"])
+        Path("pl.json").write_text(
+            runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "s.json"]).output
+        )  # starts from the saved file
+        reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0", "pl.json"])
 
     assert reduced.exit_code == 0
-    expected = reduce(prompt, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
     assert reduced.output == expected.text
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_select_json_reports_the_reduction_summary() -> None:
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique line\n"
-    document = runner.invoke(cli, ["represent", "--model", "deterministic"], input=prompt)
+    document = runner.invoke(cli, ["represent"], input=prompt)
     scored = runner.invoke(cli, ["score"], input=document.output)
-    plan = runner.invoke(cli, ["optimize"], input=scored.output)
+    plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0"], input=scored.output)
 
-    result = runner.invoke(
-        cli, ["select", "--model", "deterministic", "--drift-budget", "2.0", "--json"], input=plan.output
-    )
+    result = runner.invoke(cli, ["select", "--drift-budget", "2.0", "--json"], input=plan.output)
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
@@ -98,7 +111,7 @@ def test_select_json_reports_the_reduction_summary() -> None:
 
 def test_score_emits_a_scored_envelope_by_default() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
 
     result = runner.invoke(cli, ["score"], input=document)
 
@@ -109,7 +122,7 @@ def test_score_emits_a_scored_envelope_by_default() -> None:
 
 def test_score_out_saves_a_roundtrippable_scored_envelope() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
     with runner.isolated_filesystem():
         result = runner.invoke(cli, ["score", "--out", "scored.json"], input=document)
 
@@ -121,7 +134,7 @@ def test_score_out_saves_a_roundtrippable_scored_envelope() -> None:
 
 def test_score_table_prints_a_human_report() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
 
     result = runner.invoke(cli, ["score", "--table"], input=document)
 
@@ -130,12 +143,13 @@ def test_score_table_prints_a_human_report() -> None:
     assert "most_similar_id=" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_optimize_out_saves_a_roundtrippable_plan_envelope() -> None:
     runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
+    document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
     scored = runner.invoke(cli, ["score"], input=document).output
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["optimize", "--out", "plan.json"], input=scored)
+        result = runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "--out", "plan.json"], input=scored)
 
         assert result.exit_code == 0
         saved = Path("plan.json").read_text()
@@ -143,12 +157,13 @@ def test_optimize_out_saves_a_roundtrippable_plan_envelope() -> None:
         assert PlanEnvelope.model_validate_json(saved).model_dump_json() == saved.strip()
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_select_reports_a_model_mismatch_cleanly() -> None:
-    document = represent("a\nb\n", build_embedder(DETERMINISTIC))  # model_id 'hash-64'
+    document = represent("a\nb\n", HashEmbedder())  # model_id 'hash-64'
     payload = json.loads(PlanEnvelope(document=document, plan=()).model_dump_json())
     payload["document"]["embedding_model"] = "hash-32"  # a document built by a different embedder
 
-    result = CliRunner().invoke(cli, ["select", "--model", "deterministic"], input=json.dumps(payload))  # 'hash-64'
+    result = CliRunner().invoke(cli, ["select"], input=json.dumps(payload))  # the offline embedder is 'hash-64'
 
     assert result.exit_code == 1
     assert "does not match" in result.output
@@ -161,6 +176,7 @@ def test_score_rejects_a_malformed_envelope_cleanly() -> None:
     assert "invalid input" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_optimize_rejects_an_unknown_schema_version_cleanly() -> None:
     scored: dict[str, object] = {"schema_version": 2, "document": {}, "scores": {}}
 
@@ -170,40 +186,42 @@ def test_optimize_rejects_an_unknown_schema_version_cleanly() -> None:
     assert "invalid input" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_optimize_reports_a_missing_required_scorer_cleanly() -> None:
-    runner = CliRunner()
-    document = DocumentEnvelope(document=represent("dup\ndup\n", build_embedder(DETERMINISTIC))).model_dump_json()
-    scored = runner.invoke(cli, ["score", "--scorer", "cli_test_constant"], input=document)
+    document = represent("dup\ndup\n", HashEmbedder())
+    bundle = score(document, names=("cli_test_constant",))  # lacks the redundancy scorer merge_rewrite requires
+    scored = ScoredEnvelope(document=document, scores=bundle).model_dump_json()
 
-    result = runner.invoke(cli, ["optimize"], input=scored.output)
+    result = CliRunner().invoke(cli, ["optimize"], input=scored)
 
     assert result.exit_code == 1
     assert "redundancy" in result.output
     assert "Traceback" not in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_drops_a_duplicate_under_a_generous_budget() -> None:
     runner = CliRunner()
-    result = runner.invoke(
-        cli, ["reduce", "--model", "deterministic", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n"
-    )
+    result = runner.invoke(cli, ["reduce", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
     assert result.exit_code == 0
     assert result.output.count("keep one") == 1
     assert "unique" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_keeps_everything_under_the_default_budget() -> None:
     runner = CliRunner()
-    result = runner.invoke(cli, ["reduce", "--model", "deterministic"], input="keep one\nkeep one\nunique\n")
+    result = runner.invoke(cli, ["reduce"], input="keep one\nkeep one\nunique\n")
     assert result.exit_code == 0
     assert result.output.count("keep one") == 2
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["reduce", "--model", "deterministic", "--drift-budget", "2.0", "--json"],
+        ["reduce", "--drift-budget", "2.0", "--json"],
         input="keep one\nkeep one\nunique\n",
     )
     assert result.exit_code == 0
@@ -213,10 +231,11 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["reduced_tokens"] < payload["source_tokens"]
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
     result = CliRunner().invoke(
         cli,
-        ["report", "--model", "deterministic", "--drift-budget", "2.0"],
+        ["report", "--drift-budget", "2.0"],
         input="keep one\nkeep one\nunique\n",
     )
 
@@ -227,106 +246,99 @@ def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
     assert "minimum_instruction_similarity" in payload["quality"]
 
 
-def test_report_matches_the_committed_fixture_snapshot() -> None:
-    result = CliRunner().invoke(
-        cli,
-        [
-            "report",
-            str(_REPORT_FIXTURE),
-            "--model",
-            "deterministic",
-            "--threshold",
-            "0.85",
-            "--drift-budget",
-            "2.0",
-        ],
-    )
-
-    assert result.exit_code == 0
-    assert json.loads(result.output) == json.loads(_REPORT_SNAPSHOT.read_text(encoding="utf-8"))
-
-
-def test_report_passes_against_the_matching_baseline() -> None:
-    result = CliRunner().invoke(
-        cli,
-        [
-            "report",
-            str(_REPORT_FIXTURE),
-            "--model",
-            "deterministic",
-            "--threshold",
-            "0.85",
-            "--drift-budget",
-            "2.0",
-            "--baseline",
-            str(_REPORT_SNAPSHOT),
-        ],
-    )
-
-    assert result.exit_code == 0
-    assert json.loads(result.output)["comparison"] == {"passed": True, "regressions": []}
-
-
-def test_report_exits_nonzero_when_the_baseline_regresses(tmp_path: Path) -> None:
-    prompt = "keep one\nkeep one\nunique\n"
+@pytest.mark.usefixtures("offline_models")
+def test_report_baseline_passes_then_flags_a_regression() -> None:
     runner = CliRunner()
-    initial = runner.invoke(
-        cli,
-        ["report", "--model", "deterministic", "--drift-budget", "2.0"],
-        input=prompt,
-    )
-    baseline_payload = json.loads(initial.output)
-    baseline_payload["tokens"]["reduced"] -= 1
-    baseline_path = tmp_path / "baseline.json"
-    baseline_path.write_text(json.dumps(baseline_payload), encoding="utf-8")
+    prompt = "keep one\nkeep one\nunique\n"
+    with runner.isolated_filesystem():
+        baseline = runner.invoke(cli, ["report", "--drift-budget", "2.0"], input=prompt)
+        assert baseline.exit_code == 0
+        Path("baseline.json").write_text(baseline.output)
 
-    result = runner.invoke(
-        cli,
-        [
-            "report",
-            "--model",
-            "deterministic",
-            "--drift-budget",
-            "2.0",
-            "--baseline",
-            str(baseline_path),
-        ],
-        input=prompt,
-    )
+        passing = runner.invoke(cli, ["report", "--drift-budget", "2.0", "--baseline", "baseline.json"], input=prompt)
+        assert passing.exit_code == 0
+        assert json.loads(passing.output)["comparison"] == {"passed": True, "regressions": []}
 
-    assert result.exit_code == 1
-    payload = json.loads(result.output.split("\nregression:", maxsplit=1)[0])
+        doctored = json.loads(baseline.output)
+        doctored["tokens"]["reduced"] -= 1  # the baseline now claims a smaller prompt than we can produce
+        Path("regressed.json").write_text(json.dumps(doctored))
+        regressed = runner.invoke(
+            cli, ["report", "--drift-budget", "2.0", "--baseline", "regressed.json"], input=prompt
+        )
+
+    assert regressed.exit_code == 1
+    payload = json.loads(regressed.output.split("\nregression:", maxsplit=1)[0])
     assert not payload["comparison"]["passed"]
-    assert "tokens.reduced" in result.output
+    assert "tokens.reduced" in regressed.output
+
+
+def test_reduce_without_a_key_fails_with_setup_instructions(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # default_embedder is lru_cached; clear it so a client cached by another test cannot bypass the key check.
+    default_embedder.cache_clear()
+    default_merger.cache_clear()
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))  # empty config dir
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["reduce"], input="a\nb\n")
+
+    assert result.exit_code != 0
+    assert "alexandria config set openai-api-key" in result.output
+
+
+@pytest.mark.usefixtures("offline_models")
+def test_save_tokens_stops_at_the_target() -> None:
+    runner = CliRunner()
+    prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
+    source = count_tokens(prompt)
+
+    result = runner.invoke(cli, ["reduce", "--save-tokens", "3", "--drift-budget", "2.0", "--json"], input=prompt)
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["source_tokens"] == source
+    assert payload["reduced_tokens"] <= source - 3
+
+
+def test_removed_flags_are_gone_from_help() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["reduce", "--help"])
+
+    assert result.exit_code == 0
+    for flag in ("--model", "--optimizer", "--selector", "--threshold", "--min-similarity", "--max-tokens"):
+        assert flag not in result.output
 
 
 def test_reduce_interactive_rejects_a_stdin_prompt() -> None:
-    result = CliRunner().invoke(cli, ["reduce", "--interactive", "--model", "deterministic"], input="a\nb\n")
+    result = CliRunner().invoke(cli, ["reduce", "--interactive"], input="a\nb\n")
 
     assert result.exit_code == 2
     assert "--interactive" in result.output
     assert "stdin" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_interactive_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
     keys = iter("\rd")  # accept the first (only) proposal, then done
     monkeypatch.setattr(click, "getchar", lambda: next(keys))
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 1
     assert "unique" in result.stdout
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_interactive_quit_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(click, "getchar", lambda: "q")
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 2
@@ -342,19 +354,21 @@ def _interactive_reduce_run(monkeypatch: pytest.MonkeyPatch, keys: str) -> tuple
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text(_TWO_PAIR_PROMPT)
-        result = runner.invoke(cli, ["reduce", "--interactive", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
     return result.exit_code, result.stdout
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_interactive_accept_all_matches_the_automatic_run(monkeypatch: pytest.MonkeyPatch) -> None:
     exit_code, stdout = _interactive_reduce_run(monkeypatch, "ad")  # check everything, done
 
     # A budget generous enough that the automatic selector rejects nothing (the #51 reading).
-    automatic = reduce(_TWO_PAIR_PROMPT, build_embedder(DETERMINISTIC), params=Params(drift_budget=2.0))
+    automatic = reduce(_TWO_PAIR_PROMPT, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
     assert exit_code == 0
     assert stdout == automatic.text
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_interactive_reject_all_returns_the_input_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     exit_code, stdout = _interactive_reduce_run(monkeypatch, "d")  # done with nothing checked
 
@@ -362,6 +376,7 @@ def test_interactive_reject_all_returns_the_input_unchanged(monkeypatch: pytest.
     assert stdout == _TWO_PAIR_PROMPT
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_interactive_mixed_selection_applies_exactly_the_accepted_subset(monkeypatch: pytest.MonkeyPatch) -> None:
     exit_code, stdout = _interactive_reduce_run(monkeypatch, "\rd")  # accept the cursor row only, done
 
@@ -372,25 +387,25 @@ def test_interactive_mixed_selection_applies_exactly_the_accepted_subset(monkeyp
     assert "# A" in stdout and "# B" in stdout
 
 
-def test_reduce_interactive_rejects_selector_knobs() -> None:
+def test_reduce_interactive_rejects_save_tokens() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("a\nb\n")
-        result = runner.invoke(
-            cli, ["reduce", "--interactive", "--min-similarity", "0.99", "--model", "deterministic", "p.md"]
-        )
+        result = runner.invoke(cli, ["reduce", "--interactive", "--save-tokens", "5", "p.md"])
 
     assert result.exit_code == 2
     assert "--interactive" in result.output
+    assert "--save-tokens" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
     from alexandria.ir.contracts import Candidate
     from alexandria.ops.pipe import Proposal, propose
 
     prompt = "keep one\nkeep one\nunique\n"
-    proposal = propose(prompt, build_embedder(DETERMINISTIC))
+    proposal = propose(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
     accepted = (proposal.diffs[0].candidate,)
 
     def fake_run_browser_review(_proposal: Proposal, **_: object) -> tuple[Candidate, ...]:
@@ -401,13 +416,14 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text(prompt)
-        result = runner.invoke(cli, ["reduce", "--browser", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--browser", "--drift-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 1
     assert "unique" in result.stdout
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
     from alexandria.ops.pipe import Proposal
@@ -420,7 +436,7 @@ def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.Mo
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--browser", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--browser", "--drift-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 2
@@ -428,30 +444,29 @@ def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.Mo
 
 
 def test_reduce_browser_rejects_stdin_prompt() -> None:
-    result = CliRunner().invoke(cli, ["reduce", "--browser", "--model", "deterministic"], input="a\nb\n")
+    result = CliRunner().invoke(cli, ["reduce", "--browser"], input="a\nb\n")
 
     assert result.exit_code == 2
     assert "--browser" in result.output
     assert "stdin" in result.output
 
 
-def test_reduce_browser_rejects_selector_knobs() -> None:
+def test_reduce_browser_rejects_save_tokens() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("a\nb\n")
-        result = runner.invoke(
-            cli, ["reduce", "--browser", "--min-similarity", "0.99", "--model", "deterministic", "p.md"]
-        )
+        result = runner.invoke(cli, ["reduce", "--browser", "--save-tokens", "5", "p.md"])
 
     assert result.exit_code == 2
     assert "--browser" in result.output
+    assert "--save-tokens" in result.output
 
 
 def test_reduce_browser_and_interactive_mutually_exclusive() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("a\nb\n")
-        result = runner.invoke(cli, ["reduce", "--browser", "--interactive", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--browser", "--interactive", "p.md"])
 
     assert result.exit_code == 2
     assert "mutually exclusive" in result.output
@@ -461,12 +476,13 @@ def test_reduce_no_open_requires_browser() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("a\nb\n")
-        result = runner.invoke(cli, ["reduce", "--no-open", "--model", "deterministic", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--no-open", "p.md"])
 
     assert result.exit_code == 2
     assert "--no-open requires --browser" in result.output
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_compare_min_similarity_gates_the_exit_code() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
@@ -474,22 +490,19 @@ def test_compare_min_similarity_gates_the_exit_code() -> None:
         Path("b.txt").write_text("keep this exact instruction\n")
         Path("c.txt").write_text("a completely unrelated instruction\n")
 
-        same = runner.invoke(
-            cli, ["compare", "a.txt", "b.txt", "--model", "deterministic", "--min-similarity", "0.99"]
-        )
-        differ = runner.invoke(
-            cli, ["compare", "a.txt", "c.txt", "--model", "deterministic", "--min-similarity", "0.99"]
-        )
+        same = runner.invoke(cli, ["compare", "a.txt", "b.txt", "--min-similarity", "0.99"])
+        differ = runner.invoke(cli, ["compare", "a.txt", "c.txt", "--min-similarity", "0.99"])
 
     assert same.exit_code == 0
     assert json.loads(same.output)["similarity"] == pytest.approx(1.0)
     assert differ.exit_code == 1
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_represent_out_saves_a_roundtrippable_document_envelope() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["represent", "--model", "deterministic", "--out", "doc.json"], input="dup\ndup\n")
+        result = runner.invoke(cli, ["represent", "--out", "doc.json"], input="dup\ndup\n")
 
         assert result.exit_code == 0
         saved = Path("doc.json").read_text()
@@ -498,8 +511,9 @@ def test_represent_out_saves_a_roundtrippable_document_envelope() -> None:
         assert DocumentEnvelope.model_validate_json(saved).model_dump_json() == saved.strip()
 
 
+@pytest.mark.usefixtures("offline_models")
 def test_represent_rejects_an_empty_prompt_cleanly() -> None:
-    result = CliRunner().invoke(cli, ["represent", "--model", "deterministic"], input="")
+    result = CliRunner().invoke(cli, ["represent"], input="")
 
     assert result.exit_code == 1
     assert "empty prompt" in result.output
