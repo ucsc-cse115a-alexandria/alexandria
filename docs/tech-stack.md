@@ -11,8 +11,8 @@ Scoped to what the team can learn in a five-week course and to what the pipeline
 |---|---|---|
 | Language / packaging | Python 3.14, `uv` | Established in the repo; fast, reproducible envs. |
 | IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't drift from their children. |
-| Embeddings | `sentence-transformers` (`all-MiniLM-L6-v2`) | Local, free, deterministic, no API key. The one nondeterministic dependency, isolated inside Represent. |
-| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the ablation distances behind `greedy_pairwise`. |
+| Embeddings | `openai` (`text-embedding-3-small` embeddings; `gpt-5.6-luna` merge rewrites) | Hosted embeddings and LLM merge rewrites, isolated inside the utils shell. Requires an API key. |
+| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the drift distances behind `merge_rewrite`. |
 | Persistence | Parquet via Polars | One row per node; stores embeddings as compact `float32` lists. JSON/JSONL bloat them ~3–5× and round lossily. |
 | Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
 | Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |
@@ -23,8 +23,9 @@ Scoped to what the team can learn in a five-week course and to what the pipeline
 
 ## Rejected alternatives
 
-- **Hosted embedding API (OpenAI / Voyage):** higher quality, but adds cost, keys, and
-  benchmark non-determinism. The IR keeps embeddings swappable, so this stays open for later.
+- **Local embedding model (`sentence-transformers` / `all-MiniLM-L6-v2`):** free, deterministic,
+  and no API key, but lower fidelity than a hosted model. The IR keeps embeddings swappable, so the
+  pipeline adopted the hosted OpenAI embedder when fidelity outweighed determinism.
 - **JSON / JSONL for persistence:** readable, but bloats dense `float32` embeddings and rounds
   them lossily; Parquet stores typed lists and round-trips exactly.
 - **Hand-built IR / dataclasses:** no validation at the boundary. Pydantic enforces the tree's

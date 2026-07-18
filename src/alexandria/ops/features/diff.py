@@ -15,8 +15,9 @@ if TYPE_CHECKING:
 def diffs(document: Document, plan: Plan) -> tuple[Diff, ...]:
     """Resolve a Plan into displayable Diffs, one per candidate, highest confidence first.
 
-    The order matches what the auto selector applies and what an interactive review presents;
-    the sort is stable, so equal-confidence candidates keep their plan order.
+    One Diff per candidate, highest confidence first — the order an interactive review presents;
+    the automatic selector applies edits in its own least-drift order. The sort is stable, so
+    equal-confidence candidates keep their plan order.
 
     Raises ValueError when a candidate targets a sentence id absent from the document, so a
     mispiped `optimize | diffs` fails at the boundary instead of producing a hollow diff.

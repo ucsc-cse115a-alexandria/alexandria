@@ -28,9 +28,6 @@ dev = [
     "import-linter>=2.7",
     "python-dotenv>=1.0",
 ]
-scripts = [
-    "openai>=2.44",
-]
 
 [tool.uv]
 package = true

@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder
 
 _ENCODING = tiktoken.get_encoding("cl100k_base")  # duplicates represent._ENCODING; features may not import each other
-_CHUNK_TOKENS = 200  # keep chunks under the 256-token window all-MiniLM-L6-v2 truncates at
+_CHUNK_TOKENS = 200  # pool chunks so long prompts stay comparable across backends; size kept from the local model
 
 
 class CompareResult(BaseModel):
@@ -39,7 +39,7 @@ def compare(original: str, edited: str, embedder: Embedder | None = None) -> Com
     """Compare two prompts: chunk-pooled cosine similarity and cl100k_base token reduction.
 
     The caller applies the 99% gate by comparing ``similarity`` against ``1 - Params.drift_budget``.
-    When ``embedder`` is omitted, the cached default all-MiniLM-L6-v2 model is used.
+    When ``embedder`` is omitted, the default OpenAI embedder is built on first use (requires an API key).
     """
     model = embedder if embedder is not None else default_embedder()
     original_ids = _ENCODING.encode(original)
@@ -58,8 +58,10 @@ def compare(original: str, edited: str, embedder: Embedder | None = None) -> Com
 def _pooled_embedding(token_ids: list[int], embedder: Embedder) -> NDArray[np.float32]:
     """The length-weighted mean of the normalized ~200-token chunk vectors.
 
-    all-MiniLM-L6-v2 truncates at 256 tokens, so embedding a long text as one vector would blind the
-    gate; chunking keeps every token in view. Any Embedder is chunked — the protocol exposes no window.
+    Chunk pooling keeps long prompts comparable across embedding backends with modest context windows;
+    the 200-token chunk size is retained from the previous local-model backend. Embedding a long text
+    as one vector would blind the gate, so chunking keeps every token in view. Any Embedder is chunked —
+    the protocol exposes no window.
     """
     chunks = [token_ids[start : start + _CHUNK_TOKENS] for start in range(0, len(token_ids), _CHUNK_TOKENS)]
     weights = np.array([len(chunk) for chunk in chunks], dtype=np.float32)
