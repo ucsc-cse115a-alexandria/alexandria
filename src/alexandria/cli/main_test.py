@@ -15,9 +15,10 @@ from alexandria.ir.registry import register_scorer
 from alexandria.ops import HashEmbedder, count_tokens, default_embedder, default_merger
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score
-from alexandria.ops.pipe import reduce
+from alexandria.ops.pipe import ReduceResult, reduce
 
 if TYPE_CHECKING:
+    from alexandria.ir.contracts import Embedder, SentenceMerger
     from alexandria.ir.document import Document
 
 
@@ -298,6 +299,65 @@ def test_save_tokens_stops_at_the_target() -> None:
     payload = json.loads(result.output)
     assert payload["source_tokens"] == source
     assert payload["reduced_tokens"] <= source - 3
+
+
+@pytest.mark.usefixtures("offline_models")
+def test_keep_derives_the_max_token_budget_from_the_source(monkeypatch: pytest.MonkeyPatch) -> None:
+    from alexandria.cli import main as main_module
+
+    prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
+    source = count_tokens(prompt)
+    seen_max_tokens: list[int | None] = []
+
+    def capture_params(
+        prompt: str,
+        embedder: Embedder | None = None,
+        merger: SentenceMerger | None = None,
+        *,
+        params: Params | None = None,
+    ) -> ReduceResult:
+        seen_max_tokens.append(params.max_tokens if params is not None else None)
+        return reduce(prompt, embedder, merger, params=params)
+
+    monkeypatch.setattr(main_module, "reduce", capture_params)
+
+    result = CliRunner().invoke(cli, ["reduce", "--keep", "60"], input=prompt)
+
+    assert result.exit_code == 0
+    assert seen_max_tokens == [source * 60 // 100]
+
+
+def test_keep_and_save_tokens_are_mutually_exclusive() -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--keep", "95", "--save-tokens", "5"], input="a\nb\n")
+
+    assert result.exit_code == 2
+    assert "--keep and --save-tokens are mutually exclusive" in result.output
+
+
+@pytest.mark.parametrize("keep", ["-1", "0", "100", "101"])
+def test_keep_rejects_values_outside_the_open_percentage_range(keep: str) -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--keep", keep], input="a\nb\n")
+
+    assert result.exit_code == 2
+    assert "0.0<x<100.0" in result.output
+
+
+@pytest.mark.usefixtures("offline_models")
+def test_keep_json_reports_the_existing_reduction_summary() -> None:
+    prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
+
+    result = CliRunner().invoke(
+        cli,
+        ["reduce", "--keep", "60", "--drift-budget", "2.0", "--json"],
+        input=prompt,
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["source_tokens"] == count_tokens(prompt)
+    assert payload["reduced_tokens"] == count_tokens(payload["text"])
+    assert payload["reduced_tokens"] <= payload["source_tokens"] * 60 // 100
+    assert payload["reduction_pct"] == pytest.approx(1.0 - payload["reduced_tokens"] / payload["source_tokens"])
 
 
 def test_removed_flags_are_gone_from_help() -> None:
