@@ -58,6 +58,19 @@ def test_require_api_key_returns_the_resolved_key() -> None:
 
 
 @pytest.mark.usefixtures("isolated_config")
+def test_write_tightens_a_pre_existing_world_readable_file() -> None:
+    path = config_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text('openai-api-key = "old"\n')
+    path.chmod(0o644)
+
+    write_config_key("sk-test-456")
+
+    assert path.read_text() == 'openai-api-key = "sk-test-456"\n'
+    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+@pytest.mark.usefixtures("isolated_config")
 def test_write_rejects_keys_that_would_break_the_toml() -> None:
     with pytest.raises(ValueError, match="invalid OpenAI API key"):
         write_config_key('sk-"quoted"')

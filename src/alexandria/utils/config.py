@@ -36,8 +36,10 @@ def write_config_key(key: str) -> Path:
         raise ValueError("invalid OpenAI API key")
     path = config_path()
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(f'{_KEY_FIELD} = "{key}"\n')
-    path.chmod(stat.S_IRUSR | stat.S_IWUSR)
+    fd = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, stat.S_IRUSR | stat.S_IWUSR)
+    with os.fdopen(fd, "w") as file:
+        file.write(f'{_KEY_FIELD} = "{key}"\n')
+    path.chmod(stat.S_IRUSR | stat.S_IWUSR)  # tighten a pre-existing looser file that O_CREAT left untouched
     return path
 
 
