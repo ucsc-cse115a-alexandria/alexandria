@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 MODEL = "gpt-5.4-mini"
 TARGET_RATIO = 0.95
-N_CASES = 10
+N_CASES = 50
 OUT_DIR = Path("trial_results/ifeval")
 
 
