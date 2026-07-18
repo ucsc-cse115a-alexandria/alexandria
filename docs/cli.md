@@ -4,6 +4,23 @@ Each command reads either its optional `FILE` argument or standard input, writes
 output, and sends diagnostics to standard error. Run `uv run alexandria --help` or
 `uv run alexandria COMMAND --help` for the complete option reference.
 
+## Set your API key
+
+Alexandria uses OpenAI for embeddings and merging, so every command that runs the pipeline needs a key.
+Store it once with hidden input:
+
+```bash
+uv run alexandria config set openai-api-key
+```
+
+The key is saved to `~/.config/alexandria/config.toml` (owner-only, honoring `XDG_CONFIG_HOME`). You can
+instead `export OPENAI_API_KEY=...`. Resolution order is explicit argument, then `OPENAI_API_KEY`, then
+the config file. Without a key, commands fail before any work with:
+
+```text
+OpenAI API key not found. Set it with `alexandria config set openai-api-key` or export OPENAI_API_KEY.
+```
+
 ## Reduce a prompt
 
 `reduce` is the usual entry point. It runs all four phases in one process and writes the reduced prompt.
@@ -12,27 +29,27 @@ output, and sends diagnostics to standard error. Run `uv run alexandria --help` 
 uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
-By default, Alexandria downloads and uses the `all-MiniLM-L6-v2` sentence-transformer model on first
-use. `--json` emits a machine-readable summary with `text`, `applied`, `source_tokens`, and
-`reduced_tokens`.
+`--json` emits a machine-readable summary with `text`, `applied`, `source_tokens`, and `reduced_tokens`.
 
 ```bash
 uv run alexandria reduce prompt.txt --json
 ```
 
-Use `--threshold` to control redundancy eligibility and `--drift-budget` to limit cumulative semantic
-drift. `--min-similarity` is an alternative similarity floor; it cannot be combined with a non-default
-`--drift-budget`. `--interactive` lets you accept or reject proposed edits in the terminal.
+Use `--save-tokens N` to stop once N tokens are saved (edits are applied least-drift-first) and
+`--drift-budget` to cap the cumulative whole-document embedding drift the reduction may accept
+(`0.01` = 1%). `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser`
+does the same in a browser.
+
+```bash
+uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
+```
 
 ## Run phases separately
 
 The phase commands compose as a Unix pipeline:
 
 ```bash
-uv run alexandria represent < prompt.txt \
-  | uv run alexandria score \
-  | uv run alexandria optimize \
-  | uv run alexandria select > reduced.txt
+cat prompt.md | alexandria represent | alexandria score | alexandria optimize | alexandria select
 ```
 
 The first three commands write self-contained JSON envelopes:
@@ -44,8 +61,7 @@ The first three commands write self-contained JSON envelopes:
 | `optimize` | `ScoredEnvelope` | `PlanEnvelope` |
 | `select` | `PlanEnvelope` | Reduced prompt text |
 
-`represent` and `select` accept `--model`. `score` accepts `--scorer`, and `optimize` accepts
-`--optimizer` and `--threshold`. `select` accepts `--drift-budget` and `--json`.
+`optimize` and `select` each accept `--drift-budget`, and `select` also accepts `--json`.
 
 ## Save an envelope and resume later
 
@@ -79,19 +95,8 @@ the `ScoredEnvelope` is still saved while the table is printed.
 uv run alexandria represent < prompt.txt | uv run alexandria score --table
 ```
 
-## Deterministic offline runs
+## Offline runs
 
-For tests, CI, or an offline smoke test, choose the deterministic hash embedder. It is not semantic, so
-use a larger drift budget when you want edits to be accepted.
-
-```bash
-printf 'Be concise.\nBe concise.\nUse examples.\n' \
-  | uv run alexandria reduce --model deterministic --drift-budget 2.0
-```
-
-This prints:
-
-```text
-Be concise.
-Use examples.
-```
+The CLI always uses the OpenAI defaults and therefore requires an API key. To run the pipeline offline
+(for tests or CI) inject your own embedder and merger through the library API; see
+[the library guide](library.md).
