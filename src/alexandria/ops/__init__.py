@@ -19,7 +19,8 @@ from alexandria.ops.pipe import (
     score_report,
 )
 
-# ops re-exports embedder construction so the CLI never imports utils directly.
+# ops re-exports embedder construction and config writes so the CLI never imports utils directly.
+from alexandria.utils.config import write_config_key
 from alexandria.utils.embedders import DEFAULT_MODEL, DETERMINISTIC, build_embedder
 
 __all__ = [
@@ -45,4 +46,5 @@ __all__ = [
     "score_report",
     "score_rows",
     "select",
+    "write_config_key",
 ]

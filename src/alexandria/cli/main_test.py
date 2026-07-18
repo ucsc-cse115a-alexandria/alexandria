@@ -526,6 +526,21 @@ def test_tokens_counts_instruction_files_accurately() -> None:
         assert "Total:" in result.output
 
 
+def test_config_set_prompts_hidden_and_saves_a_key_resolve_can_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path))
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    runner = CliRunner()
+
+    result = runner.invoke(cli, ["config", "set", "openai-api-key"], input="sk-test-123\n")
+
+    assert result.exit_code == 0
+    saved = tmp_path / "alexandria" / "config.toml"
+    assert saved.read_text() == 'openai-api-key = "sk-test-123"\n'
+    assert "sk-test-123" not in result.output  # hidden input never echoes the key
+
+
 def test_tokens_ignores_non_instruction_files() -> None:
     runner = CliRunner()
     with runner.isolated_filesystem():

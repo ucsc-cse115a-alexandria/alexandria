@@ -20,6 +20,7 @@ from alexandria.ops import (
     build_embedder,
     compare_reports,
     optimization_report,
+    write_config_key,
 )
 from alexandria.ops.features.compare import compare
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
@@ -459,3 +460,18 @@ def tokens_cmd(directory: Path) -> None:
             total_tokens += count
 
     click.echo(f"{'-' * 20}\nTotal: {total_tokens} tokens")
+
+
+@cli.group(name="config")
+def config_group() -> None:
+    """Manage Alexandria's stored configuration."""
+
+
+@config_group.command(name="set")
+@click.argument("field", type=click.Choice(["openai-api-key"]))
+def config_set_cmd(field: str) -> None:
+    """Prompt for a value with hidden input and save it to the config file."""
+    value = click.prompt("OpenAI API key", hide_input=True)
+    with _clean_errors():
+        path = write_config_key(value)
+    click.echo(f"saved {field} to {path}")
