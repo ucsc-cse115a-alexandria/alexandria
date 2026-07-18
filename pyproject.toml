@@ -28,13 +28,19 @@ dev = [
     "import-linter>=2.7",
     "python-dotenv>=1.0",
 ]
+scripts = [
+    "absl-py>=2.5.0",
+    "immutabledict>=4.3.1",
+    "langdetect>=1.0.9",
+    "nltk>=3.10.0",
+]
 
 [tool.uv]
 package = true
 
 [tool.pytest.ini_options]
-testpaths = ["src", "tests", "scripts"]
-pythonpath = ["scripts"]
+testpaths = ["src", "tests", "scripts", "benchmarks"]
+pythonpath = [".", "scripts"]
 addopts = "--cov --cov-report=term-missing --import-mode=importlib"
 
 [tool.coverage.run]
@@ -63,6 +69,7 @@ exclude = [
     ".git",
     ".pytest_cache",
     ".ruff_cache",
+    "benchmarks/ifeval/vendor",
 ]
 
 [tool.ruff.lint]
@@ -126,7 +133,7 @@ line-ending = "auto"
 
 [tool.pyright]
 typeCheckingMode = "strict"
-include = ["src"]
+include = ["src", "benchmarks"]
 exclude = [
     ".venv",
     "venv",
@@ -134,6 +141,7 @@ exclude = [
     "dist",
     "__pycache__",
     "migrations",
+    "benchmarks/ifeval/vendor",
 ]
 
 [tool.importlinter]
