@@ -13,7 +13,7 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import SentenceMerger
 
 MERGE_MODEL = "gpt-5.6-luna"
-TARGET_CANDIDATES_PER_CALL = 3
+TARGET_CANDIDATES_PER_CALL = 2
 _INSTRUCTIONS = (
     "You merge two overlapping prompt instructions. Rewrite them as ONE instruction that "
     "preserves the full meaning of both in as few tokens as possible. "
@@ -23,12 +23,11 @@ _TARGET_INSTRUCTIONS = (
     f"Generate exactly {TARGET_CANDIDATES_PER_CALL} controlled variants for a token-constrained semantic search. "
     "On the first round, create "
     "diverse compressions from the source. On later rounds, mutate the single current base; do not restart or "
-    "summarize the source from scratch. Copy the base nearly verbatim and make only the localized, token-neutral "
+    "summarize the source from scratch. Copy the base nearly verbatim and make only the localized "
     f"substitution requested by the feedback. Candidate N must use feedback excerpt N, so the "
     f"{TARGET_CANDIDATES_PER_CALL} outputs explore {TARGET_CANDIDATES_PER_CALL} "
-    "different local edits. Preserve all untouched base wording exactly. Every candidate must stay within the "
-    "requested "
-    "token range. Do not add "
+    "different local edits. Preserve all untouched base wording exactly. Remove redundant wording wherever needed "
+    "to stay at or below the requested hard token limit. Do not add "
     "XML tags, Markdown headings, wrappers, explanations, or code fences. Return only the structured output."
 )
 
@@ -80,11 +79,11 @@ class OpenAIMerger:
     ) -> tuple[str, ...]:
         from openai import OpenAIError
 
-        min_tokens = max(1, int(max_tokens * 0.95))
+        min_tokens = max(1, int(max_tokens * 0.90))
         request = (
             f"Merge and rewrite the content segment below to between {min_tokens} and {max_tokens} tokens. "
-            "Use the full range: shorter is not better. The token range and semantic preservation are mandatory. "
-            "Dense paraphrasing is allowed; information deletion is not.\n\n"
+            "The upper limit is mandatory and will be checked with cl100k_base. Prefer the top of the range when "
+            "quality is equal. Dense paraphrasing is allowed; information deletion is not.\n\n"
             f"<source_segment>\n{prompt}\n</source_segment>"
         )
         if base_candidate is not None:
@@ -99,7 +98,7 @@ class OpenAIMerger:
         try:
             response = self._client.responses.parse(
                 model=MERGE_MODEL,
-                reasoning={"effort": "low"},
+                reasoning={"effort": "none"},
                 instructions=_TARGET_INSTRUCTIONS,
                 input=request,
                 text_format=TargetMergeCandidates,

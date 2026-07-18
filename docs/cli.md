@@ -40,12 +40,14 @@ tokens are saved (edits are applied least-drift-first). These options are mutual
 stopping points rather than guarantees: `--drift-budget` may stop compression sooner.
 
 Use `--target-reduction P` when the percentage itself is required: `P` means “reduce by P percent,” and
-the command exits with an error if that target is not reached. It is mutually exclusive with `--keep` and
-`--save-tokens`; lower the target or raise `--drift-budget` when it reports that the target was unmet.
+the returned prompt is guaranteed to fit the corresponding token ceiling. It is mutually exclusive with
+`--keep` and `--save-tokens`. Protected Markdown/XML boundaries are never removed; if those boundaries alone
+exceed the target, the command reports that the target is infeasible before calling the merge model.
 
-`--drift-budget` caps the cumulative whole-document embedding drift the reduction may accept (`0.01` =
-1%). `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the
-same in a browser.
+`--drift-budget` caps the cumulative whole-document embedding drift for best-effort reductions (`0.01` =
+1%). For `--target-reduction`, the token target takes priority: the lowest-drift target-safe result is returned
+and JSON output sets `merge_metrics.drift_budget_met` to `false` if the quality budget was missed.
+`--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the same in a browser.
 
 ```bash
 uv run alexandria reduce --keep 95 prompt.txt > reduced.txt

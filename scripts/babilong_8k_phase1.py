@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run 50 balanced BABILong 8k cases, original vs. a 90% token-reduction target."""
+"""Run 50 balanced BABILong 8k cases, original vs. a 90%-retained target."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 MODEL = "gpt-5.6-luna"
-TARGET_REDUCTION_PERCENT = 90.0
+TARGET_REDUCTION_PERCENT = 10.0
 N_CASES = 50
 SEED = 42
 OUT_DIR = Path("trial_results/babilong_8k")
@@ -65,7 +65,7 @@ def main() -> None:
     results: list[ExperimentResult] = []
     conditions = [
         ("original_luna", None),
-        ("reduction90_luna", use_prepared),
+        ("keep90_luna", use_prepared),
     ]
     for label, transform in conditions:
         print(f"--- {label} ---")

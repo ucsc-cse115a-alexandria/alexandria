@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from alexandria.ir.contracts import MergeMetrics, Params
-from alexandria.ops.pipe import TargetMergeError, reduce
+from alexandria.ops.pipe import InfeasibleTargetError, TargetMergeError, reduce
 from alexandria.utils.tokens import count_tokens
 from benchmarks.babilong_8k import load_cases
 
@@ -70,6 +70,8 @@ def compress_case(
         result = reduce(prompt, embedder, merger, params=Params(max_tokens=max_tokens, require_target=True))
     except TargetMergeError as error:
         return FailedCase(error=str(error), merge_metrics=error.metrics)
+    except InfeasibleTargetError as error:
+        return FailedCase(error=str(error), merge_metrics=MergeMetrics())
     return CompressedCase(prompt=result.text, merge_metrics=result.merge_metrics)
 
 

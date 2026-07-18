@@ -356,8 +356,7 @@ def reduce_cmd(
         if actual_reduction + 1e-12 < target_reduction / 100:
             raise click.ClickException(
                 f"target reduction {target_reduction:g}% was not met: achieved {actual_reduction:.1%} "
-                f"({result.source_tokens} -> {result.reduced_tokens} tokens). "
-                "Increase --drift-budget or use a lower --target-reduction."
+                f"({result.source_tokens} -> {result.reduced_tokens} tokens). This violates the hard-target invariant."
             )
 
     if as_json:

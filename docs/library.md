@@ -33,6 +33,12 @@ print(result.text)
 applied. `examples/reduce_prompt.py` is a runnable version that loads the key from a `.env` file — copy
 `.env.example` to `.env`, add your key, then run `uv run python examples/reduce_prompt.py`.
 
+For a hard ceiling, pass `Params(max_tokens=..., require_target=True)`. Successful results always satisfy
+`result.reduced_tokens <= max_tokens`; model overshoot is repaired with the same tokenizer used for reporting.
+`result.merge_metrics.final_drift` records the selected prompt's whole-document drift and
+`drift_budget_met` states whether it also cleared the requested quality budget. If protected Markdown/XML
+structure itself exceeds the ceiling, `reduce` raises `InfeasibleTargetError` before calling the merger.
+
 ## Run offline by injecting an embedder and merger
 
 For tests or CI that must run without network access, pass your own `Embedder` and `SentenceMerger`

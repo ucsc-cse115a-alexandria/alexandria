@@ -129,6 +129,9 @@ def test_select_json_reports_the_reduction_summary() -> None:
         "applied_edits": 1,
         "pruned_sentences": 0,
         "pruned_tokens": 0,
+        "repaired_tokens": 0,
+        "final_drift": None,
+        "drift_budget_met": None,
         "embed_calls": 0,
         "embed_texts": 0,
         "elapsed_seconds": 0.0,
@@ -400,15 +403,17 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
 
 
 @pytest.mark.usefixtures("offline_models")
-def test_target_reduction_fails_when_the_drift_gate_prevents_the_target() -> None:
+def test_target_reduction_returns_a_target_safe_result_when_the_drift_budget_is_missed() -> None:
     result = CliRunner().invoke(
         cli,
         ["reduce", "--target-reduction", "10", "--json"],
         input="repeat me\nrepeat me\nunique line\n",
     )
 
-    assert result.exit_code == 1
-    assert "target merge failed after 3 calls (2 retries)" in result.output
+    assert result.exit_code == 0
+    payload = json.loads(result.output)
+    assert payload["reduction_pct"] >= 0.10
+    assert isinstance(payload["merge_metrics"]["drift_budget_met"], bool)
 
 
 def test_budget_options_are_mutually_exclusive() -> None:

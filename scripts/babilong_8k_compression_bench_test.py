@@ -4,10 +4,11 @@ from babilong_8k_compression_bench import CompressedCase, FailedCase, compress_c
 
 from alexandria.ir.contracts import MergeMetrics
 from alexandria.utils.embedders import HashEmbedder
+from alexandria.utils.tokens import count_tokens
 
 
 class _OversizedMerger:
-    """Offline target merger whose candidates never fit the token limit, forcing TargetMergeError."""
+    """Offline target merger whose candidates require deterministic target repair."""
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str:
         del second, feedback
@@ -24,13 +25,14 @@ class _OversizedMerger:
         return ("far too many tokens remain in this oversized candidate line\n",) * 10
 
 
-def test_compress_case_folds_a_target_failure_into_a_failed_record() -> None:
+def test_compress_case_repairs_oversized_candidates_into_a_target_safe_record() -> None:
     prompt = "".join(f"source line number {index} with several words\n" for index in range(8))
     record = compress_case(prompt, HashEmbedder(), _OversizedMerger())
 
-    assert record.status == "failed"
-    assert "target merge" in record.error
+    assert isinstance(record, CompressedCase)
+    assert count_tokens(record.prompt) <= max(1, count_tokens(prompt) // 10)
     assert record.merge_metrics.calls > 0
+    assert record.merge_metrics.repaired_tokens > 0
     assert record.merge_metrics.elapsed_seconds > 0.0
 
 
