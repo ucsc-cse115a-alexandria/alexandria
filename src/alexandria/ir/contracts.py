@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Annotated, Literal, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from alexandria.ir.document import Document, SentenceId
+from alexandria.ir.document import Document, Encoded, SentenceId
 
 if TYPE_CHECKING:
     import numpy as np
@@ -42,8 +42,16 @@ class Delete(BaseModel):
     targets: tuple[SentenceId, ...] = Field(min_length=1)
 
 
-# The one edit shape today; widen to `Delete | Replace` later. Delete.op is the discriminator.
-Edit = Delete
+class Replace(BaseModel):
+    """Swap the first target's text for the merged replacement and remove the remaining targets."""
+
+    model_config = ConfigDict(frozen=True)
+    op: Literal["replace"] = "replace"
+    targets: tuple[SentenceId, ...] = Field(min_length=2)
+    replacement: Encoded  # merged text with its token count and embedding, precomputed at plan time
+
+
+Edit = Annotated[Delete | Replace, Field(discriminator="op")]
 
 
 class Candidate(BaseModel):
