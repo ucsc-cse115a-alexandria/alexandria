@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 
 from alexandria.cli.interactive import ReviewState, apply_candidates, render, review
-from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan
-from alexandria.ir.document import Document, SentenceId
+from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Replace
+from alexandria.ir.document import Document, Encoded, SentenceId
 from alexandria.ops import DETERMINISTIC, build_embedder, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
@@ -164,3 +164,20 @@ def test_render_marks_hidden_rows_when_the_list_overflows() -> None:
 
     assert "↓ 9 more" in top
     assert "↑ 9 more" in bottom
+
+
+def test_render_shows_the_merged_line_and_token_math_for_an_accepted_replace() -> None:
+    document = represent("aaa\nbbb\nccc\n", build_embedder("deterministic"))
+    ids = [s.id for s in document.sentences]
+    replacement = Encoded(text="ab\n", token_count=1, embedding=document.sentences[0].embedding)
+    candidate = Candidate(
+        edit=Replace(targets=(ids[0], ids[1]), replacement=replacement), confidence=0.9, source="t", reason="r"
+    )
+    (diff,) = diffs(document, (candidate,))
+    state = ReviewState(diffs=(diff,), cursor=0, accepted=frozenset({0}))
+
+    frame = render(state, document, (120, 40))
+
+    assert "+ab" in frame  # the merged line, in the list row and the preview hunk
+    pair_tokens = document.sentences[0].token_count + document.sentences[1].token_count
+    assert f"{document.token_count} → {document.token_count - pair_tokens + 1} tokens" in frame
