@@ -266,3 +266,14 @@ def test_replace_round_trips_through_json() -> None:
 
     assert restored.edit.op == "replace"
     assert restored == candidate
+
+
+def test_delete_rejects_duplicate_targets() -> None:
+    with pytest.raises(ValidationError, match="targets must be unique"):
+        Delete(targets=(SentenceId("s0"), SentenceId("s0")))
+
+
+def test_replace_rejects_duplicate_targets() -> None:
+    replacement = Encoded(text="ab\n", token_count=1, embedding=_vec())
+    with pytest.raises(ValidationError, match="targets must be unique"):
+        Replace(targets=(SentenceId("s0"), SentenceId("s0")), replacement=replacement)
