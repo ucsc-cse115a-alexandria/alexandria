@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import click
-import tiktoken
 from pydantic import ValidationError
 
 from alexandria.cli.browser_review import run_browser_review
@@ -14,33 +13,35 @@ from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelo
 from alexandria.cli.interactive import apply_candidates, review
 from alexandria.ir.contracts import Params
 from alexandria.ops import (
-    DEFAULT_MODEL,
-    DETERMINISTIC,
     OptimizationReport,
-    build_embedder,
     compare_reports,
+    count_tokens,
+    default_embedder,
+    default_merger,
     optimization_report,
+    write_config_key,
 )
 from alexandria.ops.features.compare import compare
-from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
+from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
-from alexandria.ops.features.select import DEFAULT_SELECTOR, select
+from alexandria.ops.features.select import select
 from alexandria.ops.pipe import ReduceResult, propose, reduce
 
 if TYPE_CHECKING:
     from collections.abc import Generator
     from typing import IO
 
-    from alexandria.ir.contracts import Candidate, Plan
+    from alexandria.ir.contracts import Candidate, Embedder, Plan, SentenceMerger
 
 _DEFAULTS = Params()
-_MODEL_HELP = f"embedding model id, or {DETERMINISTIC!r}"
+
+_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)"
 
 
 @contextmanager
 def _clean_errors() -> Generator[None]:
-    """Turn expected boundary failures (bad envelope JSON, unknown names, empty prompt) into a
+    """Turn expected boundary failures (missing API key, bad envelope JSON, empty prompt) into a
     clean CLI error and exit code instead of a traceback."""
     try:
         yield
@@ -48,10 +49,6 @@ def _clean_errors() -> Generator[None]:
         raise click.ClickException(f"invalid input: {error}") from error
     except ValueError as error:
         raise click.ClickException(str(error)) from error
-
-
-def _names(raw: str) -> tuple[str, ...]:
-    return tuple(name.strip() for name in raw.split(",") if name.strip())
 
 
 _out_option = click.option(
@@ -71,9 +68,7 @@ def _emit_envelope(payload: str, out_path: Path | None) -> None:
 
 
 def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens: int) -> str:
-
     reduction_pct = 1.0 - (reduced_tokens / source_tokens) if source_tokens > 0 else 0.0
-
     payload = {
         "text": text,
         "applied": [candidate.model_dump(mode="json") for candidate in applied],
@@ -84,9 +79,9 @@ def _reduction_json(text: str, applied: Plan, source_tokens: int, reduced_tokens
     return json.dumps(payload, indent=2)
 
 
-def _interactive_reduce(prompt: str, optimizers: tuple[str, ...], params: Params, model: str) -> ReduceResult:
+def _interactive_reduce(prompt: str, embedder: Embedder, merger: SentenceMerger, params: Params) -> ReduceResult:
     """Propose edits, review them in the terminal, and apply exactly the accepted ones."""
-    proposal = propose(prompt, build_embedder(model), optimizers=optimizers, params=params)
+    proposal = propose(prompt, embedder, merger, params=params)
     accepted: tuple[Candidate, ...] = ()
     if not proposal.diffs:
         click.echo("no proposed edits; the prompt is unchanged", err=True)
@@ -101,10 +96,10 @@ def _interactive_reduce(prompt: str, optimizers: tuple[str, ...], params: Params
 
 
 def _browser_reduce(
-    prompt: str, optimizers: tuple[str, ...], params: Params, model: str, *, open_browser: bool
+    prompt: str, embedder: Embedder, merger: SentenceMerger, params: Params, *, open_browser: bool
 ) -> ReduceResult:
     """Propose edits, review them in a browser, and apply exactly the accepted ones."""
-    proposal = propose(prompt, build_embedder(model), optimizers=optimizers, params=params)
+    proposal = propose(prompt, embedder, merger, params=params)
     accepted: tuple[Candidate, ...] = ()
     if not proposal.diffs:
         click.echo("no proposed edits; the prompt is unchanged", err=True)
@@ -124,10 +119,11 @@ def cli() -> None:
 
     \b
     Quick start:
-      alexandria reduce prompt.md                # reduce automatically
-      alexandria reduce --interactive prompt.md  # review each edit, apply only what you accept
-      alexandria reduce --browser prompt.md      # review each edit in a browser, apply only what you accept
-      alexandria compare original.md reduced.md  # check similarity and token reduction
+      alexandria config set openai-api-key         # store your OpenAI API key once
+      alexandria reduce prompt.md                  # reduce automatically
+      alexandria reduce --interactive prompt.md    # review each edit, apply only what you accept
+      alexandria reduce --browser prompt.md        # review each edit in a browser, apply only what you accept
+      alexandria compare original.md reduced.md    # check similarity and token reduction
 
     \b
     The phase verbs pipe into each other for step-by-step runs:
@@ -137,24 +133,23 @@ def cli() -> None:
 
 @cli.command(name="represent")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @_out_option
-def represent_cmd(file: IO[str], model: str, out_path: Path | None) -> None:
+def represent_cmd(file: IO[str], out_path: Path | None) -> None:
     """Raw prompt in, a DocumentEnvelope (JSON) out."""
     with _clean_errors():
-        document = represent(file.read(), build_embedder(model))
+        embedder = default_embedder()
+        document = represent(file.read(), embedder)
         payload = DocumentEnvelope(document=document).model_dump_json()
     _emit_envelope(payload, out_path)
 
 
 @cli.command(name="score")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--scorer", "scorers", default=DEFAULT_SCORER, help="comma-separated scorer names")
 @click.option("--table", "as_table", is_flag=True, help="print a human-readable report instead of a ScoredEnvelope")
 @_out_option
-def score_cmd(file: IO[str], scorers: str, as_table: bool, out_path: Path | None) -> None:
+def score_cmd(file: IO[str], as_table: bool, out_path: Path | None) -> None:
     """DocumentEnvelope in, a ScoredEnvelope (JSON) out, or a report with --table."""
-    names = _names(scorers)
+    names = (DEFAULT_SCORER,)
     with _clean_errors():
         document = DocumentEnvelope.model_validate_json(file.read()).document
         bundle = score(document, names=names)
@@ -170,36 +165,29 @@ def score_cmd(file: IO[str], scorers: str, as_table: bool, out_path: Path | None
 
 @cli.command(name="optimize")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
-@click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
+@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @_out_option
-def optimize_cmd(file: IO[str], optimizers: str, threshold: float, out_path: Path | None) -> None:
+def optimize_cmd(file: IO[str], drift_budget: float, out_path: Path | None) -> None:
     """ScoredEnvelope in, a PlanEnvelope (JSON) out."""
-    names = _names(optimizers)
     with _clean_errors():
+        embedder = default_embedder()
+        merger = default_merger()
         scored = ScoredEnvelope.model_validate_json(file.read())
-        plan = optimize(scored.document, scored.scores, names=names, params=Params(threshold=threshold))
+        plan = optimize(scored.document, scored.scores, embedder, merger, params=Params(drift_budget=drift_budget))
         payload = PlanEnvelope(document=scored.document, plan=plan).model_dump_json()
     _emit_envelope(payload, out_path)
 
 
 @cli.command(name="select")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
-@click.option(
-    "--drift-budget",
-    type=float,
-    default=_DEFAULTS.drift_budget,
-    help="max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)",
-)
+@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
-def select_cmd(file: IO[str], model: str, drift_budget: float, as_json: bool) -> None:
+def select_cmd(file: IO[str], drift_budget: float, as_json: bool) -> None:
     """PlanEnvelope in, the reduced prompt out (or a JSON reduction summary with --json)."""
     with _clean_errors():
+        embedder = default_embedder()
         envelope = PlanEnvelope.model_validate_json(file.read())
-        selection = select(
-            envelope.document, envelope.plan, build_embedder(model), params=Params(drift_budget=drift_budget)
-        )
+        selection = select(envelope.document, envelope.plan, embedder, params=Params(drift_budget=drift_budget))
     if as_json:
         click.echo(
             _reduction_json(
@@ -222,17 +210,15 @@ def select_cmd(file: IO[str], model: str, drift_budget: float, as_json: bool) ->
     default=None,
     help="turn the command into a gate: exit 1 when similarity falls below this (0.99 = the 99% fidelity gate)",
 )
-@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
 @click.pass_context
-def compare_cmd(
-    ctx: click.Context, original: IO[str], edited: IO[str], min_similarity: float | None, model: str
-) -> None:
+def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_similarity: float | None) -> None:
     """Compare two prompts: cosine similarity and token reduction as JSON (at most one FILE may be '-').
 
     This command talks in similarity where reduce talks in --drift-budget; the JSON carries both.
     """
     with _clean_errors():
-        result = compare(original.read(), edited.read(), build_embedder(model))
+        embedder = default_embedder()
+        result = compare(original.read(), edited.read(), embedder)
     click.echo(result.model_dump_json(indent=2))
     if min_similarity is not None and result.similarity < min_similarity:
         ctx.exit(1)
@@ -240,31 +226,13 @@ def compare_cmd(
 
 @cli.command(name="reduce")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
-@click.option("--selector", default=DEFAULT_SELECTOR, help="selector name")
-@click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
 @click.option(
-    "--drift-budget",
-    type=float,
-    default=_DEFAULTS.drift_budget,
-    help="max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)",
-)
-@click.option(
-    "--min-similarity",
-    type=float,
-    default=None,
-    help=(
-        "Stop reduction before dropping below this similarity floor (e.g., 0.99). "
-        "Mutually exclusive with --drift-budget."
-    ),
-)
-@click.option(
-    "--max-tokens",
+    "--save-tokens",
     type=int,
     default=None,
-    help="Target a specific token budget. Stop reduction once at/under budget.",
+    help="reduce the prompt by N tokens (applied least-drift-first)",
 )
-@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
+@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
     "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the checked ones"
@@ -279,13 +247,8 @@ def compare_cmd(
 )
 def reduce_cmd(
     file: IO[str],
-    optimizers: str,
-    selector: str,
-    threshold: float,
+    save_tokens: int | None,
     drift_budget: float,
-    min_similarity: float | None,
-    max_tokens: int | None,
-    model: str,
     as_json: bool,
     interactive: bool,
     browser: bool,
@@ -295,7 +258,8 @@ def reduce_cmd(
 
     \b
     Examples:
-      alexandria reduce prompt.md                    # automatic: the selector applies edits within --drift-budget
+      alexandria reduce prompt.md                    # automatic: apply every edit within --drift-budget
+      alexandria reduce prompt.md --save-tokens 200  # stop once 200 tokens are saved (least-drift-first)
       alexandria reduce prompt.md --json             # machine-readable summary of what was applied
       alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
       alexandria reduce --browser prompt.md          # review each proposed edit in a browser (FILE required)
@@ -309,67 +273,45 @@ def reduce_cmd(
     """
     if no_open and not browser:
         raise click.UsageError("--no-open requires --browser.")
-
     if interactive and browser:
         raise click.UsageError("--interactive and --browser are mutually exclusive.")
 
     manual_review = interactive or browser
     review_flag = "--interactive" if interactive else "--browser"
-
     if manual_review and getattr(file, "name", None) == "<stdin>":
         raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
-    if manual_review and (
-        min_similarity is not None or drift_budget != _DEFAULTS.drift_budget or selector != DEFAULT_SELECTOR
-    ):
-        raise click.UsageError(
-            f"{review_flag} replaces the selector with your choices; "
-            "drop --selector, --drift-budget, and --min-similarity."
-        )
-    # NEW: Validate mutually exclusive options
-    if min_similarity is not None and drift_budget != _DEFAULTS.drift_budget:
-        raise click.UsageError("Options --min-similarity and --drift-budget are mutually exclusive.")
-
-    names = _names(optimizers)
-
-    # NEW: Convert min-similarity to drift budget, or fall back to drift_budget
-    final_drift_budget = (1.0 - min_similarity) if min_similarity is not None else drift_budget
-
-    params = Params(threshold=threshold, drift_budget=final_drift_budget, max_tokens=max_tokens)
+    if manual_review and save_tokens is not None:
+        raise click.UsageError(f"{review_flag} replaces the selector with your choices; drop --save-tokens.")
 
     with _clean_errors():
+        embedder = default_embedder()
+        merger = default_merger()
+        prompt = file.read()
         if interactive:
-            result = _interactive_reduce(file.read(), names, params, model)
+            result = _interactive_reduce(prompt, embedder, merger, Params(drift_budget=drift_budget))
         elif browser:
-            result = _browser_reduce(file.read(), names, params, model, open_browser=not no_open)
+            result = _browser_reduce(
+                prompt, embedder, merger, Params(drift_budget=drift_budget), open_browser=not no_open
+            )
         else:
-            result = reduce(file.read(), build_embedder(model), optimizers=names, selector=selector, params=params)
+            max_tokens = max(count_tokens(prompt) - save_tokens, 1) if save_tokens is not None else None
+            params = Params(drift_budget=drift_budget, max_tokens=max_tokens)
+            result = reduce(prompt, embedder, merger, params=params)
 
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
     else:
         reduction_pct = 1.0 - (result.reduced_tokens / result.source_tokens) if result.source_tokens > 0 else 0.0
-
-        # Print the stats to stderr (err=True) so it doesn't break terminal piping
+        # Stats go to stderr so piping the reduced text on stdout stays clean.
         click.echo(
             f"Tokens: {result.source_tokens} -> {result.reduced_tokens} ({reduction_pct:.1%} reduction)", err=True
         )
-
-        # Print the actual reduced text to stdout
         click.echo(result.text, nl=False)
 
 
 @cli.command(name="report")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--optimizer", "optimizers", default=DEFAULT_OPTIMIZER, help="comma-separated optimizer names")
-@click.option("--selector", default=DEFAULT_SELECTOR, help="selector name")
-@click.option("--threshold", type=float, default=_DEFAULTS.threshold, help="redundancy threshold")
-@click.option(
-    "--drift-budget",
-    type=float,
-    default=_DEFAULTS.drift_budget,
-    help="max cumulative cosine drift from the original prompt the reduction may accept (0.01 = 1%)",
-)
-@click.option("--model", default=DEFAULT_MODEL, help=_MODEL_HELP)
+@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @click.option(
     "--baseline",
     type=click.File("r"),
@@ -391,27 +333,18 @@ def reduce_cmd(
 )
 def report_cmd(
     file: IO[str],
-    optimizers: str,
-    selector: str,
-    threshold: float,
     drift_budget: float,
-    model: str,
     baseline: IO[str] | None,
     quality_tolerance: float,
     token_tolerance: int,
 ) -> None:
     """Run optimization and emit token metrics plus quality scores as JSON."""
-    names = _names(optimizers)
-    params = Params(threshold=threshold, drift_budget=drift_budget)
+    params = Params(drift_budget=drift_budget)
     comparison = None
     with _clean_errors():
-        report = optimization_report(
-            file.read(),
-            build_embedder(model),
-            optimizers=names,
-            selector=selector,
-            params=params,
-        )
+        embedder = default_embedder()
+        merger = default_merger()
+        report = optimization_report(file.read(), embedder, merger, params=params)
         if baseline is not None:
             baseline_report = OptimizationReport.model_validate_json(baseline.read())
             comparison = compare_reports(
@@ -445,17 +378,28 @@ def report_cmd(
 )
 def tokens_cmd(directory: Path) -> None:
     """List token counts of instruction files in a directory."""
-    encoding = tiktoken.get_encoding("cl100k_base")
-
     total_tokens = 0
     target_names = {"CLAUDE.md", "AGENT.md"}
 
     for file_path in directory.rglob("*.md"):
         if file_path.name in target_names or "skills" in file_path.parts:
-            text = file_path.read_text(encoding="utf-8")
-            count = len(encoding.encode(text))
-
+            count = count_tokens(file_path.read_text(encoding="utf-8"))
             click.echo(f"{file_path.name}: {count} tokens")
             total_tokens += count
 
     click.echo(f"{'-' * 20}\nTotal: {total_tokens} tokens")
+
+
+@cli.group(name="config")
+def config_group() -> None:
+    """Manage Alexandria's stored configuration."""
+
+
+@config_group.command(name="set")
+@click.argument("field", type=click.Choice(["openai-api-key"]))
+def config_set_cmd(field: str) -> None:
+    """Prompt for a value with hidden input and save it to the config file."""
+    value = click.prompt("OpenAI API key", hide_input=True)
+    with _clean_errors():
+        path = write_config_key(value)
+    click.echo(f"saved {field} to {path}")

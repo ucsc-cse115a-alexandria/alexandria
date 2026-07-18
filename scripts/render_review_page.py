@@ -11,7 +11,16 @@ import argparse
 from pathlib import Path
 
 from alexandria.cli.review_html import render_review_page
-from alexandria.ops import DEFAULT_MODEL, DETERMINISTIC, build_embedder, propose
+from alexandria.ir.contracts import Params
+from alexandria.ops import propose
+from alexandria.utils.embedders import HashEmbedder, default_embedder
+from alexandria.utils.merger import default_merger
+
+
+class _FirstWinsMerger:
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first  # identical to the first sentence, so the optimizer emits plain deletes
 
 
 def main() -> None:
@@ -19,14 +28,19 @@ def main() -> None:
     parser.add_argument("prompt", type=Path, help="prompt file to optimize and review")
     parser.add_argument("-o", "--output", type=Path, default=Path("review.html"), help="output HTML path")
     parser.add_argument(
-        "--model",
-        default=DEFAULT_MODEL,
-        help=f"embedding model id, or {DETERMINISTIC!r} for deterministic hashing",
+        "--deterministic",
+        action="store_true",
+        help="use offline hash embedding and a first-wins merger instead of the OpenAI defaults",
     )
     args = parser.parse_args()
 
     prompt = args.prompt.read_text(encoding="utf-8")
-    proposal = propose(prompt, build_embedder(args.model))
+    if args.deterministic:
+        embedder, merger = HashEmbedder(), _FirstWinsMerger()
+        proposal = propose(prompt, embedder, merger, params=Params(drift_budget=2.0))
+    else:
+        embedder, merger = default_embedder(), default_merger()
+        proposal = propose(prompt, embedder, merger)
     html = render_review_page(proposal)
     args.output.write_text(html, encoding="utf-8")
     print(args.output)

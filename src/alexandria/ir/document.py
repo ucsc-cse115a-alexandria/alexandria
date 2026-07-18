@@ -1,6 +1,6 @@
 """The intermediate representation: a Document -> Section -> Sentence tree, validated on build.
 
-Document.apply folds one Delete into a smaller tree.
+Document.apply folds one Delete or Replace into a rebuilt tree.
 """
 
 from __future__ import annotations
@@ -46,6 +46,16 @@ class Encoded(BaseModel):
     def _serialize_embedding(self, embedding: NDArray[np.float32]) -> list[float]:
         """Emit the vector as a JSON float list; float32 widens to double and narrows back exactly."""
         return embedding.tolist()
+
+    def __eq__(self, other: object) -> bool:
+        """Value equality by field; pydantic's default compares embeddings with `==`, which numpy rejects."""
+        if not isinstance(other, Encoded) or type(self) is not type(other):
+            return False
+        if not np.array_equal(self.embedding, other.embedding):
+            return False
+        return all(
+            getattr(self, name) == getattr(other, name) for name in type(self).model_fields if name != "embedding"
+        )
 
 
 class Sentence(Encoded):
@@ -110,13 +120,23 @@ class Document(Encoded):
         return self
 
     def apply(self, candidate: Candidate) -> Document | None:
-        """Apply one candidate, returning a smaller rebuilt Document.
+        """Apply one candidate, returning a rebuilt Document.
 
-        Returns the document unchanged when the candidate's targets are already gone,
-        and None if the edit would empty the Document or a Section.
+        Delete removes whichever targets are still present; Replace applies only when every
+        target is present (a partial merge would drop meaning) and is otherwise a no-op.
+        Returns the document unchanged when there is nothing to do, and None if the edit
+        would empty the Document or a Section.
         """
         surviving = {s.id for s in self.sentences}
-        present = {target for target in candidate.edit.targets if target in surviving}
+        edit = candidate.edit
+        if edit.op == "replace":
+            if not set(edit.targets).issubset(surviving):
+                return self
+            remaining = surviving - set(edit.targets[1:])
+            if _empties_a_section(self, remaining):
+                return None
+            return _rebuild(self, remaining, {edit.targets[0]: edit.replacement})
+        present = {target for target in edit.targets if target in surviving}
         if not present:
             return self
         remaining = surviving - present
@@ -143,8 +163,10 @@ def _empties_a_section(document: Document, surviving: set[SentenceId]) -> bool:
     return any(empty(section) for section in document.sections)
 
 
-def _rebuild(document: Document, surviving: set[SentenceId]) -> Document:
-    sections = tuple(_rebuild_section(section, surviving) for section in document.sections)
+def _rebuild(
+    document: Document, surviving: set[SentenceId], replacements: dict[SentenceId, Encoded] | None = None
+) -> Document:
+    sections = tuple(_rebuild_section(section, surviving, replacements or {}) for section in document.sections)
     text, token_count = rollup(sections)
     return Document(
         embedding_model=document.embedding_model,
@@ -155,14 +177,25 @@ def _rebuild(document: Document, surviving: set[SentenceId]) -> Document:
     )
 
 
-def _rebuild_section(section: Section, surviving: set[SentenceId]) -> Section:
+def _rebuild_section(section: Section, surviving: set[SentenceId], replacements: dict[SentenceId, Encoded]) -> Section:
     kept: list[Node] = []
     for child in section.children:
         if isinstance(child, Sentence):
-            if child.id in surviving:
-                kept.append(child)
+            if child.id not in surviving:
+                continue
+            replacement = replacements.get(child.id)
+            kept.append(
+                child
+                if replacement is None
+                else Sentence(
+                    id=child.id,
+                    text=replacement.text,
+                    token_count=replacement.token_count,
+                    embedding=replacement.embedding,
+                )
+            )
         else:
-            kept.append(_rebuild_section(child, surviving))
+            kept.append(_rebuild_section(child, surviving, replacements))
     children = tuple(kept)
     text, token_count = rollup(children)
     return Section(

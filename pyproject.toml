@@ -1,7 +1,7 @@
 [project]
 name = "alexandria"
 version = "0.1.0"
-description = "Label-free prompt optimization library using sentence embeddings to compress prompts while preserving meaning."
+description = "Label-free prompt optimization library using text embeddings to compress prompts while preserving meaning."
 readme = "README.md"
 requires-python = ">=3.14"
 license = { text = "MIT"}
@@ -13,7 +13,6 @@ dependencies = [
     "numpy>=2.1",
     "tiktoken>=0.8",
     "click>=8.1",
-    "sentence-transformers>=3.0",
     "openai>=2.44.0",
 ]
 
@@ -27,9 +26,7 @@ dev = [
     "pyright>=1.1.411",
     "pytest-cov>=7.1.0",
     "import-linter>=2.7",
-]
-scripts = [
-    "openai>=2.44",
+    "python-dotenv>=1.0",
 ]
 
 [tool.uv]
@@ -196,10 +193,9 @@ ignore_imports = [
     "alexandria.ops.features.select_test -> alexandria.**",
 ]
 
-# Functional core, imperative shell: only the embedding shell may import
-# sentence_transformers directly; chains through it are expected.
+# Functional core, imperative shell: only the utils shell may construct OpenAI clients.
 [[tool.importlinter.contracts]]
-name = "Embedding backend isolated to the shell"
+name = "OpenAI client isolated to the shell"
 type = "forbidden"
 source_modules = [
     "alexandria.ir",
@@ -207,6 +203,6 @@ source_modules = [
     "alexandria.cli",
 ]
 forbidden_modules = [
-    "sentence_transformers",
+    "openai",
 ]
 allow_indirect_imports = true

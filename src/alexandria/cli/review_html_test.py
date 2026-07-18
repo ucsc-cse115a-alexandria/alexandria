@@ -5,20 +5,32 @@ import re
 from typing import Any
 
 from alexandria.cli.review_html import render_review_page
-from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan
-from alexandria.ops import DETERMINISTIC, Proposal, build_embedder, diffs, optimize, represent, score
+from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Params, Replace
+from alexandria.ir.document import Encoded
+from alexandria.ops import HashEmbedder, Proposal, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
 
 
+class _FirstWinsMerger:
+    """Offline merger: the first sentence wins, so an exact-duplicate pair becomes a delete."""
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        del second, feedback
+        return first.strip()
+
+
 def _reviewable_proposal() -> Proposal:
-    document = represent(_REDUNDANT, build_embedder(DETERMINISTIC))
-    plan = optimize(document, score(document, names=("redundancy",)))
+    embedder = HashEmbedder()
+    document = represent(_REDUNDANT, embedder)
+    plan = optimize(
+        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+    )
     return Proposal(document=document, diffs=diffs(document, plan))
 
 
 def _empty_proposal() -> Proposal:
-    document = represent("only one unique line\n", build_embedder(DETERMINISTIC))
+    document = represent("only one unique line\n", HashEmbedder())
     return Proposal(document=document, diffs=())
 
 
@@ -53,7 +65,7 @@ def test_render_embeds_diff_metadata() -> None:
 
 
 def test_render_escapes_html_in_metadata() -> None:
-    document = represent("<unsafe>\n", build_embedder(DETERMINISTIC))
+    document = represent("<unsafe>\n", HashEmbedder())
     sentence_id = document.sentences[0].id
     diff = Diff(
         candidate=Candidate(
@@ -119,3 +131,17 @@ def test_render_payload_round_trips() -> None:
     assert len(payload["diffs"]) == len(proposal.diffs)
     assert len(payload["document"]["sentences"]) == len(proposal.document.sentences)
     assert payload["initial_selection"] == []
+
+
+def test_render_shows_the_replacement_line_for_a_replace_diff() -> None:
+    document = represent(_REDUNDANT, HashEmbedder())
+    ids = [s.id for s in document.sentences]
+    replacement = Encoded(text="merged line\n", token_count=2, embedding=document.sentences[0].embedding)
+    candidate = Candidate(
+        edit=Replace(targets=(ids[1], ids[2]), replacement=replacement), confidence=0.9, source="t", reason="r"
+    )
+    proposal = Proposal(document=document, diffs=diffs(document, (candidate,)))
+
+    page = render_review_page(proposal)
+
+    assert '<div class="line added">+merged line' in page
