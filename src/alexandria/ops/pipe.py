@@ -708,8 +708,8 @@ def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int
         candidate.target_distance > 0,
         candidate.target_distance,
         candidate.target_undercut,
-        candidate.drift,
         -candidate.minimum_coverage,
+        candidate.drift,
     )
 
 
@@ -768,7 +768,7 @@ def _target_merge_window(
         return group
     normalized_document = normalize(document_embedding)
     best: tuple[Sentence, ...] | None = None
-    best_similarity = float("-inf")
+    best_similarity = (float("-inf"), float("-inf"))
     end = 0
     window_tokens = 0
     for start in range(len(group)):
@@ -777,12 +777,16 @@ def _target_merge_window(
             end += 1
         if end - start >= 2 and window_tokens >= desired_tokens:
             window = group[start:end]
+            sentence_similarities = [
+                float(np.dot(normalize(sentence.embedding), normalized_document)) for sentence in window
+            ]
             similarity = (
+                min(sentence_similarities),
                 sum(
-                    sentence.token_count * float(np.dot(normalize(sentence.embedding), normalized_document))
-                    for sentence in window
+                    sentence.token_count * sentence_similarity
+                    for sentence, sentence_similarity in zip(window, sentence_similarities, strict=True)
                 )
-                / window_tokens
+                / window_tokens,
             )
             if similarity > best_similarity:
                 best = window

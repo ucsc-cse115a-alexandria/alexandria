@@ -6,9 +6,11 @@ import numpy as np
 import pytest
 
 from alexandria.ir.contracts import Params
+from alexandria.ir.document import Sentence, SentenceId
 from alexandria.ops.pipe import (
     MAX_TARGET_MERGE_ROUNDS,
     InfeasibleTargetError,
+    _target_merge_window,
     compare_reports,
     optimization_report,
     propose,
@@ -103,6 +105,23 @@ def test_target_merge_window_scales_with_the_required_saving() -> None:
     assert result.reduced_tokens <= 16
     assert result.merge_metrics.pruned_sentences == 0
     assert count_tokens(merger.prompts[0]) == 8
+
+
+def test_target_merge_window_does_not_hide_one_semantic_outlier_in_a_good_average() -> None:
+    similarities = (1.0, 0.2, 0.59, 0.59)
+    group = tuple(
+        Sentence(
+            id=SentenceId(f"s{index}"),
+            text=f"line {index}\n",
+            token_count=1,
+            embedding=np.array([similarity, np.sqrt(1.0 - similarity**2)], dtype=np.float32),
+        )
+        for index, similarity in enumerate(similarities)
+    )
+
+    selected = _target_merge_window(group, required_savings=1, document_embedding=np.array([1.0, 0.0]))
+
+    assert tuple(sentence.id for sentence in selected) == (SentenceId("s2"), SentenceId("s3"))
 
 
 def test_strict_target_prunes_exact_duplicates_without_merge_calls() -> None:
