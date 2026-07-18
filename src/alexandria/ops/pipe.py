@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import math
 import re
+import time
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
@@ -10,31 +11,35 @@ from pydantic import BaseModel, ConfigDict
 
 from alexandria.ir.contracts import (
     Candidate,
+    Delete,
     Diff,
     MergeMetrics,
     Params,
     Plan,
     Replace,
     TargetMergeRoundMetrics,
+    TrackedEmbedder,
     TrackedMerger,
 )
 from alexandria.ir.document import Document, Encoded, Section, Sentence
 from alexandria.ir.registry import required_scorers
-from alexandria.ir.similarity import normalize
+from alexandria.ir.similarity import cosine_distance, normalize, similarity_matrix_for
 from alexandria.ops.features.diff import diffs
 from alexandria.ops.features.optimize import DEFAULT_OPTIMIZER, optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import DEFAULT_SELECTOR, select
 from alexandria.utils.embedders import default_embedder
-from alexandria.utils.merger import default_merger
+from alexandria.utils.merger import TARGET_CANDIDATES_PER_CALL, default_merger
 from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, SentenceMerger
+    from alexandria.ir.document import SentenceId
 
-MAX_TARGET_MERGE_ROUNDS = 5
-TARGET_REFINEMENT_ROUNDS = 2
+MAX_TARGET_MERGE_ROUNDS = 3
+TARGET_REFINEMENT_ROUNDS = 1
+PRUNE_VERIFY_MAX_STEPS = 12  # drift-search probe cap
 _GENERATED_MARKUP = re.compile(r"(?m)^\s*(?:#{1,6}\s+\S|</?[A-Za-z][\w.-]*>)\s*$")
 
 
@@ -47,6 +52,16 @@ class _TargetCandidate:
     target_distance: int
     structure_valid: bool
     issues: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class _TargetMergeOutcome:
+    """A finished target merge: the reduced document plus the work both phases performed."""
+
+    document: Document
+    applied_groups: int
+    pruned_sentences: int
+    pruned_tokens: int
 
 
 class ReduceResult(BaseModel):
@@ -155,20 +170,25 @@ def reduce(
     When embedder or merger is omitted, the OpenAI defaults are built lazily (requires an API
     key: pass api_key, export OPENAI_API_KEY, or run `alexandria config set openai-api-key`).
     """
-    embedder = embedder if embedder is not None else default_embedder(api_key)
+    started = time.monotonic()
+    embedder = TrackedEmbedder(embedder if embedder is not None else default_embedder(api_key))
     merger = merger if merger is not None else default_merger(api_key)
     tracked_merger = TrackedMerger(merger)
     document = represent(prompt, embedder)
     if params is not None and params.require_target and params.max_tokens is not None:
-        reduced, applied_groups = _merge_to_target(document, embedder, tracked_merger, params)
+        try:
+            outcome = _merge_to_target(document, embedder, tracked_merger, params)
+        except TargetMergeError as error:
+            error.metrics = _finalize_metrics(error.metrics, embedder, started)
+            raise
+        metrics = tracked_merger.metrics(
+            proposed_edits=outcome.applied_groups, applied_edits=outcome.applied_groups
+        ).model_copy(update={"pruned_sentences": outcome.pruned_sentences, "pruned_tokens": outcome.pruned_tokens})
         return ReduceResult(
-            document=reduced,
+            document=outcome.document,
             source=document,
             applied=(),
-            merge_metrics=tracked_merger.metrics(
-                proposed_edits=applied_groups,
-                applied_edits=applied_groups,
-            ),
+            merge_metrics=_finalize_metrics(metrics, embedder, started),
         )
     scores = score(document, names=_required_scorers(optimizers))
     plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params)
@@ -183,31 +203,54 @@ def reduce(
         document=selection.document,
         source=document,
         applied=selection.applied,
-        merge_metrics=tracked_merger.metrics(proposed_edits=len(plan), applied_edits=len(selection.applied)),
+        merge_metrics=_finalize_metrics(
+            tracked_merger.metrics(proposed_edits=len(plan), applied_edits=len(selection.applied)),
+            embedder,
+            started,
+        ),
+    )
+
+
+def _finalize_metrics(metrics: MergeMetrics, embedder: TrackedEmbedder, started: float) -> MergeMetrics:
+    """Stamp the reduction-wide embedding counters and wall clock onto merger-built metrics."""
+    return metrics.model_copy(
+        update={
+            "embed_calls": embedder.calls,
+            "embed_texts": embedder.texts,
+            "elapsed_seconds": time.monotonic() - started,
+        }
     )
 
 
 def _merge_to_target(
     document: Document, embedder: Embedder, merger: TrackedMerger, params: Params
-) -> tuple[Document, int]:
-    """Merge the largest content groups until token, structure, and embedding constraints pass."""
+) -> _TargetMergeOutcome:
+    """Prune redundant sentences, then merge the largest content groups until token, structure,
+    and embedding constraints pass."""
     if params.max_tokens is None:
         raise ValueError("target merge requires max_tokens")
     expected_structure = tuple(sentence.text.strip() for sentence in document.sentences if not sentence.optimizable)
     min_document_tokens = max(1, math.floor(params.max_tokens * 0.95))
-    current = document
+    current = _prune_to_target(document, embedder, params, min_document_tokens, params.max_tokens)
+    pruned_sentences = len(document.sentences) - len(current.sentences)
+    pruned_tokens = document.token_count - current.token_count
+
+    def merge_metrics(applied_groups: int) -> MergeMetrics:
+        return merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups).model_copy(
+            update={"pruned_sentences": pruned_sentences, "pruned_tokens": pruned_tokens}
+        )
+
     applied_groups = 0
-    best_tokens = document.token_count
+    best_tokens = current.token_count
     best_drift = float("inf")
     last_issues: tuple[str, ...] = ()
     while current.token_count > params.max_tokens:
         groups = _compressible_groups(current)
         if not groups:
-            metrics = merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups)
             raise TargetMergeError(
                 f"target merge cannot continue at {current.token_count} tokens: "
                 "no multi-sentence content group remains",
-                metrics,
+                merge_metrics(applied_groups),
                 best_tokens=best_tokens,
                 best_drift=best_drift,
             )
@@ -265,7 +308,10 @@ def _merge_to_target(
             pool = [*([base] if base is not None else []), *selectable]
             if not pool:
                 last_issues = ("the model returned no new non-empty candidates",)
-                feedback = "Return exactly 10 distinct, non-empty candidates within the required token range."
+                feedback = (
+                    f"Return exactly {TARGET_CANDIDATES_PER_CALL} distinct, non-empty candidates "
+                    "within the required token range."
+                )
                 continue
             base = min(pool, key=_target_candidate_rank)
             improved = (
@@ -299,15 +345,21 @@ def _merge_to_target(
                 target_reached_round = target_reached_round or round_number
                 if round_number - target_reached_round >= TARGET_REFINEMENT_ROUNDS:
                     break
-            feedback = _target_feedback(base, group, embedder)
+            if round_number < MAX_TARGET_MERGE_ROUNDS:  # the final round's feedback would go unread
+                feedback = _target_feedback(base, group, embedder)
         if accepted is None:
             break
         current = accepted
         applied_groups += 1
     if min_document_tokens <= current.token_count <= params.max_tokens:
-        return current, applied_groups
+        return _TargetMergeOutcome(
+            document=current,
+            applied_groups=applied_groups,
+            pruned_sentences=pruned_sentences,
+            pruned_tokens=pruned_tokens,
+        )
     details = "; ".join(last_issues) or "no acceptable output"
-    metrics = merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups)
+    metrics = merge_metrics(applied_groups)
     round_trace = ", ".join(
         f"r{round_metrics.round} base {round_metrics.base_tokens}/{round_metrics.base_drift:.4f}, "
         f"generated {round_metrics.generated_best_tokens}/{round_metrics.generated_best_drift:.4f}, "
@@ -321,6 +373,106 @@ def _merge_to_target(
         best_tokens=best_tokens,
         best_drift=best_drift,
     )
+
+
+def _prune_to_target(
+    document: Document, embedder: Embedder, params: Params, min_tokens: int, max_tokens: int
+) -> Document:
+    """Delete redundant sentences toward the token window without any merge-model call.
+
+    The plan orders deletions by descending redundancy; the whole plan is then drift-verified
+    with one embedding call. When the full plan drifts over budget, bisect on the deletion count
+    (a heuristic, since drift is not monotone in prefix length; every returned prefix is
+    verified) and keep the longest passing prefix, falling back to no pruning at all.
+    """
+    deletions = _prune_plan(document, params.threshold, min_tokens, max_tokens)
+    if not deletions:
+        return document
+    pruned = _apply_prune_prefix(document, deletions, len(deletions))
+    drift = cosine_distance(embedder.embed([pruned.text])[0], document.embedding)
+    if drift <= params.drift_budget:
+        return pruned
+    passing, failing = 0, len(deletions)
+    for _ in range(PRUNE_VERIFY_MAX_STEPS):
+        middle = (passing + failing) // 2
+        if middle == passing:
+            break
+        trial = _apply_prune_prefix(document, deletions, middle)
+        drift = cosine_distance(embedder.embed([trial.text])[0], document.embedding)
+        if drift <= params.drift_budget:
+            passing = middle
+        else:
+            failing = middle
+    return _apply_prune_prefix(document, deletions, passing) if passing else document
+
+
+def _prune_plan(document: Document, threshold: float, min_tokens: int, max_tokens: int) -> tuple[SentenceId, ...]:
+    """Deletions, most-redundant first, that approach max_tokens while never undershooting
+    min_tokens or emptying a section."""
+    sentences = document.sentences
+    if len(sentences) < 2 or document.token_count <= max_tokens:
+        return ()
+    similarity = similarity_matrix_for(document).copy()  # copy: the shared matrix is read-only
+    np.fill_diagonal(similarity, -np.inf)
+    ancestors, surviving_counts = _sentence_ancestors(document)
+    alive = np.ones(len(sentences), dtype=bool)
+    remaining = document.token_count
+    deletions: list[SentenceId] = []
+    while remaining > max_tokens:
+        redundancy = np.where(alive[None, :], similarity, -np.inf).max(axis=1)
+        chosen: int | None = None
+        for index in np.argsort(-redundancy):
+            sentence = sentences[int(index)]
+            if not alive[index] or not sentence.optimizable:
+                continue
+            if redundancy[index] < threshold:
+                break  # descending order: everything after is below the eligibility floor
+            if remaining - sentence.token_count < min_tokens:
+                continue  # floor guard: this deletion would undershoot the window
+            if any(surviving_counts[ancestor] <= 1 for ancestor in ancestors[sentence.id]):
+                continue  # deleting the section's last sentence would empty it
+            chosen = int(index)
+            break
+        if chosen is None:
+            break
+        alive[chosen] = False
+        remaining -= sentences[chosen].token_count
+        for ancestor in ancestors[sentences[chosen].id]:
+            surviving_counts[ancestor] -= 1
+        deletions.append(sentences[chosen].id)
+    return tuple(deletions)
+
+
+def _sentence_ancestors(document: Document) -> tuple[dict[SentenceId, tuple[int, ...]], list[int]]:
+    """Each sentence's ancestor-section indices, plus every section's surviving-sentence count."""
+    ancestors: dict[SentenceId, tuple[int, ...]] = {}
+    counts: list[int] = []
+
+    def walk(section: Section, lineage: tuple[int, ...]) -> None:
+        index = len(counts)
+        counts.append(len(section.sentences))
+        for child in section.children:
+            if isinstance(child, Sentence):
+                ancestors[child.id] = (*lineage, index)
+            else:
+                walk(child, (*lineage, index))
+
+    for section in document.sections:
+        walk(section, ())
+    return ancestors, counts
+
+
+def _apply_prune_prefix(document: Document, deletions: tuple[SentenceId, ...], count: int) -> Document:
+    candidate = Candidate(
+        edit=Delete(targets=deletions[:count]),
+        confidence=1.0,
+        source="target_prune",
+        reason="deleted redundant sentences to approach the token target",
+    )
+    applied = document.apply(candidate)
+    if applied is None or applied is document:
+        raise ValueError("prune plan produced an inapplicable deletion prefix")
+    return applied
 
 
 def _evaluate_target_candidates(
@@ -421,11 +573,11 @@ def _target_feedback(candidate: _TargetCandidate, group: tuple[Sentence, ...], e
         next(sentence.embedding for sentence in candidate.document.sentences if sentence.text == candidate.text)
     )
     similarities = source_embeddings @ replacement
-    least_covered = np.argsort(similarities)[:10]
+    least_covered = np.argsort(similarities)[:TARGET_CANDIDATES_PER_CALL]
     source_excerpts = [" ".join(group[int(index)].text.split())[:220] for index in least_covered]
     base_chunks = _feedback_chunks(candidate.text)
     base_embeddings = np.stack([normalize(vector) for vector in embedder.embed(list(base_chunks))])
-    least_representative = np.argsort(base_embeddings @ replacement)[:10]
+    least_representative = np.argsort(base_embeddings @ replacement)[:TARGET_CANDIDATES_PER_CALL]
     base_excerpts = [" ".join(base_chunks[int(index)].split())[:220] for index in least_representative]
     problems = "; ".join(candidate.issues) or "improve semantic coverage while preserving the token range"
     rendered_swaps = "\n".join(

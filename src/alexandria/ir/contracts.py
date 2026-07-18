@@ -45,7 +45,7 @@ class TargetMergeRoundMetrics(BaseModel):
 
 
 class MergeMetrics(BaseModel):
-    """Generation work performed by a sentence merger during one reduction."""
+    """Generation work performed by one reduction: merger calls, pruning, embeddings, and wall clock."""
 
     model_config = ConfigDict(frozen=True)
     calls: int = Field(default=0, ge=0)
@@ -55,6 +55,11 @@ class MergeMetrics(BaseModel):
     target_rounds: tuple[TargetMergeRoundMetrics, ...] = ()
     proposed_edits: int = Field(default=0, ge=0)
     applied_edits: int = Field(default=0, ge=0)
+    pruned_sentences: int = Field(default=0, ge=0)
+    pruned_tokens: int = Field(default=0, ge=0)
+    embed_calls: int = Field(default=0, ge=0)
+    embed_texts: int = Field(default=0, ge=0)
+    elapsed_seconds: float = Field(default=0.0, ge=0.0)
 
 
 class Embedder(Protocol):
@@ -85,6 +90,24 @@ class TargetedMerger(Protocol):
         feedback: str | None = None,
         base_candidate: str | None = None,
     ) -> tuple[str, ...]: ...
+
+
+class TrackedEmbedder:
+    """Decorate any embedder with call and text counters."""
+
+    def __init__(self, embedder: Embedder) -> None:
+        self._embedder = embedder
+        self.calls = 0
+        self.texts = 0
+
+    @property
+    def model_id(self) -> str:
+        return self._embedder.model_id
+
+    def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
+        self.calls += 1
+        self.texts += len(texts)
+        return self._embedder.embed(texts)
 
 
 class TrackedMerger:

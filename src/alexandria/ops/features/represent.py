@@ -7,12 +7,15 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId, rollup
+from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId
 from alexandria.utils.embedders import default_embedder
 from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
+
+    import numpy as np
+    from numpy.typing import NDArray
 
     from alexandria.ir.contracts import Embedder
 
@@ -189,6 +192,8 @@ def _assign_ids(texts: list[str]) -> list[SentenceId]:
 
 
 def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
+    """Tokenize and embed the raw tree in two batched calls: one for sentences, one for
+    every section text plus the document text."""
     leaves = _leaf_sentences(sections)
     vectors = embedder.embed([leaf.text for leaf in leaves])
     ids = _assign_ids([leaf.text for leaf in leaves])
@@ -202,31 +207,64 @@ def encode(sections: tuple[RawSection, ...], embedder: Embedder) -> Document:
         )
         for sid, leaf, vector in zip(ids, leaves, vectors, strict=True)
     )
-    built = tuple(_build_section(section, embedder, built_sentences) for section in sections)
-    text, token_count = rollup(built)
+    rolled = tuple(_rollup_section(section, built_sentences) for section in sections)
+    text = "".join(section.text for section in rolled)
+    token_count = sum(section.token_count for section in rolled)
+    section_texts = [section_text for section in rolled for section_text in _section_texts(section)]
+    section_vectors = iter(embedder.embed([*section_texts, text]))
+    built = tuple(_build_section(section, section_vectors) for section in rolled)
     return Document(
         embedding_model=embedder.model_id,
         sections=built,
         text=text,
         token_count=token_count,
-        embedding=embedder.embed([text])[0],
+        embedding=next(section_vectors),
     )
 
 
-def _build_section(raw: RawSection, embedder: Embedder, sentences: Iterator[Sentence]) -> Section:
-    children: list[Node] = [
-        next(sentences) if isinstance(child, RawSentence) else _build_section(child, embedder, sentences)
+@dataclass(frozen=True)
+class _Rolled:
+    """A section with its text and tokens rolled up, awaiting its embedding."""
+
+    raw: RawSection
+    children: tuple[Sentence | _Rolled, ...]
+    text: str
+    token_count: int
+
+
+def _rollup_section(raw: RawSection, sentences: Iterator[Sentence]) -> _Rolled:
+    children = tuple(
+        next(sentences) if isinstance(child, RawSentence) else _rollup_section(child, sentences)
         for child in raw.children
-    ]
-    kept = tuple(children)
-    text, token_count = rollup(kept)
+    )
+    return _Rolled(
+        raw=raw,
+        children=children,
+        text="".join(child.text for child in children),
+        token_count=sum(child.token_count for child in children),
+    )
+
+
+def _section_texts(rolled: _Rolled) -> Iterator[str]:
+    """Every section text under rolled, in the pre-order _build_section consumes vectors."""
+    yield rolled.text
+    for child in rolled.children:
+        if isinstance(child, _Rolled):
+            yield from _section_texts(child)
+
+
+def _build_section(rolled: _Rolled, vectors: Iterator[NDArray[np.float32]]) -> Section:
+    embedding = next(vectors)
+    children: tuple[Node, ...] = tuple(
+        child if isinstance(child, Sentence) else _build_section(child, vectors) for child in rolled.children
+    )
     return Section(
-        kind=raw.kind,
-        header=raw.header,
-        children=kept,
-        text=text,
-        token_count=token_count,
-        embedding=embedder.embed([text])[0],
+        kind=rolled.raw.kind,
+        header=rolled.raw.header,
+        children=children,
+        text=rolled.text,
+        token_count=rolled.token_count,
+        embedding=embedding,
     )
 
 

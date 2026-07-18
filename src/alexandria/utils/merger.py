@@ -13,16 +13,19 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import SentenceMerger
 
 MERGE_MODEL = "gpt-5.6-luna"
+TARGET_CANDIDATES_PER_CALL = 3
 _INSTRUCTIONS = (
     "You merge two overlapping prompt instructions. Rewrite them as ONE instruction that "
     "preserves the full meaning of both in as few tokens as possible. "
     "Reply with only the rewritten instruction, no explanations."
 )
 _TARGET_INSTRUCTIONS = (
-    "Generate exactly 10 controlled variants for a token-constrained semantic search. On the first round, create "
+    f"Generate exactly {TARGET_CANDIDATES_PER_CALL} controlled variants for a token-constrained semantic search. "
+    "On the first round, create "
     "diverse compressions from the source. On later rounds, mutate the single current base; do not restart or "
     "summarize the source from scratch. Copy the base nearly verbatim and make only the localized, token-neutral "
-    "substitution requested by the feedback. Candidate N must use feedback excerpt N, so the 10 outputs explore 10 "
+    f"substitution requested by the feedback. Candidate N must use feedback excerpt N, so the "
+    f"{TARGET_CANDIDATES_PER_CALL} outputs explore {TARGET_CANDIDATES_PER_CALL} "
     "different local edits. Preserve all untouched base wording exactly. Every candidate must stay within the "
     "requested "
     "token range. Do not add "
@@ -35,11 +38,11 @@ class TargetMergeCandidates(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     candidates: list[str] = Field(
-        min_length=10,
-        max_length=10,
+        min_length=TARGET_CANDIDATES_PER_CALL,
+        max_length=TARGET_CANDIDATES_PER_CALL,
         description=(
-            "Exactly 10 distinct, meaning-preserving rewritten segments. Every item must fit the requested token "
-            "range."
+            f"Exactly {TARGET_CANDIDATES_PER_CALL} distinct, meaning-preserving rewritten segments. "
+            "Every item must fit the requested token range."
         ),
     )
 
@@ -86,7 +89,8 @@ class OpenAIMerger:
         )
         if base_candidate is not None:
             request += (
-                "\n\nUse this as the single base for all 10 local mutations. Keep every strong part unless the "
+                f"\n\nUse this as the single base for all {TARGET_CANDIDATES_PER_CALL} local mutations. "
+                "Keep every strong part unless the "
                 "feedback identifies a replacement that should improve semantic similarity:\n"
                 f"<current_base>\n{base_candidate}\n</current_base>"
             )
@@ -95,7 +99,7 @@ class OpenAIMerger:
         try:
             response = self._client.responses.parse(
                 model=MERGE_MODEL,
-                reasoning={"effort": "medium"},
+                reasoning={"effort": "low"},
                 instructions=_TARGET_INSTRUCTIONS,
                 input=request,
                 text_format=TargetMergeCandidates,
