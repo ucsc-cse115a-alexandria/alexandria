@@ -49,6 +49,14 @@ whole-document embedding drift the reduction may accept (`0.01` = 1%):
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
 ```
 
+Use `--target-reduction P` when the reduction percentage is a requirement rather than a best-effort
+budget. It exits with an error if the drift gate prevents reducing by P percent, so an unmet target
+cannot be mistaken for success:
+
+```bash
+uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
+```
+
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
 quality scores:
 
@@ -104,7 +112,8 @@ Four pure phases over one intermediate representation (`Document` → `Section` 
    applying it and measuring the whole-document embedding drift; if it exceeds the drift budget the
    LLM is re-asked with feedback, up to 3 attempts, then the pair is skipped.
 4. **Select** — apply the accepted edits least-drift-first under the cumulative drift budget, stopping
-   at the `--save-tokens` target.
+   at the requested token budget. `--target-reduction` additionally fails the command if its percentage
+   target is not reached.
 
 ## Tech stack
 

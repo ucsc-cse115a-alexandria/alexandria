@@ -36,9 +36,12 @@ uv run alexandria reduce prompt.txt --json
 ```
 
 Use `--keep P` to aim for P percent of the prompt's source tokens, or `--save-tokens N` to stop once N
-tokens are saved (edits are applied least-drift-first). These options are mutually exclusive. The target
-is a stopping point rather than a guarantee: `--drift-budget` may stop compression sooner. The existing
-before/after token counts show the achieved reduction.
+tokens are saved (edits are applied least-drift-first). These options are mutually exclusive. They are
+stopping points rather than guarantees: `--drift-budget` may stop compression sooner.
+
+Use `--target-reduction P` when the percentage itself is required: `P` means “reduce by P percent,” and
+the command exits with an error if that target is not reached. It is mutually exclusive with `--keep` and
+`--save-tokens`; lower the target or raise `--drift-budget` when it reports that the target was unmet.
 
 `--drift-budget` caps the cumulative whole-document embedding drift the reduction may accept (`0.01` =
 1%). `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the
@@ -47,6 +50,7 @@ same in a browser.
 ```bash
 uv run alexandria reduce --keep 95 prompt.txt > reduced.txt
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
+uv run alexandria reduce --target-reduction 10 prompt.txt > reduced.txt
 ```
 
 ## Run phases separately

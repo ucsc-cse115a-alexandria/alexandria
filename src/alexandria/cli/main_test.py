@@ -327,11 +327,56 @@ def test_keep_derives_the_max_token_budget_from_the_source(monkeypatch: pytest.M
     assert seen_max_tokens == [source * 60 // 100]
 
 
-def test_keep_and_save_tokens_are_mutually_exclusive() -> None:
-    result = CliRunner().invoke(cli, ["reduce", "--keep", "95", "--save-tokens", "5"], input="a\nb\n")
+@pytest.mark.usefixtures("offline_models")
+def test_target_reduction_derives_the_max_token_budget_and_requires_success(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from alexandria.cli import main as main_module
+
+    prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
+    source = count_tokens(prompt)
+    seen_max_tokens: list[int | None] = []
+
+    def capture_params(
+        prompt: str,
+        embedder: Embedder | None = None,
+        merger: SentenceMerger | None = None,
+        *,
+        params: Params | None = None,
+    ) -> ReduceResult:
+        seen_max_tokens.append(params.max_tokens if params is not None else None)
+        return reduce(prompt, embedder, merger, params=params)
+
+    monkeypatch.setattr(main_module, "reduce", capture_params)
+
+    result = CliRunner().invoke(
+        cli, ["reduce", "--target-reduction", "20", "--drift-budget", "2.0", "--json"], input=prompt
+    )
+
+    assert result.exit_code == 0
+    assert seen_max_tokens == [source * 80 // 100]
+    assert json.loads(result.output)["reduction_pct"] >= 0.20
+
+
+@pytest.mark.usefixtures("offline_models")
+def test_target_reduction_fails_when_the_drift_gate_prevents_the_target() -> None:
+    result = CliRunner().invoke(
+        cli,
+        ["reduce", "--target-reduction", "10", "--json"],
+        input="repeat me\nrepeat me\nunique line\n",
+    )
+
+    assert result.exit_code == 1
+    assert "target reduction 10% was not met: achieved 0.0%" in result.output
+
+
+def test_budget_options_are_mutually_exclusive() -> None:
+    result = CliRunner().invoke(
+        cli, ["reduce", "--keep", "95", "--save-tokens", "5", "--target-reduction", "10"], input="a\nb\n"
+    )
 
     assert result.exit_code == 2
-    assert "--keep and --save-tokens are mutually exclusive" in result.output
+    assert "--keep, --save-tokens, and --target-reduction are mutually exclusive" in result.output
 
 
 @pytest.mark.parametrize("keep", ["-1", "0", "100", "101"])
@@ -340,6 +385,14 @@ def test_keep_rejects_values_outside_the_open_percentage_range(keep: str) -> Non
 
     assert result.exit_code == 2
     assert "0.0<x<100.0" in result.output
+
+
+@pytest.mark.parametrize("reduction", ["-1", "100", "101"])
+def test_target_reduction_rejects_values_outside_the_percentage_range(reduction: str) -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--target-reduction", reduction], input="a\nb\n")
+
+    assert result.exit_code == 2
+    assert "0.0<=x<100.0" in result.output
 
 
 @pytest.mark.usefixtures("offline_models")
