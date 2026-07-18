@@ -239,6 +239,12 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     default=None,
     help="keep P percent of the prompt's source tokens",
 )
+@click.option(
+    "--target-reduction",
+    type=click.FloatRange(min=0.0, max=100.0, max_open=True),
+    default=None,
+    help="require reducing the prompt by P percent; exit with an error if the target is not met",
+)
 @click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
@@ -256,6 +262,7 @@ def reduce_cmd(
     file: IO[str],
     save_tokens: int | None,
     keep: float | None,
+    target_reduction: float | None,
     drift_budget: float,
     as_json: bool,
     interactive: bool,
@@ -284,16 +291,18 @@ def reduce_cmd(
         raise click.UsageError("--no-open requires --browser.")
     if interactive and browser:
         raise click.UsageError("--interactive and --browser are mutually exclusive.")
-    if keep is not None and save_tokens is not None:
-        raise click.UsageError("--keep and --save-tokens are mutually exclusive.")
+    budget_options = (keep, save_tokens, target_reduction)
+    if sum(option is not None for option in budget_options) > 1:
+        raise click.UsageError("--keep, --save-tokens, and --target-reduction are mutually exclusive.")
 
     manual_review = interactive or browser
     review_flag = "--interactive" if interactive else "--browser"
     if manual_review and getattr(file, "name", None) == "<stdin>":
         raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
-    if manual_review and (save_tokens is not None or keep is not None):
+    if manual_review and any(option is not None for option in budget_options):
         raise click.UsageError(
-            f"{review_flag} replaces the selector with your choices; drop --save-tokens and --keep."
+            f"{review_flag} replaces the selector with your choices; "
+            "drop --save-tokens, --keep, and --target-reduction."
         )
 
     with _clean_errors():
@@ -310,10 +319,23 @@ def reduce_cmd(
             source_tokens = count_tokens(prompt)
             if keep is not None:
                 max_tokens = math.floor(source_tokens * keep / 100)
+            elif target_reduction is not None:
+                # ``Params.max_tokens`` cannot be zero because a Document must retain at least one
+                # sentence. The post-reduction check below still reports a 100%-ish target as unmet.
+                max_tokens = max(math.floor(source_tokens * (100 - target_reduction) / 100), 1)
             else:
                 max_tokens = max(source_tokens - save_tokens, 1) if save_tokens is not None else None
             params = Params(drift_budget=drift_budget, max_tokens=max_tokens)
             result = reduce(prompt, embedder, merger, params=params)
+
+    if target_reduction is not None:
+        actual_reduction = 1.0 - (result.reduced_tokens / result.source_tokens)
+        if actual_reduction + 1e-12 < target_reduction / 100:
+            raise click.ClickException(
+                f"target reduction {target_reduction:g}% was not met: achieved {actual_reduction:.1%} "
+                f"({result.source_tokens} -> {result.reduced_tokens} tokens). "
+                "Increase --drift-budget or use a lower --target-reduction."
+            )
 
     if as_json:
         click.echo(_reduction_json(result.text, result.applied, result.source_tokens, result.reduced_tokens))
