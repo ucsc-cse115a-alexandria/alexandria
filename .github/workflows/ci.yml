@@ -25,7 +25,7 @@ jobs:
 
       - name: Install dependencies (uv)
         run: |
-          uv sync --dev --frozen
+          uv sync --dev --group scripts --frozen
 
       - name: Run Ruff check
         run: uv run ruff check .
