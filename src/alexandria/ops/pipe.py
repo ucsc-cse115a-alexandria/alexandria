@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 MAX_TARGET_MERGE_ROUNDS = 2
 TARGET_REFINEMENT_ROUNDS = 1
 PRUNE_VERIFY_MAX_STEPS = 12  # drift-search probe cap
-TARGET_GENERATION_HEADROOM = 0.10
+TARGET_GENERATION_HEADROOM = 0.0
 MAX_REPAIR_VARIANTS = 6
 _GENERATED_MARKUP = re.compile(r"(?m)^\s*(?:#{1,6}\s+\S|</?[A-Za-z][\w.-]*>)\s*$")
 _REPAIR_BOUNDARY = re.compile(r"(?<=[.!?])(?:[ \t]+|\n+)|\n+")
@@ -702,14 +702,14 @@ def _evaluate_target_candidates(
     return tuple(evaluated)
 
 
-def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int, float, float, int]:
+def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int, int, float, float]:
     return (
         not candidate.structure_valid,
         candidate.target_distance > 0,
         candidate.target_distance,
+        candidate.target_undercut,
         candidate.drift,
         -candidate.minimum_coverage,
-        candidate.target_undercut,
     )
 
 
@@ -758,12 +758,12 @@ def _target_merge_window(
     """Choose only enough contiguous content to make the requested saving practical.
 
     Rewriting an entire long context to save 10% makes each generated candidate unnecessarily huge. A window around
-    three times the required saving lowers the local compression ratio and preserves more detail. Large targets
-    naturally saturate at the full group. Among similarly sized windows, prefer content most representative of the
-    whole document so semantic outliers such as sparse task facts are less likely to be touched.
+    twice the required saving asks the merger to compress that window by roughly half. Large targets naturally
+    saturate at the full group. Among similarly sized windows, prefer content most representative of the whole
+    document so semantic outliers such as sparse task facts are less likely to be touched.
     """
     group_tokens = sum(sentence.token_count for sentence in group)
-    desired_tokens = min(group_tokens, max(required_savings + 1, required_savings * 3))
+    desired_tokens = min(group_tokens, max(required_savings + 1, required_savings * 2))
     if desired_tokens >= group_tokens or len(group) <= 2:
         return group
     normalized_document = normalize(document_embedding)

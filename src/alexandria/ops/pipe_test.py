@@ -102,7 +102,7 @@ def test_target_merge_window_scales_with_the_required_saving() -> None:
     assert result.source_tokens == 20
     assert result.reduced_tokens <= 16
     assert result.merge_metrics.pruned_sentences == 0
-    assert count_tokens(merger.prompts[0]) == 12
+    assert count_tokens(merger.prompts[0]) == 8
 
 
 def test_strict_target_prunes_exact_duplicates_without_merge_calls() -> None:

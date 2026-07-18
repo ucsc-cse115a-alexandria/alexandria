@@ -79,7 +79,7 @@ class OpenAIMerger:
     ) -> tuple[str, ...]:
         from openai import OpenAIError
 
-        min_tokens = max(1, int(max_tokens * 0.90))
+        min_tokens = max(1, int(max_tokens * 0.95))
         request = (
             f"Merge and rewrite the content segment below to between {min_tokens} and {max_tokens} tokens. "
             "The upper limit is mandatory and will be checked with cl100k_base. Prefer the top of the range when "
