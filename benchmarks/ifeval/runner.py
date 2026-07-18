@@ -100,7 +100,12 @@ def run_experiment(
     return ExperimentResult(label=label, model=model, records=tuple(records))
 
 
-_METRICS = ("prompt_strict", "inst_strict", "prompt_loose", "inst_loose")
+_METRICS = (
+    ("prompt_strict", "Prompt-level strict accuracy"),
+    ("inst_strict", "Instruction-level strict accuracy"),
+    ("prompt_loose", "Prompt-level loose accuracy"),
+    ("inst_loose", "Instruction-level loose accuracy"),
+)
 
 
 def _counts(result: ExperimentResult) -> dict[str, tuple[int, int]]:
@@ -115,24 +120,28 @@ def _counts(result: ExperimentResult) -> dict[str, tuple[int, int]]:
 
 
 def compare(*results: ExperimentResult) -> str:
-    """A markdown table of accuracies against the first result (the baseline) and mean tokens saved.
+    """A markdown table of mean compression and official IFEval accuracies.
 
-    Baseline cells read `passed/total (percent)`; later rows show the change against the
-    baseline in percentage points, so the accuracy cost of each compression level is explicit.
+    Each accuracy is an IFEval mean: prompt-level means every instruction in a prompt must
+    pass; instruction-level means each instruction is counted separately. Later rows show
+    their change against the first result in percentage points.
     """
     baseline = _counts(results[0])
-    header = "| condition | tokens saved | " + " | ".join(_METRICS) + " |"
+    header = "| Condition | Mean compression | " + " | ".join(label for _, label in _METRICS) + " |"
     divider = "|" + "|".join("---" for _ in range(len(_METRICS) + 2)) + "|"
     rows: list[str] = []
     for index, result in enumerate(results):
         cells = [result.label, f"{(1 - result.mean_ratio) * 100:.1f}%"]
-        for metric, (passed, total) in _counts(result).items():
+        counts = _counts(result)
+        for metric, _ in _METRICS:
+            passed, total = counts[metric]
             percent = 100 * passed / total
             if index == 0:
-                cells.append(f"{passed}/{total} ({percent:.1f}%)")
+                cells.append(f"{percent:.1f}% ({passed}/{total})")
             else:
                 base_passed, base_total = baseline[metric]
                 delta = percent - 100 * base_passed / base_total
-                cells.append(f"{passed}/{total} ({'±0.0pt' if delta == 0 else f'{delta:+.1f}pt'})")
+                delta_text = "±0.0 pp" if delta == 0 else f"{delta:+.1f} pp"
+                cells.append(f"{percent:.1f}% ({delta_text}; {passed}/{total})")
         rows.append("| " + " | ".join(cells) + " |")
     return "\n".join([header, divider, *rows])
