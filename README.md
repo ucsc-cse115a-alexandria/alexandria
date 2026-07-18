@@ -7,22 +7,25 @@
 | src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
 | src/alexandria/cli/browser\_review.py    |      151 |       23 |       36 |        8 |     82.4% |41, 51, 69, 73, 147, 177-184, 188-189, 194-196, 215-216, 230-231, 233 |
 | src/alexandria/cli/envelope.py           |       21 |        0 |        0 |        0 |    100.0% |           |
-| src/alexandria/cli/interactive.py        |      137 |        6 |       48 |        7 |     93.0% |36, 38, 103, 157-158, 187, 198-\>182, 212-\>210 |
-| src/alexandria/cli/main.py               |      207 |        3 |       48 |        3 |     97.6% |92, 110, 330 |
-| src/alexandria/cli/review\_html.py       |       79 |        6 |       26 |        4 |     88.6% |321, 326, 345-348, 357 |
-| src/alexandria/ir/contracts.py           |       50 |        0 |       10 |        6 |     90.0% |34-\>36, 34-\>exit, 36-\>exit, 79-\>exit, 83-\>exit, 95-\>exit |
-| src/alexandria/ir/document.py            |      102 |        3 |       26 |        3 |     95.3% |24, 105, 134 |
+| src/alexandria/cli/interactive.py        |      143 |        6 |       50 |        7 |     93.3% |36, 38, 110, 169-170, 199, 210-\>194, 224-\>222 |
+| src/alexandria/cli/main.py               |      202 |        2 |       46 |        2 |     98.4% |   87, 105 |
+| src/alexandria/cli/review\_html.py       |       79 |        5 |       26 |        3 |     90.5% |321, 326, 345-348 |
+| src/alexandria/ir/contracts.py           |       63 |        0 |       14 |        7 |     90.9% |34-\>36, 34-\>exit, 36-\>exit, 46-\>exit, 108-\>exit, 112-\>exit, 126-\>exit |
+| src/alexandria/ir/document.py            |      118 |        5 |       36 |        5 |     93.5% |24, 53, 55, 115, 154 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
 | src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/ops/features/compare.py   |       34 |        0 |        2 |        0 |    100.0% |           |
-| src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        44 |
-| src/alexandria/ops/features/optimize.py  |       36 |        0 |       10 |        0 |    100.0% |           |
-| src/alexandria/ops/features/represent.py |      151 |        1 |       38 |        1 |     98.9% |       237 |
+| src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        45 |
+| src/alexandria/ops/features/optimize.py  |       72 |        1 |       28 |        1 |     98.0% |        93 |
+| src/alexandria/ops/features/represent.py |      150 |        1 |       38 |        1 |     98.9% |       235 |
 | src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
-| src/alexandria/ops/features/select.py    |       32 |        3 |       12 |        3 |     86.4% |26, 31, 39 |
-| src/alexandria/ops/pipe.py               |      124 |        4 |       12 |        4 |     94.1% |202, 204, 206, 208 |
-| src/alexandria/utils/embedders.py        |       29 |        0 |        2 |        1 |     96.8% | 27-\>exit |
-| **TOTAL**                                | **1295** |   **51** |  **296** |   **42** | **93.9%** |           |
+| src/alexandria/ops/features/select.py    |       35 |        2 |       12 |        2 |     91.5% |    27, 42 |
+| src/alexandria/ops/pipe.py               |      129 |        4 |       12 |        4 |     94.3% |214, 216, 218, 220 |
+| src/alexandria/utils/config.py           |       35 |        0 |        6 |        0 |    100.0% |           |
+| src/alexandria/utils/embedders.py        |       25 |        1 |        0 |        0 |     96.0% |        49 |
+| src/alexandria/utils/merger.py           |        7 |        0 |        0 |        0 |    100.0% |           |
+| src/alexandria/utils/tokens.py           |        5 |        0 |        0 |        0 |    100.0% |           |
+| **TOTAL**                                | **1411** |   **52** |  **332** |   **42** | **94.4%** |           |
 
 
 ## Setup coverage badge
