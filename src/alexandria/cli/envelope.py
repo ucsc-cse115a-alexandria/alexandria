@@ -6,7 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.ir.contracts import Plan, Scores
+from alexandria.ir.contracts import MergeMetrics, Plan, Scores
 from alexandria.ir.document import Document
 
 # The wire format version. A parse of a file stamped with any other value fails as a ValidationError.
@@ -37,6 +37,7 @@ class PlanEnvelope(BaseModel):
     schema_version: Literal[1] = SCHEMA_VERSION
     document: Document
     plan: Plan
+    merge_metrics: MergeMetrics = MergeMetrics()
 
 
 __all__ = ["SCHEMA_VERSION", "DocumentEnvelope", "PlanEnvelope", "ScoredEnvelope"]

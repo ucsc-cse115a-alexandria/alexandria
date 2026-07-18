@@ -108,6 +108,13 @@ def test_select_json_reports_the_reduction_summary() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
+    assert payload["merge_metrics"] == {
+        "calls": 0,
+        "retries": 0,
+        "pairs_attempted": 0,
+        "proposed_edits": 1,
+        "applied_edits": 1,
+    }
 
 
 def test_score_emits_a_scored_envelope_by_default() -> None:
@@ -230,6 +237,13 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
+    assert payload["merge_metrics"] == {
+        "calls": 0,
+        "retries": 0,
+        "pairs_attempted": 0,
+        "proposed_edits": 1,
+        "applied_edits": 1,
+    }
 
 
 @pytest.mark.usefixtures("offline_models")
@@ -307,7 +321,7 @@ def test_keep_derives_the_max_token_budget_from_the_source(monkeypatch: pytest.M
 
     prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
     source = count_tokens(prompt)
-    seen_max_tokens: list[int | None] = []
+    seen_params: list[Params] = []
 
     def capture_params(
         prompt: str,
@@ -316,7 +330,8 @@ def test_keep_derives_the_max_token_budget_from_the_source(monkeypatch: pytest.M
         *,
         params: Params | None = None,
     ) -> ReduceResult:
-        seen_max_tokens.append(params.max_tokens if params is not None else None)
+        assert params is not None
+        seen_params.append(params)
         return reduce(prompt, embedder, merger, params=params)
 
     monkeypatch.setattr(main_module, "reduce", capture_params)
@@ -324,7 +339,8 @@ def test_keep_derives_the_max_token_budget_from_the_source(monkeypatch: pytest.M
     result = CliRunner().invoke(cli, ["reduce", "--keep", "60"], input=prompt)
 
     assert result.exit_code == 0
-    assert seen_max_tokens == [source * 60 // 100]
+    assert [params.max_tokens for params in seen_params] == [source * 60 // 100]
+    assert not seen_params[0].require_target
 
 
 @pytest.mark.usefixtures("offline_models")
@@ -335,7 +351,7 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
 
     prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
     source = count_tokens(prompt)
-    seen_max_tokens: list[int | None] = []
+    seen_params: list[Params] = []
 
     def capture_params(
         prompt: str,
@@ -344,7 +360,8 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
         *,
         params: Params | None = None,
     ) -> ReduceResult:
-        seen_max_tokens.append(params.max_tokens if params is not None else None)
+        assert params is not None
+        seen_params.append(params)
         return reduce(prompt, embedder, merger, params=params)
 
     monkeypatch.setattr(main_module, "reduce", capture_params)
@@ -354,7 +371,8 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
     )
 
     assert result.exit_code == 0
-    assert seen_max_tokens == [source * 80 // 100]
+    assert [params.max_tokens for params in seen_params] == [source * 80 // 100]
+    assert seen_params[0].require_target
     assert json.loads(result.output)["reduction_pct"] >= 0.20
 
 

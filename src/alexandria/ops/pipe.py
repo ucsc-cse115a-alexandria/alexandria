@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Literal
 import numpy as np
 from pydantic import BaseModel, ConfigDict
 
-from alexandria.ir.contracts import Diff, Params, Plan
+from alexandria.ir.contracts import Diff, MergeMetrics, Params, Plan, TrackedMerger
 from alexandria.ir.document import Document
 from alexandria.ir.registry import required_scorers
 from alexandria.ir.similarity import normalize
@@ -28,6 +28,7 @@ class ReduceResult(BaseModel):
     document: Document
     source: Document
     applied: Plan
+    merge_metrics: MergeMetrics = MergeMetrics()
 
     @property
     def text(self) -> str:
@@ -118,11 +119,23 @@ def reduce(
     """
     embedder = embedder if embedder is not None else default_embedder(api_key)
     merger = merger if merger is not None else default_merger(api_key)
+    tracked_merger = TrackedMerger(merger)
     document = represent(prompt, embedder)
     scores = score(document, names=_required_scorers(optimizers))
-    plan = optimize(document, scores, embedder, merger, names=optimizers, params=params)
+    plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params)
     selection = select(document, plan, embedder, selector, params=params)
-    return ReduceResult(document=selection.document, source=document, applied=selection.applied)
+    if params is not None and params.max_tokens is not None and selection.document.token_count > params.max_tokens:
+        # A target-sized proposal can still miss after cumulative drift checks. Resume exhaustively,
+        # reusing every prior merger response from TrackedMerger instead of paying for the same call twice.
+        exhaustive = params.model_copy(update={"max_tokens": None, "require_target": False})
+        plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=exhaustive)
+        selection = select(document, plan, embedder, selector, params=params)
+    return ReduceResult(
+        document=selection.document,
+        source=document,
+        applied=selection.applied,
+        merge_metrics=tracked_merger.metrics(proposed_edits=len(plan), applied_edits=len(selection.applied)),
+    )
 
 
 class Proposal(BaseModel):

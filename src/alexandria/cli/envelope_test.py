@@ -8,7 +8,7 @@ import pytest
 from pydantic import ValidationError
 
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.ir.contracts import Candidate, Delete, Scores
+from alexandria.ir.contracts import Candidate, Delete, MergeMetrics, Scores
 from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
 
 if TYPE_CHECKING:
@@ -55,11 +55,13 @@ def test_scored_envelope_round_trips_the_score_bundle() -> None:
 def test_plan_envelope_round_trips_the_plan() -> None:
     document = _document()
     plan = (Candidate(edit=Delete(targets=(SentenceId("s0"),)), confidence=0.9, source="t", reason="redundant"),)
-    envelope = PlanEnvelope(document=document, plan=plan)
+    envelope = PlanEnvelope(document=document, plan=plan, merge_metrics=MergeMetrics(calls=2, retries=1))
 
     parsed = PlanEnvelope.model_validate_json(envelope.model_dump_json())
 
     assert parsed.plan == plan
+    assert parsed.merge_metrics.calls == 2
+    assert parsed.merge_metrics.retries == 1
 
 
 def test_rejects_an_unknown_schema_version() -> None:

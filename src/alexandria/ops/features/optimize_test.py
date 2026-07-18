@@ -29,9 +29,11 @@ class _CannedMerger:
 
     def __init__(self, merged: str) -> None:
         self._merged = merged
+        self.calls = 0
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str:
         del first, second, feedback  # required by SentenceMerger; a canned merger ignores them
+        self.calls += 1
         return self._merged
 
 
@@ -65,17 +67,18 @@ def _scored_document(embedder: HashEmbedder) -> tuple[Document, Scores]:
 
 
 def test_a_shorter_merge_becomes_a_replace_kept_at_the_first_occurrence() -> None:
-    embedder = HashEmbedder()
-    document, scores = _scored_document(embedder)
+    embedder = _CountingEmbedder()
+    document = represent("aa bb\naaa bb\ncc\n", embedder)
+    scores = score(document, names=("redundancy",))
 
-    plan = optimize(document, scores, embedder, _CannedMerger("repeat"), params=_GENEROUS)
+    plan = optimize(document, scores, embedder, _CannedMerger("a"), params=_GENEROUS)
 
     (candidate,) = plan
     first, second = document.sentences[0], document.sentences[1]
     assert candidate.edit.op == "replace"
     assert candidate.edit.targets == (first.id, second.id)
-    assert candidate.edit.replacement.text == "repeat\n"  # first target's trailing newline restored
-    assert candidate.edit.replacement.token_count == count_tokens("repeat\n")
+    assert candidate.edit.replacement.text == "a\n"  # first target's trailing newline restored
+    assert candidate.edit.replacement.token_count == count_tokens("a\n")
 
 
 def test_a_merge_equal_to_the_first_sentence_becomes_a_delete_of_the_second() -> None:
@@ -84,11 +87,13 @@ def test_a_merge_equal_to_the_first_sentence_becomes_a_delete_of_the_second() ->
     first = document.sentences[0]
 
     # HashEmbedder maps identical text to an identical vector, so similarity == 1.0 >= 0.99.
-    plan = optimize(document, scores, embedder, _CannedMerger(first.text.strip()), params=_GENEROUS)
+    merger = _CannedMerger(first.text.strip())
+    plan = optimize(document, scores, embedder, merger, params=_GENEROUS)
 
     (candidate,) = plan
     assert candidate.edit.op == "delete"
     assert candidate.edit.targets == (document.sentences[1].id,)
+    assert merger.calls == 0
 
 
 def test_a_triple_duplicate_collapses_to_two_deletes() -> None:
@@ -98,18 +103,92 @@ def test_a_triple_duplicate_collapses_to_two_deletes() -> None:
     first = document.sentences[0]
 
     # merged == first, so each pair becomes a Delete and the unchanged first stays pairable
-    plan = optimize(document, scores, embedder, _CannedMerger(first.text.strip()), params=_GENEROUS)
+    merger = _CannedMerger(first.text.strip())
+    plan = optimize(document, scores, embedder, merger, params=_GENEROUS)
 
     assert [c.edit.op for c in plan] == ["delete", "delete"]
     assert {c.edit.targets[0] for c in plan} == {document.sentences[1].id, document.sentences[2].id}
+    assert merger.calls == 0
+
+
+def test_markup_boundaries_are_never_sent_to_the_merger() -> None:
+    embedder = HashEmbedder()
+    prompt = "<example>\nfirst\n</example>\n<example>\nsecond\n</example>\n"
+    document = represent(prompt, embedder)
+    merger = _CannedMerger("unused")
+
+    plan = optimize(document, score(document, names=("redundancy",)), embedder, merger, params=_GENEROUS)
+
+    assert plan == ()
+    assert merger.calls == 0
+
+
+def test_markup_boundaries_survive_when_duplicate_content_is_removed() -> None:
+    embedder = HashEmbedder()
+    prompt = "<example>\nsame\n</example>\n<example>\nsame\n</example>\n"
+    document = represent(prompt, embedder)
+
+    plan = optimize(
+        document, score(document, names=("redundancy",)), embedder, _CannedMerger("unused"), params=_GENEROUS
+    )
+    reduced = document.apply(plan[0])
+
+    assert reduced is not None
+    assert reduced.text.count("<example>") == 2
+    assert reduced.text.count("</example>") == 2
+
+
+def test_token_target_stops_merge_generation_once_the_plan_can_reach_it() -> None:
+    embedder = _CountingEmbedder()
+    document = represent("aa bb\naaa bb\naaaa bb\naaaaa bb\ncc\n", embedder)
+    merger = _CannedMerger("aa bb")
+    one_deletion_target = document.token_count - 1
+
+    plan = optimize(
+        document,
+        score(document, names=("redundancy",)),
+        embedder,
+        merger,
+        params=Params(drift_budget=2.0, max_tokens=one_deletion_target),
+    )
+
+    assert len(plan) == 1
+    assert merger.calls == 1
+
+    unconstrained_merger = _CannedMerger("aa bb")
+    optimize(
+        document,
+        score(document, names=("redundancy",)),
+        embedder,
+        unconstrained_merger,
+        params=_GENEROUS,
+    )
+    assert unconstrained_merger.calls > merger.calls
+
+
+def test_strict_unreachable_target_fails_before_calling_the_merger() -> None:
+    embedder = HashEmbedder()
+    document = represent("dup line\ndup line\nunique line\n", embedder)
+    merger = _CannedMerger("dup line")
+
+    with pytest.raises(ValueError, match=r"unreachable.*no merge model calls"):
+        optimize(
+            document,
+            score(document, names=("redundancy",)),
+            embedder,
+            merger,
+            params=Params(drift_budget=2.0, max_tokens=1, require_target=True),
+        )
+
+    assert merger.calls == 0
 
 
 def test_an_over_budget_rewrite_is_retried_with_drift_feedback() -> None:
     embedder = _CountingEmbedder()
-    # Base count-vector is (4, 4, 2). Attempt 1 ("zz") replaces the pair and leaves (0, 0, 2) —
-    # drift ~0.667, over the 0.5 budget, so it is rejected with feedback. Attempt 2 ("aa bb")
-    # equals the first sentence, so it lands as a Delete leaving (2, 2, 2) — drift ~0.038, accepted.
-    document = represent("aa bb\naa bb\ncc\n", embedder)
+    # The near-duplicate pair is not text-identical, so it exercises the merger retry path.
+    # Attempt 1 ("zz") leaves only the c-vector and exceeds the drift budget. Attempt 2
+    # equals the first sentence, so it lands as a Delete and fits the budget.
+    document = represent("aa bb\naaa bb\ncc\n", embedder)
     scores = score(document, names=("redundancy",))
     merger = _ScriptedMerger("zz", "aa bb")
 
@@ -123,7 +202,7 @@ def test_an_over_budget_rewrite_is_retried_with_drift_feedback() -> None:
 
 def test_a_pair_still_over_budget_after_all_attempts_is_skipped() -> None:
     embedder = _CountingEmbedder()
-    document = represent("aa bb\naa bb\ncc\n", embedder)
+    document = represent("aa bb\naaa bb\ncc\n", embedder)
     scores = score(document, names=("redundancy",))
     merger = _ScriptedMerger("zz", "zz", "zz")
 
@@ -134,8 +213,9 @@ def test_a_pair_still_over_budget_after_all_attempts_is_skipped() -> None:
 
 
 def test_a_merge_that_saves_no_tokens_is_retried_then_dropped() -> None:
-    embedder = HashEmbedder()
-    document, scores = _scored_document(embedder)
+    embedder = _CountingEmbedder()
+    document = represent("aa bb\naaa bb\ncc\n", embedder)
+    scores = score(document, names=("redundancy",))
     bloated = "this rewrite is far longer than the two originals put together, saving nothing at all"
     merger = _ScriptedMerger(bloated, bloated, bloated)
 

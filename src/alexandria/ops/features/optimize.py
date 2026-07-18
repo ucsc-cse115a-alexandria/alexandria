@@ -43,16 +43,26 @@ def merge_rewrite(
         )
     sentences = document.sentences
     similarity = similarity_matrix_for(document)
+    optimizable = [index for index, sentence in enumerate(sentences) if sentence.optimizable]
     pairs = [
         (float(similarity[i, j]), i, j)
-        for i in range(len(sentences))
-        for j in range(i + 1, len(sentences))
+        for position, i in enumerate(optimizable)
+        for j in optimizable[position + 1 :]
         if similarity[i, j] >= params.threshold
     ]
     pairs.sort(key=lambda pair: pair[0], reverse=True)
 
+    if params.require_target and params.max_tokens is not None:
+        optimistic_floor = _optimistic_token_floor(document, pairs)
+        if optimistic_floor > params.max_tokens:
+            raise ValueError(
+                f"token target {params.max_tokens} is unreachable by {DEFAULT_OPTIMIZER}: "
+                f"the optimistic floor is {optimistic_floor} tokens; no merge model calls were made"
+            )
+
     present = {s.id for s in sentences}
     candidates: list[Candidate] = []
+    projected = document
     for sim, i, j in pairs:
         first, second = sentences[i], sentences[j]
         if first.id not in present or second.id not in present:
@@ -61,11 +71,49 @@ def merge_rewrite(
         if candidate is not None and candidate.edit.op == "delete":
             present.discard(second.id)  # first is unchanged, so it may pair again
             candidates.append(candidate)
-            continue
-        present -= {first.id, second.id}  # rewritten or judged unmergeable: both are consumed
+        else:
+            present -= {first.id, second.id}  # rewritten or judged unmergeable: both are consumed
+            if candidate is not None:
+                candidates.append(candidate)
         if candidate is not None:
-            candidates.append(candidate)
+            next_projected = projected.apply(candidate)
+            if next_projected is not None and next_projected is not projected:
+                projected = next_projected
+                if params.max_tokens is not None and projected.token_count <= params.max_tokens:
+                    break
     return tuple(candidates)
+
+
+def _optimistic_token_floor(document: Document, pairs: list[tuple[float, int, int]]) -> int:
+    """Lower bound on tokens reachable by merging only connected eligible sentences.
+
+    Every similarity-graph component may optimistically collapse to one token. Isolated and
+    structural sentences are immutable, making this deliberately more permissive than the real
+    optimizer so a strict target is rejected only when it is certainly impossible.
+    """
+    parent: dict[int, int] = {}
+
+    def find(index: int) -> int:
+        parent.setdefault(index, index)
+        if parent[index] != index:
+            parent[index] = find(parent[index])
+        return parent[index]
+
+    def union(first: int, second: int) -> None:
+        left, right = find(first), find(second)
+        if left != right:
+            parent[right] = left
+
+    for _, first, second in pairs:
+        union(first, second)
+
+    components: dict[int, list[int]] = {}
+    for index in parent:
+        components.setdefault(find(index), []).append(index)
+    removable = sum(
+        sum(document.sentences[index].token_count for index in component) - 1 for component in components.values()
+    )
+    return document.token_count - removable
 
 
 def _merge_pair(
@@ -78,6 +126,19 @@ def _merge_pair(
     params: Params,
 ) -> Candidate | None:
     """One pair's generate -> measure -> feedback loop; None when no attempt fits the budget."""
+    if first.text == second.text:
+        candidate = Candidate(
+            edit=Delete(targets=(second.id,)),
+            confidence=sim,
+            source=DEFAULT_OPTIMIZER,
+            reason="exact duplicate; removed without a merge model call",
+        )
+        trial = document.apply(candidate)
+        if trial is None:
+            return None
+        drift = cosine_distance(embedder.embed([trial.text])[0], document.embedding)
+        return candidate if drift <= params.drift_budget else None
+
     feedback: str | None = None
     for _ in range(MAX_MERGE_ATTEMPTS):
         merged = _with_tail(merger.merge(first.text, second.text, feedback), first.text)

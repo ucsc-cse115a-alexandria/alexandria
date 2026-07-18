@@ -27,6 +27,18 @@ class Params(BaseModel):
     threshold: Threshold = 0.85
     drift_budget: Drift = 0.01
     max_tokens: int | None = Field(default=None, ge=1)
+    require_target: bool = False
+
+
+class MergeMetrics(BaseModel):
+    """Generation work performed by a sentence merger during one reduction."""
+
+    model_config = ConfigDict(frozen=True)
+    calls: int = Field(default=0, ge=0)
+    retries: int = Field(default=0, ge=0)
+    pairs_attempted: int = Field(default=0, ge=0)
+    proposed_edits: int = Field(default=0, ge=0)
+    applied_edits: int = Field(default=0, ge=0)
 
 
 class Embedder(Protocol):
@@ -44,6 +56,39 @@ class SentenceMerger(Protocol):
     """
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str: ...
+
+
+class TrackedMerger:
+    """Decorate any sentence merger with request and retry counters."""
+
+    def __init__(self, merger: SentenceMerger) -> None:
+        self._merger = merger
+        self._cache: dict[tuple[str, str, str | None], str] = {}
+        self.calls = 0
+        self.retries = 0
+        self.pairs_attempted = 0
+
+    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+        key = (first, second, feedback)
+        if key in self._cache:
+            return self._cache[key]
+        self.calls += 1
+        if feedback is None:
+            self.pairs_attempted += 1
+        else:
+            self.retries += 1
+        merged = self._merger.merge(first, second, feedback)
+        self._cache[key] = merged
+        return merged
+
+    def metrics(self, *, proposed_edits: int, applied_edits: int) -> MergeMetrics:
+        return MergeMetrics(
+            calls=self.calls,
+            retries=self.retries,
+            pairs_attempted=self.pairs_attempted,
+            proposed_edits=proposed_edits,
+            applied_edits=applied_edits,
+        )
 
 
 def _reject_duplicate_targets(targets: tuple[SentenceId, ...]) -> tuple[SentenceId, ...]:
