@@ -44,8 +44,7 @@
 - **Enabler A carryover: pick the base benchmark.** The IFEval trial and benchmark rationale (#28)
   landed in PR #42.
 - **Sprint 2 carryover.** The dataset generator (#21), `--max-tokens` option (#31), and reduce token
-  counting / reduction percentage (#32) landed during the Sprint 3 calendar window or immediately
-  after the final sprint-day implementation work.
+  counting / reduction percentage (#32) landed during Sprint 3, after carrying over from Sprint 2."
 - **Supporting work.** Sprint 3 planning/report cleanup (#44, direct report updates), CLI/library
   documentation split (#70), and Discord progress notifications (#65) landed.
 
