@@ -18,6 +18,7 @@ wheels/
 
 .coverage*
 coverage.*
+.cache/
 
 # Generated artifacts from scripts/
 data/
