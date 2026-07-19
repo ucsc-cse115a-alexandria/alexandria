@@ -41,3 +41,4 @@ The independently fitted plots are also written to:
 
 - `notebooks/outputs/skill_section_embedding_clusters.png`
 - `notebooks/outputs/babilong_qa1_42_section_embedding_clusters.png`
+- `notebooks/outputs/section_cohesion_metrics.csv`
