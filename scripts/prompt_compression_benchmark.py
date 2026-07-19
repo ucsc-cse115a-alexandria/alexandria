@@ -26,7 +26,12 @@ from alexandria.utils.merger import MERGE_MODEL, default_merger
 from alexandria.utils.tokens import count_tokens, truncate_tokens
 from benchmarks.prompt_compression.adapters import get_adapter
 from benchmarks.prompt_compression.contracts import ConditionRecord, GenerationResult, PromptParts
-from benchmarks.prompt_compression.metering import OpenAIUsageMeter, estimate_cost
+from benchmarks.prompt_compression.metering import (
+    EMBEDDING_INPUT_USD_PER_MILLION,
+    OpenAIUsageMeter,
+    estimate_cost,
+    pricing_for_model,
+)
 from benchmarks.prompt_compression.runner import benchmark_report, summarize_records
 from benchmarks.prompt_compression.store import RunStore
 
@@ -43,7 +48,7 @@ def condition_name(reduction_percent: float) -> str:
 
 
 def compress_parts(
-    parts: PromptParts, reduction_percent: float
+    parts: PromptParts, reduction_percent: float, *, merge_model: str = MERGE_MODEL
 ) -> tuple[PromptParts, int, int, MergeMetrics, float, float]:
     """Compress only context while enforcing a hard ceiling on the reconstructed full prompt."""
     source_tokens = count_tokens(parts.prompt)
@@ -59,7 +64,7 @@ def compress_parts(
     result = reduce(
         parts.context,
         default_embedder(),
-        default_merger(),
+        default_merger(model=merge_model),
         params=Params(max_tokens=context_budget, require_target=True),
     )
     compressed_context = result.text
@@ -76,7 +81,7 @@ def compress_parts(
     metrics = result.merge_metrics.model_copy(
         update={"repaired_tokens": result.merge_metrics.repaired_tokens + repaired}
     )
-    prompt_cosine_difference = float(compare(parts.prompt, compressed.prompt, default_embedder()).drift)
+    prompt_cosine_difference = float(compare(parts.prompt, compressed.prompt, default_embedder()).cos_sim_diff)
     return compressed, target_tokens, sent_tokens, metrics, time.monotonic() - started, prompt_cosine_difference
 
 
@@ -85,6 +90,14 @@ def _git_sha() -> str:
     if git is None:
         raise RuntimeError("git executable not found")
     return subprocess.run([git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
+
+
+def _git_dirty() -> bool:
+    git = shutil.which("git")
+    if git is None:
+        raise RuntimeError("git executable not found")
+    status = subprocess.run([git, "status", "--porcelain"], check=True, capture_output=True, text=True).stdout
+    return bool(status.strip())
 
 
 def _prompt_hash(prompt: str) -> str:
@@ -146,10 +159,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--data-dir", type=Path)
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--merge-model", default=MERGE_MODEL)
     parser.add_argument("--reasoning", default="none")
     parser.add_argument("--min-source-tokens", type=int, default=0)
     parser.add_argument("--max-source-tokens", type=int)
     parser.add_argument("--release-threshold", type=float, default=0.90)
+    parser.add_argument("--min-original-accuracy", type=float, default=0.50)
     parser.add_argument("--bootstrap-samples", type=int, default=10_000)
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -159,6 +174,8 @@ def main() -> None:
     args = _parse_args()
     if any(reduction <= 0.0 or reduction >= 100.0 for reduction in args.reductions):
         raise ValueError("every reduction must be greater than 0 and less than 100")
+    if not 0.0 <= args.min_original_accuracy <= 1.0:
+        raise ValueError("minimum original accuracy must be between 0 and 1")
     adapter = get_adapter(args.benchmark)
     data_dir = args.data_dir or adapter.default_data_dir
     cases = adapter.load_cases(
@@ -169,10 +186,12 @@ def main() -> None:
         max_source_tokens=args.max_source_tokens,
     )
     token_counts = [count_tokens(case.prompt) for case in cases]
+    implementation_dirty = _git_dirty()
     store = RunStore(args.out)
     manifest = {
         "schema_version": 1,
         "implementation_commit": _git_sha(),
+        "implementation_dirty": implementation_dirty,
         "command": shlex.join(sys.argv),
         "benchmark": args.benchmark,
         "provenance": adapter.provenance,
@@ -183,6 +202,7 @@ def main() -> None:
         "reductions_percent": args.reductions,
         "model": args.model,
         "reasoning": args.reasoning,
+        "minimum_original_accuracy": args.min_original_accuracy,
         "tokenizer": "cl100k_base",
         "eligibility": {
             "min_source_tokens": args.min_source_tokens,
@@ -191,7 +211,7 @@ def main() -> None:
         "compression": {
             "compressible_prompt_part": "context",
             "embedding_model": OPENAI_EMBEDDING_MODEL,
-            "merge_model": MERGE_MODEL,
+            "merge_model": args.merge_model,
             "require_target": True,
         },
         "source_token_distribution": {
@@ -202,10 +222,10 @@ def main() -> None:
             "max": max(token_counts),
         },
         "pricing_usd_per_million": {
-            "answer_or_merge_input": 1.00,
-            "answer_or_merge_cached_input": 0.10,
-            "answer_or_merge_output": 6.00,
-            "embedding_input": 0.02,
+            "answer_model": pricing_for_model(args.model),
+            "merge_model": pricing_for_model(args.merge_model),
+            "embedding_input": EMBEDDING_INPUT_USD_PER_MILLION,
+            "context_tier": "standard short context",
         },
         "pricing_source": "https://developers.openai.com/api/docs/pricing",
     }
@@ -217,6 +237,7 @@ def main() -> None:
     completed = store.completed_keys()
     client = OpenAI(timeout=120.0)
     with OpenAIUsageMeter() as meter:
+        # Establish that the answer model can solve this subset before spending on compression.
         for case in cases:
             source_tokens = count_tokens(case.prompt)
             if (case.key, "original") not in completed:
@@ -244,6 +265,27 @@ def main() -> None:
                 store.append(record, case.prompt)
                 print(f"completed {case.key} original", flush=True)
 
+        original_records = tuple(record for record in store.load_records() if record.condition == "original")
+        original_accuracy = sum(record.verdict.correct for record in original_records) / len(original_records)
+        print(
+            f"original baseline accuracy: {original_accuracy * 100:.1f}% "
+            f"(minimum {args.min_original_accuracy * 100:.1f}%)",
+            flush=True,
+        )
+        if original_accuracy < args.min_original_accuracy:
+            summary = summarize_records(
+                original_records,
+                release_threshold=args.release_threshold,
+                minimum_original_accuracy=args.min_original_accuracy,
+                bootstrap_samples=args.bootstrap_samples,
+                bootstrap_seed=args.seed,
+            )
+            report = benchmark_report(summary)
+            store.write_summary(summary, report)
+            print(report)
+            raise SystemExit("original baseline is too weak; compressed conditions were not run")
+
+        for case in cases:
             for reduction in args.reductions:
                 condition = condition_name(reduction)
                 if (case.key, condition) in completed:
@@ -257,7 +299,7 @@ def main() -> None:
                         metrics,
                         compression_elapsed,
                         prompt_cosine_difference,
-                    ) = compress_parts(case.prompt_parts, reduction)
+                    ) = compress_parts(case.prompt_parts, reduction, merge_model=args.merge_model)
                 answer_started = time.monotonic()
                 with meter.category("answer"):
                     generation = _generate(client, args.model, args.reasoning, parts.prompt)
@@ -285,6 +327,7 @@ def main() -> None:
     summary = summarize_records(
         records,
         release_threshold=args.release_threshold,
+        minimum_original_accuracy=args.min_original_accuracy,
         bootstrap_samples=args.bootstrap_samples,
         bootstrap_seed=args.seed,
     )

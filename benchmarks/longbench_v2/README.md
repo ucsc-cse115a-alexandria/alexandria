@@ -52,7 +52,9 @@ The downloader fetches `zai-org/LongBench-v2@2b48e494f2c7a2f0af81aae178e05c7e1dd
 uv run python -m scripts.download_longbench_v2_data
 ```
 
-The resulting `data/longbench_v2/data.json` is about 465 MB and is ignored by Git.
+The resulting `data/longbench_v2/data.json` is about 465 MB and is ignored by Git. The same command also writes
+`data/longbench_v2/short.json`, containing the 180 pinned rows whose official `length` label is `short`; the
+multi-retention smoke uses that explicit subset before applying its exact complete-prompt token ceiling.
 
 ## Running a small evidence-producing experiment
 

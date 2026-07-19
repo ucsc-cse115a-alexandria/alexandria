@@ -15,6 +15,31 @@ if TYPE_CHECKING:
     from collections.abc import Generator
     from contextlib import ExitStack
 
+_DEFAULT_GENERATION_PRICING = {
+    "input": 1.00,
+    "cached_input": 0.10,
+    "cache_write": 1.25,
+    "output": 6.00,
+}
+_GENERATION_PRICING = {
+    "gpt-5.6-luna": _DEFAULT_GENERATION_PRICING,
+    "gpt-5.4-nano": {
+        "input": 0.20,
+        "cached_input": 0.02,
+        "cache_write": 0.0,
+        "output": 1.25,
+    },
+}
+EMBEDDING_INPUT_USD_PER_MILLION = 0.02
+
+
+def pricing_for_model(model: str) -> dict[str, float]:
+    """Return standard short-context pricing, accepting version-suffixed model IDs."""
+    for prefix, pricing in _GENERATION_PRICING.items():
+        if model == prefix or model.startswith(f"{prefix}-"):
+            return pricing.copy()
+    return _DEFAULT_GENERATION_PRICING.copy()
+
 
 class OpenAIUsageMeter:
     """Process-local metering for answer, merge, and embedding requests."""
@@ -108,8 +133,13 @@ def estimate_cost(records: tuple[UsageRecord, ...]) -> float:
     total = 0.0
     for record in records:
         if record.category == "embedding":
-            total += record.input_tokens * 0.02 / 1_000_000
+            total += record.input_tokens * EMBEDDING_INPUT_USD_PER_MILLION / 1_000_000
             continue
+        pricing = pricing_for_model(record.model)
         uncached = record.input_tokens - record.cached_input_tokens
-        total += (uncached * 1.00 + record.cached_input_tokens * 0.10 + record.output_tokens * 6.00) / 1_000_000
+        total += (
+            uncached * pricing["input"]
+            + record.cached_input_tokens * pricing["cached_input"]
+            + record.output_tokens * pricing["output"]
+        ) / 1_000_000
     return total

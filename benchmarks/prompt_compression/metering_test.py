@@ -6,7 +6,8 @@ from typing import TYPE_CHECKING, Any
 import pytest
 from openai.resources.responses.responses import Responses
 
-from benchmarks.prompt_compression.metering import OpenAIUsageMeter, estimate_cost
+from benchmarks.prompt_compression.contracts import UsageRecord
+from benchmarks.prompt_compression.metering import OpenAIUsageMeter, estimate_cost, pricing_for_model
 
 if TYPE_CHECKING:
     from _pytest.monkeypatch import MonkeyPatch
@@ -46,3 +47,18 @@ def test_usage_meter_records_category_tokens_and_estimated_cost(monkeypatch: Mon
     assert record.category == "answer"
     assert record.cached_input_tokens == 3
     assert estimate_cost((record,)) == pytest.approx((7 * 1.00 + 3 * 0.10 + 2 * 6.00) / 1_000_000)
+
+
+def test_nano_usage_uses_its_lower_short_context_price() -> None:
+    record = UsageRecord(
+        category="answer",
+        model="gpt-5.4-nano-2026-07-01",
+        input_tokens=1_000_000,
+        cached_input_tokens=100_000,
+        output_tokens=100_000,
+        total_tokens=1_100_000,
+        elapsed_seconds=1.0,
+    )
+
+    assert pricing_for_model(record.model)["input"] == 0.20
+    assert estimate_cost((record,)) == pytest.approx(0.9 * 0.20 + 0.1 * 0.02 + 0.1 * 1.25)

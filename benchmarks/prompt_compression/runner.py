@@ -35,6 +35,13 @@ class _ComparisonSummary(TypedDict):
     release_decision: str
 
 
+class _BaselineQualification(TypedDict):
+    minimum_original_accuracy: float
+    original_accuracy: float
+    qualifies: bool
+    decision: str
+
+
 def _condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
     source_tokens = sum(record.source_tokens for record in records)
     sent_tokens = sum(record.sent_tokens for record in records)
@@ -77,6 +84,7 @@ def summarize_records(
     records: Sequence[ConditionRecord],
     *,
     release_threshold: float = 0.90,
+    minimum_original_accuracy: float = 0.0,
     bootstrap_samples: int = 10_000,
     bootstrap_seed: int = 42,
 ) -> dict[str, object]:
@@ -97,7 +105,10 @@ def summarize_records(
         condition_records.sort(key=lambda record: record.case_key)
     original = grouped["original"]
     original_keys = [record.case_key for record in original]
-    conditions: dict[str, object] = {"original": _condition_summary(original)}
+    original_summary = cast("_ConditionSummary", _condition_summary(original))
+    original_accuracy = original_summary["accuracy"]
+    baseline_qualifies = original_accuracy >= minimum_original_accuracy
+    conditions: dict[str, object] = {"original": original_summary}
     comparisons: dict[str, object] = {}
     for condition, condition_records in sorted(grouped.items()):
         if condition == "original":
@@ -161,6 +172,16 @@ def summarize_records(
             "seed": bootstrap_seed,
             "confidence_level": 0.95,
         },
+        "baseline_qualification": {
+            "minimum_original_accuracy": minimum_original_accuracy,
+            "original_accuracy": original_accuracy,
+            "qualifies": baseline_qualifies,
+            "decision": (
+                "PASS: original accuracy clears the minimum baseline"
+                if baseline_qualifies
+                else "FAIL: original accuracy does not clear the minimum baseline"
+            ),
+        },
         "conditions": conditions,
         "tasks": tasks,
         "comparisons": comparisons,
@@ -191,6 +212,19 @@ def benchmark_report(summary: dict[str, object]) -> str:
             f"${float(raw['estimated_execution_cost_usd']):.4f} | "
             f"{float(raw['reduction_seconds']):.1f}s | "
             f"${float(raw['estimated_reduction_cost_usd']):.4f} |"
+        )
+    baseline = summary.get("baseline_qualification")
+    if isinstance(baseline, dict):
+        typed_baseline = cast("_BaselineQualification", baseline)
+        lines.extend(
+            [
+                "",
+                "## Baseline qualification",
+                "",
+                f"- **Original:** {typed_baseline['decision']} "
+                f"({typed_baseline['original_accuracy'] * 100:.1f}% accuracy; minimum "
+                f"{typed_baseline['minimum_original_accuracy'] * 100:.1f}%)",
+            ]
         )
     lines.extend(["", "## Release decisions", ""])
     for condition, raw in comparisons.items():

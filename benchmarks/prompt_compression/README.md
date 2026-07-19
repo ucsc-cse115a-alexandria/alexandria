@@ -21,13 +21,78 @@ Use the same command shape for all three benchmarks:
 ```bash
 uv run python -m scripts.prompt_compression_benchmark \
   --benchmark babilong_8k \
-  --n 5 --seed 42 --reductions 50 25 10 5 \
+  --n 5 --seed 42 --reductions 50 40 30 20 10 \
   --out trial_results/babilong_8k/smoke --dry-run
 ```
 
 Replace the benchmark name with `ruler_v2` or `longbench_v2`, provide `--data-dir` when needed, and remove `--dry-run` to make model calls. A smoke run can use `--n 5`; a release-oriented run can use `--n 100`. `--min-source-tokens` and `--max-source-tokens` constrain eligibility using the actual complete prompt counted with `cl100k_base`, so a run can explicitly require long inputs and remain within the answer model's context window.
 
+The runner completes every `original` response first. It proceeds to compression only when original accuracy is at
+least `--min-original-accuracy` (default 0.50). This prevents a cheap but incapable answer model from producing a
+misleading retention curve. `--model` selects the answer model and `--merge-model` independently selects the
+compression model; both are recorded in the manifest. The paired retention calculation always compares conditions
+answered by the same answer model.
+
 Sampling is deterministic for a fixed eligible dataset, `n`, and seed. It round-robins across task labels before taking additional cases from a task, avoiding a small sample that accidentally contains only one task family.
+
+## Five-case multi-retention smoke
+
+The committed smoke uses seed 42, Luna for compression and answers, reasoning `none`, five cases per benchmark,
+and full-prompt retained targets of 50%, 60%, 70%, 80%, and 90%. BABILong and RULERv2 use their complete prepared
+datasets. LongBench uses the pinned official `length=short` rows and an additional 128,000-token complete-prompt
+ceiling. The selected original prompts averaged 7,686, 6,391, and 39,710 tokens respectively.
+
+Original accuracy was 60% for BABILong, 100% for RULERv2, and 80% for LongBench, so all three passed the 50%
+baseline gate. Across benchmarks, macro accuracy rose from 20.0% at keep50 to 73.3% at keep90, versus 80.0% on
+original prompts. Macro accuracy retention at keep90 was 93.3%, with a mean whole-prompt `cos_sim_diff` of
+0.007288 and an achieved 12.4% token reduction. The entire 90-condition run cost an estimated $5.0288 and took
+1,431.7 seconds of measured sequential wall time.
+
+These are smoke-test numbers: with five cases per benchmark, accuracy moves in 20-point steps. All BABILong and
+RULERv2 compressed conditions failed the paired-bootstrap release rule. LongBench keep70 and keep90 passed, but
+those n=5 decisions are not release claims. Use n=100 for the evidence run.
+
+Reproduce the exact smoke after preparing the pinned datasets:
+
+```bash
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.download_longbench_v2_data
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 5 --seed 42 --reductions 50 40 30 20 10 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/babilong_8k/results/2026-07-18-luna-keep50-90-n5-v1
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark ruler_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 \
+  --data-dir data/ruler_v2 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark longbench_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 \
+  --data-dir data/longbench_v2/short.json --max-source-tokens 128000 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1
+
+uv run python -m scripts.plot_prompt_compression_benchmarks \
+  benchmarks/babilong_8k/results/2026-07-18-luna-keep50-90-n5-v1 \
+  benchmarks/ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1 \
+  benchmarks/longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1 \
+  --out-dir benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1
+```
+
+Raw evidence:
+
+- [BABILong 8k run](../babilong_8k/results/2026-07-18-luna-keep50-90-n5-v1/)
+- [RULERv2 run](../ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1/)
+- [LongBench v2 run](../longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1/)
+- [Cross-benchmark aggregates and figures](results/2026-07-18-luna-keep50-90-n5-v1/)
+
+As a negative control for model selection, `gpt-5.4-nano` was also tried as the answer model with Luna compression.
+Its original accuracy was 20% on BABILong and 40% on LongBench, so the gate correctly stopped those runs before
+compression. RULERv2 reached 80% and proceeded. These results show why answer-model baseline qualification is
+required; they are not mixed into the Luna curves.
 
 ## Measured 10-case keep90 pilots
 

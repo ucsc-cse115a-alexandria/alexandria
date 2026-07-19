@@ -14,6 +14,7 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("run_dir", type=Path)
     parser.add_argument("--release-threshold", type=float, default=0.90)
+    parser.add_argument("--min-original-accuracy", type=float, default=0.50)
     parser.add_argument("--bootstrap-samples", type=int, default=10_000)
     parser.add_argument("--bootstrap-seed", type=int, default=42)
     return parser.parse_args()
@@ -25,6 +26,7 @@ def main() -> None:
     summary = summarize_records(
         store.load_records(),
         release_threshold=args.release_threshold,
+        minimum_original_accuracy=args.min_original_accuracy,
         bootstrap_samples=args.bootstrap_samples,
         bootstrap_seed=args.bootstrap_seed,
     )
