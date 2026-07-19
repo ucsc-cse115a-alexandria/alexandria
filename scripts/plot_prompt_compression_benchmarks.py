@@ -23,7 +23,7 @@ COLORS = {
     "babilong_8k": "#10A37F",
     "ruler_v2": "#7C3AED",
     "longbench_v2": "#2563EB",
-    "macro_average": "#111827",
+    "macro_average": "#EA580C",
 }
 
 
@@ -143,8 +143,8 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
         x,
         average,
         marker="o",
-        linewidth=4.5,
-        markersize=9,
+        linewidth=2.4,
+        markersize=6,
         color=COLORS["macro_average"],
         label="Average",
         zorder=5,
@@ -207,8 +207,8 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
                 x,
                 y,
                 marker="o",
-                linewidth=4.5 if key == "macro_average" else 1.1,
-                markersize=9 if key == "macro_average" else 3.5,
+                linewidth=2.4 if key == "macro_average" else 1.1,
+                markersize=6 if key == "macro_average" else 3.5,
                 color=COLORS[key],
                 alpha=1.0 if key == "macro_average" else 0.35,
                 label=label,
