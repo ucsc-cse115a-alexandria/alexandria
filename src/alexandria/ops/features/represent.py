@@ -5,6 +5,7 @@ import re
 from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
+from itertools import pairwise
 from typing import TYPE_CHECKING
 
 from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId
@@ -23,6 +24,51 @@ _SEPARATOR = re.compile(r"\n+")
 _MARKDOWN_HEADER = re.compile(r"(#{1,6})\s+\S")
 _XML_OPEN = re.compile(r"<([A-Za-z][\w.-]*)>")
 _XML_CLOSE = re.compile(r"</([A-Za-z][\w.-]*)>")
+
+# A sentence boundary: a run of terminators, any closing quotes/brackets, then trailing whitespace.
+# 'term' captures ASCII or CJK terminators; the CJK case ends a sentence unconditionally, while the
+# ASCII case ends one only before whitespace or end of segment (so decimals, versions, and URLs stay
+# intact) and only when it is not a known abbreviation.
+_SENTENCE_BOUNDARY = re.compile(r"(?P<term>[.!?]+|[。！？]+)(?P<close>[\"')\]”’」』）】]*)(?P<space>\s*)")
+_WORD_BEFORE = re.compile(r"[A-Za-z.]*$")
+_CJK_TERMINATORS = frozenset("。！？")
+# A sentence must reach this many characters to stand on its own; shorter pieces (stray fragments,
+# initials like 'J.', interjections like 'Go!') merge into the neighbouring sentence instead.
+_MIN_SENTENCE_CHARS = 10
+_ABBREVIATIONS = frozenset(
+    {
+        "e.g.",
+        "i.e.",
+        "etc.",
+        "vs.",
+        "cf.",
+        "al.",
+        "ca.",
+        "approx.",
+        "mr.",
+        "mrs.",
+        "ms.",
+        "dr.",
+        "prof.",
+        "sr.",
+        "jr.",
+        "st.",
+        "inc.",
+        "ltd.",
+        "co.",
+        "corp.",
+        "dept.",
+        "no.",
+        "fig.",
+        "vol.",
+        "pp.",
+        "a.m.",
+        "p.m.",
+        "u.s.",
+        "u.k.",
+        "e.u.",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -81,10 +127,12 @@ class _Builder:
         return any(section.kind is SectionKind.XML and section.tag == tag for section in self.stack)
 
     def append_plain(self, segment: str) -> None:
-        """The fallback when no rule claims the line: body text under no header or tag."""
+        """The fallback when no rule claims the line: body text under no header or tag, split into
+        sentences so redundancy is found at sentence granularity rather than per line."""
         if not self.stack:
             self.open(_Open(SectionKind.PLAIN, "", None, None))
-        self.append(segment)
+        for sentence in _sentences(segment):
+            self.append(sentence)
 
 
 # A rule recognizes one line shape, performs its stack action, and reports whether it claimed the
@@ -134,8 +182,9 @@ def split(prompt: str) -> tuple[RawSection, ...]:
     """Group a prompt's lines into a nested section tree.
 
     Markdown headers nest by '#' depth and XML blocks nest by tag stack; text under no header or
-    tag becomes a ``plain`` section. The split is lossless: concatenating every leaf sentence's
-    text in document order reproduces ``prompt`` exactly. A blank prompt yields ``()``.
+    tag becomes a ``plain`` section. Body lines are further split into sentences, while structural
+    lines (headers and tags) are kept whole. The split is lossless: concatenating every leaf
+    sentence's text in document order reproduces ``prompt`` exactly. A blank prompt yields ``()``.
     """
     if not prompt.strip():
         return ()
@@ -175,6 +224,44 @@ def _segments(prompt: str) -> list[str]:
     if tail:
         segments.append(pending + tail)
     return segments
+
+
+def _sentences(segment: str) -> list[str]:
+    """Split one body segment into sentences, losslessly.
+
+    A sentence ends at a run of terminators, taking any trailing quotes and whitespace with it.
+    ASCII terminators split only before whitespace or the end of the segment, so decimals,
+    versions, and URLs stay intact; a known abbreviation before the terminator does not end a
+    sentence. CJK terminators always end a sentence. A piece shorter than ``_MIN_SENTENCE_CHARS``
+    merges into its neighbour rather than standing alone. Concatenating the result reproduces
+    ``segment``.
+    """
+    cuts: list[int] = []
+    last = 0
+    for match in _SENTENCE_BOUNDARY.finditer(segment):
+        end = match.end()
+        if end == len(segment):
+            continue  # the final sentence has nothing after it to split off
+        term = match.group("term")
+        cjk = term[0] in _CJK_TERMINATORS
+        ascii_boundary = bool(match.group("space")) and not _is_abbreviation(segment[: match.start("term")], term)
+        if not (cjk or ascii_boundary) or end - last < _MIN_SENTENCE_CHARS:
+            continue  # not a boundary, or too short to stand alone — merge into the next sentence
+        cuts.append(end)
+        last = end
+    if cuts and len(segment) - cuts[-1] < _MIN_SENTENCE_CHARS:
+        cuts.pop()  # a short trailing remainder merges back into the previous sentence
+    if not cuts:
+        return [segment]
+    bounds = [0, *cuts, len(segment)]
+    return [segment[start:stop] for start, stop in pairwise(bounds)]
+
+
+def _is_abbreviation(prefix: str, term: str) -> bool:
+    """Whether the word ending at ``term`` (e.g. 'e.g.', 'etc.') is a known abbreviation, not a
+    sentence end. ``prefix`` is the segment text before the terminator run."""
+    word = _WORD_BEFORE.search(prefix)
+    return ((word.group() if word else "") + term).lower() in _ABBREVIATIONS
 
 
 def _assign_ids(texts: list[str]) -> list[SentenceId]:
