@@ -23,6 +23,8 @@ from alexandria.utils.tokens import count_tokens
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from alexandria.ir.contracts import ReportedCandidate
+
 
 class _FirstWinsMerger:
     """Offline merger that returns the first sentence, so every merge lands as a Delete of the second."""
@@ -84,6 +86,37 @@ class _LengthEmbedder:
 
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
         return [np.array([1.0, len(text) / 40.0], dtype=np.float32) for text in texts]
+
+
+class _RecordingReporter:
+    """Records every ReductionReporter event so tests can assert what the target merge emitted."""
+
+    def __init__(self) -> None:
+        self.target_groups: list[tuple[str, int, int]] = []
+        self.target_rounds: list[tuple[int, str | None, tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
+        self.target_group_done_calls: list[tuple[bool, int]] = []
+
+    def redundant_pair(self, first: str, second: str, similarity: float) -> None:
+        pass
+
+    def pair_merged(self, merged: str | None, decision: str) -> None:
+        pass
+
+    def target_group(self, source_segment: str, group_tokens: int, required_savings: int) -> None:
+        self.target_groups.append((source_segment, group_tokens, required_savings))
+
+    def target_round(
+        self,
+        round_number: int,
+        base: str | None,
+        candidates: tuple[ReportedCandidate, ...],
+        selected: ReportedCandidate,
+        selected_from_generation: bool,
+    ) -> None:
+        self.target_rounds.append((round_number, base, candidates, selected, selected_from_generation))
+
+    def target_group_done(self, applied: bool, document_tokens: int) -> None:
+        self.target_group_done_calls.append((applied, document_tokens))
 
 
 def test_default_whole_prompt_drift_budget_is_fifty_percent() -> None:
@@ -285,6 +318,35 @@ def test_strict_target_selects_the_lowest_drift_candidate_from_one_call() -> Non
     assert result.merge_metrics.calls == 1
     assert result.merge_metrics.retries == 0
     assert result.merge_metrics.candidates_generated == 2
+
+
+def test_target_merge_reports_group_round_and_completion_events() -> None:
+    merger = _TargetMerger(("aaaa\n", "aa bb\n", "bbbb\n"))
+    reporter = _RecordingReporter()
+
+    result = reduce(
+        "aaaa\nbbbb\n",
+        _CountingEmbedder(),
+        merger,
+        params=Params(drift_budget=0.01, max_tokens=3, require_target=True),
+        reporter=reporter,
+    )
+
+    assert result.text == "aa bb\n"
+    assert len(reporter.target_groups) == 1
+    source_segment, group_tokens, required_savings = reporter.target_groups[0]
+    assert source_segment == "aaaa\nbbbb\n"
+    assert group_tokens > 0
+    assert required_savings > 0
+
+    round_number, base, candidates, selected, selected_from_generation = reporter.target_rounds[0]
+    assert round_number == 1
+    assert base is None
+    assert len(candidates) == 3
+    assert selected.text == "aa bb\n"
+    assert selected_from_generation
+
+    assert reporter.target_group_done_calls == [(True, result.reduced_tokens)]
 
 
 def test_strict_target_mutates_one_base_and_only_keeps_a_non_worsening_candidate() -> None:

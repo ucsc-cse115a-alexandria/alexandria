@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from alexandria.ir.contracts import Candidate, Delete, Params, Replace
+from alexandria.ir.contracts import SILENT_REPORTER, Candidate, Delete, Params, Replace
 from alexandria.ir.document import Encoded
 from alexandria.ir.registry import get_optimizer, register_optimizer, required_scorers
 from alexandria.ir.similarity import cosine_distance, similarity_matrix_for
@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
 
-    from alexandria.ir.contracts import Embedder, Plan, Scores, SentenceMerger
+    from alexandria.ir.contracts import Embedder, Plan, ReductionReporter, Scores, SentenceMerger
     from alexandria.ir.document import Document, Sentence
 
 DEFAULT_OPTIMIZER = "merge_rewrite"
@@ -22,7 +22,12 @@ _KEEP_FIRST_SIMILARITY = 0.99  # merged ≈ first sentence -> keep the original 
 
 @register_optimizer(DEFAULT_OPTIMIZER, requires=("redundancy",))
 def merge_rewrite(
-    document: Document, scores: Scores, embedder: Embedder, merger: SentenceMerger, params: Params
+    document: Document,
+    scores: Scores,
+    embedder: Embedder,
+    merger: SentenceMerger,
+    params: Params,
+    reporter: ReductionReporter = SILENT_REPORTER,
 ) -> Plan:
     """For each near-duplicate pair, rewrite both sentences into one via the merger, kept at the
     first occurrence; ranked by pair similarity.
@@ -59,7 +64,14 @@ def merge_rewrite(
         first, second = sentences[i], sentences[j]
         if first.id not in present or second.id not in present:
             continue
+        reporter.redundant_pair(first.text, second.text, sim)
         candidate = _merge_pair(document, first, second, sim, embedder, merger, params)
+        if candidate is None:
+            reporter.pair_merged(None, "skipped")
+        elif candidate.edit.op == "delete":
+            reporter.pair_merged(first.text, "delete")
+        else:
+            reporter.pair_merged(candidate.edit.replacement.text, "replace")
         if candidate is not None and candidate.edit.op == "delete":
             present.discard(second.id)  # first is unchanged, so it may pair again
             candidates.append(candidate)
@@ -163,6 +175,7 @@ def optimize(
     names: tuple[str, ...] = (DEFAULT_OPTIMIZER,),
     *,
     params: Params | None = None,
+    reporter: ReductionReporter = SILENT_REPORTER,
 ) -> Plan:
     """Run each named optimizer and concatenate their candidate stacks into one ordered Plan.
 
@@ -178,7 +191,7 @@ def optimize(
             )
     plan: list[Candidate] = []
     for name in names:
-        plan.extend(get_optimizer(name)(document, scores, embedder, merger, params))
+        plan.extend(get_optimizer(name)(document, scores, embedder, merger, params, reporter))
     return tuple(plan)
 
 

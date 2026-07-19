@@ -62,6 +62,9 @@ token headroom. Alexandria checks every candidate with `cl100k_base` and determi
 Among target-safe candidates it selects the lowest whole-prompt drift, with one optional quality-refinement call.
 When no candidate meets the drift budget, the best target-safe result is returned and
 `merge_metrics.drift_budget_met` is `false`. `--json` also reports final drift, repaired tokens, calls, and retries.
+Exact duplicate text in best-effort reduction is still removed without a merge-model call. Text mode prints call
+and retry counts to stderr. Add `-v`/`--verbose` to stream automatic-reduction progress live to stderr instead of
+waiting for the final summary.
 
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
 quality scores:

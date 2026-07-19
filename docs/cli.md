@@ -49,6 +49,10 @@ exceed the target, the command reports that the target is infeasible before call
 and JSON output sets `merge_metrics.drift_budget_met` to `false` if the quality budget was missed.
 `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the same in a browser.
 
+Use `-v`/`--verbose` to print compaction progress (redundant pairs, merge attempts, target-search
+rounds) to standard error as the automatic reduction runs; it is not available with `--interactive` or
+`--browser`, and it never changes standard output.
+
 ```bash
 uv run alexandria reduce --keep 95 prompt.txt > reduced.txt
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt

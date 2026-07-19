@@ -12,6 +12,7 @@ from pydantic import ValidationError
 from alexandria.cli.browser_review import run_browser_review
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
 from alexandria.cli.interactive import apply_candidates, review
+from alexandria.cli.verbose import VerboseReporter
 from alexandria.ir.contracts import MergeMetrics, Params, TrackedMerger
 from alexandria.ops import (
     OptimizationReport,
@@ -277,6 +278,9 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     is_flag=True,
     help="with --browser, print the review URL but do not open the default browser",
 )
+@click.option(
+    "-v", "--verbose", "verbose", is_flag=True, help="print compaction progress to stderr (automatic reduction only)"
+)
 def reduce_cmd(
     file: IO[str],
     save_tokens: int | None,
@@ -287,6 +291,7 @@ def reduce_cmd(
     interactive: bool,
     browser: bool,
     no_open: bool,
+    verbose: bool,
 ) -> None:
     """Reduce a prompt end to end: prompt in, reduced prompt out (or a JSON summary with --json).
 
@@ -323,6 +328,8 @@ def reduce_cmd(
             f"{review_flag} replaces the selector with your choices; "
             "drop --save-tokens, --keep, and --target-reduction."
         )
+    if verbose and manual_review:
+        raise click.UsageError("--verbose applies to the automatic reduction; drop --interactive/--browser.")
 
     with _clean_errors():
         embedder = default_embedder()
@@ -349,7 +356,11 @@ def reduce_cmd(
                 max_tokens=max_tokens,
                 require_target=target_reduction is not None,
             )
-            result = reduce(prompt, embedder, merger, params=params)
+            if verbose:
+                reporter = VerboseReporter(lambda line: click.echo(line, err=True))
+                result = reduce(prompt, embedder, merger, params=params, reporter=reporter)
+            else:
+                result = reduce(prompt, embedder, merger, params=params)
 
     if target_reduction is not None:
         actual_reduction = 1.0 - (result.reduced_tokens / result.source_tokens)

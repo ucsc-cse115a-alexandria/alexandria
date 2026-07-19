@@ -15,7 +15,7 @@ from alexandria.utils.tokens import count_tokens
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from alexandria.ir.contracts import Scores
+    from alexandria.ir.contracts import ReportedCandidate, Scores
     from alexandria.ir.document import Document
 
 _PROMPT = "repeat me and me\nrepeat me and me\nunique line\n"
@@ -61,6 +61,39 @@ class _CountingEmbedder:
         return [np.array([t.count("a"), t.count("b"), t.count("c")], dtype=np.float32) for t in texts]
 
 
+class _RecordingReporter:
+    """Records every ReductionReporter event so tests can assert what merge_rewrite emitted."""
+
+    def __init__(self) -> None:
+        self.redundant_pairs: list[tuple[str, str, float]] = []
+        self.pair_merges: list[tuple[str | None, str]] = []
+        self.target_groups: list[tuple[str, int, int]] = []
+        self.target_rounds: list[tuple[int, str | None, tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
+        self.target_group_done_calls: list[tuple[bool, int]] = []
+
+    def redundant_pair(self, first: str, second: str, similarity: float) -> None:
+        self.redundant_pairs.append((first, second, similarity))
+
+    def pair_merged(self, merged: str | None, decision: str) -> None:
+        self.pair_merges.append((merged, decision))
+
+    def target_group(self, source_segment: str, group_tokens: int, required_savings: int) -> None:
+        self.target_groups.append((source_segment, group_tokens, required_savings))
+
+    def target_round(
+        self,
+        round_number: int,
+        base: str | None,
+        candidates: tuple[ReportedCandidate, ...],
+        selected: ReportedCandidate,
+        selected_from_generation: bool,
+    ) -> None:
+        self.target_rounds.append((round_number, base, candidates, selected, selected_from_generation))
+
+    def target_group_done(self, applied: bool, document_tokens: int) -> None:
+        self.target_group_done_calls.append((applied, document_tokens))
+
+
 def _scored_document(embedder: HashEmbedder) -> tuple[Document, Scores]:
     document = represent(_PROMPT, embedder)
     return document, score(document, names=("redundancy",))
@@ -94,6 +127,35 @@ def test_a_merge_equal_to_the_first_sentence_becomes_a_delete_of_the_second() ->
     assert candidate.edit.op == "delete"
     assert candidate.edit.targets == (document.sentences[1].id,)
     assert merger.calls == 0
+
+
+def test_reporter_receives_the_pair_and_its_delete_outcome() -> None:
+    embedder = HashEmbedder()
+    document, scores = _scored_document(embedder)
+    first, second = document.sentences[0], document.sentences[1]
+    merger = _CannedMerger(first.text.strip())
+    reporter = _RecordingReporter()
+
+    optimize(document, scores, embedder, merger, params=_GENEROUS, reporter=reporter)
+
+    assert len(reporter.redundant_pairs) == 1
+    reported_first, reported_second, similarity = reporter.redundant_pairs[0]
+    assert reported_first == first.text
+    assert reported_second == second.text
+    assert similarity == pytest.approx(1.0)
+    assert reporter.pair_merges == [(first.text, "delete")]
+
+
+def test_optimize_default_reporter_is_silent_and_does_not_change_the_plan() -> None:
+    embedder = HashEmbedder()
+    document, scores = _scored_document(embedder)
+    first = document.sentences[0]
+    merger = _CannedMerger(first.text.strip())
+
+    plan = optimize(document, scores, embedder, merger, params=_GENEROUS)
+
+    assert len(plan) == 1
+    assert plan[0].edit.op == "delete"
 
 
 def test_a_triple_duplicate_collapses_to_two_deletes() -> None:
