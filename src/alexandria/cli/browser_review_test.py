@@ -12,7 +12,6 @@ from alexandria.cli.browser_review import (
     ReviewServer,
     accepted_candidates,
     inject_bridge,
-    parse_selection,
     reserve_port,
     run_browser_review,
     validate_selection_payload,
@@ -50,18 +49,6 @@ def _post_json(url: str, payload: dict[str, Any]) -> int:
     )
     with urllib.request.urlopen(request) as response:  # noqa: S310
         return response.status
-
-
-def test_parse_selection_round_trips_rendered_html() -> None:
-    proposal = _reviewable_proposal()
-    selection = parse_selection(render_review_page(proposal))
-
-    assert selection == {
-        "schema_version": 1,
-        "accepted_indices": [],
-        "accepted_count": 0,
-        "total_count": len(proposal.diffs),
-    }
 
 
 def test_inject_bridge_adds_apply_cancel_and_port() -> None:

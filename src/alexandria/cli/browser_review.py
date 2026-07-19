@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 import shutil
 import socket
 import tempfile
@@ -22,24 +21,11 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import Candidate
     from alexandria.ops.pipe import Proposal
 
-_SELECTION_RE = re.compile(
-    r'<script type="application/json" id="selection">(.*?)</script>',
-    re.DOTALL,
-)
-
 
 @dataclass(frozen=True)
 class SelectionResult:
     status: Literal["done", "aborted"]
     accepted_indices: tuple[int, ...] = ()
-
-
-def parse_selection(html: str) -> dict[str, Any]:
-    """Extract the embedded #selection JSON blob from a review page."""
-    match = _SELECTION_RE.search(html)
-    if match is None:
-        raise click.ClickException("review page is missing a #selection block")
-    return json.loads(match.group(1))
 
 
 def _is_object_list(value: object) -> TypeIs[list[object]]:

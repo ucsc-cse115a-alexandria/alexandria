@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Self
 import click
 from pydantic import BaseModel, ConfigDict, model_validator
 
+from alexandria.cli.hunks import HunkKind, hunk_lines
 from alexandria.ir.contracts import Candidate, Diff
 
 if TYPE_CHECKING:
@@ -136,35 +137,21 @@ def _list_lines(state: ReviewState, rows: int, columns: int) -> list[str]:
     return lines
 
 
+def _style_hunk_line(kind: HunkKind, text: str) -> str:
+    if kind == "removed":
+        return click.style(f"-{text}", fg="red")
+    if kind == "added":
+        return click.style(f"+{text}", fg="green")
+    if kind == "context":
+        return f" {text}"
+    return click.style(text, dim=True)  # gap marker and the empty-selection message
+
+
 def _preview_lines(
     document: Document, removed: frozenset[SentenceId], rows: int, added: dict[SentenceId, str] | None = None
 ) -> list[str]:
-    """Hunks built from the sentences the selection removes, each with one sentence of context.
-
-    The removals are known exactly, so the preview never guesses with a text diff — on large
-    documents difflib's junk heuristics turn a pure one-line deletion into huge phantom
-    "+" blocks. Distant hunks are separated by a dim ``···`` marker.
-    """
-    sentences = document.sentences
-    shown: set[int] = set()
-    for position, sentence in enumerate(sentences):
-        if sentence.id in removed:
-            shown.update(index for index in (position - 1, position, position + 1) if 0 <= index < len(sentences))
-    if not shown:
-        return [click.style("(no edits accepted — output equals the original)", dim=True)]
-    body: list[str] = []
-    previous = None
-    for index in sorted(shown):
-        if previous is not None and index > previous + 1:
-            body.append(click.style("···", dim=True))
-        sentence = sentences[index]
-        for line in sentence.text.splitlines() or [""]:
-            if sentence.id in removed:
-                body.append(click.style(f"-{line}", fg="red"))
-            else:
-                body.append(f" {line}")
-        body.extend(click.style(f"+{line}", fg="green") for line in (added or {}).get(sentence.id, "").splitlines())
-        previous = index
+    """Style the shared hunk for the terminal: ANSI colors, then a truncation footer if it overflows."""
+    body = [_style_hunk_line(kind, text) for kind, text in hunk_lines(document, removed, added)]
     if len(body) > rows:
         hidden = len(body) - max(rows - 1, 1)
         body = [*body[: max(rows - 1, 1)], click.style(f"… {hidden} more lines", dim=True)]
@@ -211,16 +198,3 @@ def review(
                 return None
     finally:
         write(_SHOW_CURSOR)
-
-
-def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
-    """Fold Document.apply over the candidates; accept means accept — no drift-budget re-filtering.
-
-    A candidate whose edit would empty the document or a section (apply returns None) is skipped.
-    """
-    current = document
-    for candidate in candidates:
-        trial = current.apply(candidate)
-        if trial is not None:
-            current = trial
-    return current

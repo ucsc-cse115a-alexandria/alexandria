@@ -1,8 +1,68 @@
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+import numpy as np
 import pytest
 
-from alexandria.ir.contracts import TargetedMerger, TrackedMerger
+from alexandria.ir.contracts import TargetedMerger, TrackedEmbedder, TrackedMerger
+
+if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
+
+class _CountingEmbedder:
+    """Records every text the wrapped embedder is actually asked to embed."""
+
+    def __init__(self) -> None:
+        self.embedded: list[str] = []
+
+    @property
+    def model_id(self) -> str:
+        return "counting-3"
+
+    def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
+        self.embedded.extend(texts)
+        return [np.array([text.count("a"), text.count("b"), text.count("c")], dtype=np.float32) for text in texts]
+
+
+def test_tracked_embedder_caches_repeated_texts() -> None:
+    inner = _CountingEmbedder()
+    tracked = TrackedEmbedder(inner)
+
+    first = tracked.embed(["alpha", "beta"])
+    second = tracked.embed(["beta", "alpha", "gamma"])
+
+    # "beta"/"alpha" are served from the cache; only "gamma" reaches the wrapped embedder again.
+    assert inner.embedded == ["alpha", "beta", "gamma"]
+    assert tracked.calls == 2
+    assert tracked.texts == 3
+    # Cached vectors are returned in the caller's input order and are the same arrays.
+    assert second[0] is first[1]
+    assert second[1] is first[0]
+
+
+def test_tracked_embedder_deduplicates_within_one_batch() -> None:
+    inner = _CountingEmbedder()
+    tracked = TrackedEmbedder(inner)
+
+    tracked.embed(["dup", "dup", "solo"])
+
+    assert inner.embedded == ["dup", "solo"]
+    assert tracked.calls == 1
+    assert tracked.texts == 2
+
+
+def test_tracked_embedder_skips_a_fully_cached_batch() -> None:
+    inner = _CountingEmbedder()
+    tracked = TrackedEmbedder(inner)
+
+    tracked.embed(["one", "two"])
+    tracked.embed(["two", "one"])
+
+    assert inner.embedded == ["one", "two"]
+    assert tracked.calls == 1
+    assert tracked.texts == 2
 
 
 class _FakeTargetedMerger:

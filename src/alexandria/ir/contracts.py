@@ -90,10 +90,16 @@ class TargetedMerger(Protocol):
 
 
 class TrackedEmbedder:
-    """Decorate any embedder with call and text counters."""
+    """Decorate any embedder with a text-keyed cache plus call and text counters.
+
+    Embeddings are deterministic per text and model, so a text embedded once is served from the
+    memo thereafter. The counters record only real work: a batch of already-cached texts calls
+    the wrapped embedder zero times and leaves calls/texts unchanged.
+    """
 
     def __init__(self, embedder: Embedder) -> None:
         self._embedder = embedder
+        self._cache: dict[str, NDArray[np.float32]] = {}
         self.calls = 0
         self.texts = 0
 
@@ -102,9 +108,13 @@ class TrackedEmbedder:
         return self._embedder.model_id
 
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
-        self.calls += 1
-        self.texts += len(texts)
-        return self._embedder.embed(texts)
+        missing = list(dict.fromkeys(text for text in texts if text not in self._cache))
+        if missing:
+            self.calls += 1
+            self.texts += len(missing)
+            for text, vector in zip(missing, self._embedder.embed(missing), strict=True):
+                self._cache[text] = vector
+        return [self._cache[text] for text in texts]
 
 
 class TrackedMerger:
