@@ -114,7 +114,7 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current evidence run samples 50 cases from each of BABILong 8k, RULERv2, and the official LongBench v2
+The current evidence run measures 50 samples from each of BABILong 8k, RULERv2, and the official LongBench v2
 short subset with seed 42. It uses `gpt-5.6-luna` with reasoning `none` for both compression and answers, plus
 `text-embedding-3-small`. The runner measures every original first and only runs compressed conditions when
 original accuracy is at least 50%. BABILong (68%) and RULERv2 (74%) passed that gate. LongBench scored 48%
@@ -123,20 +123,18 @@ original accuracy is at least 50%. BABILong (68%) and RULERv2 (74%) passed that 
 The table and `Average` curve are therefore the equal-weight mean of the two qualified benchmarks, not all three.
 `Accuracy retention` is calculated per benchmark relative to its own original accuracy before averaging.
 
-| Prompt retained | Average accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Measured time | Estimated API cost |
-|---:|---:|---:|---:|---:|---:|---:|
-| 50% | 22.0% | 30.6% | 58.2% | 0.090447 | 2,008.4s | $6.8575 |
-| 60% | 36.0% | 50.7% | 45.3% | 0.054069 | 1,838.2s | $6.4335 |
-| 70% | 38.0% | 53.1% | 34.5% | 0.036756 | 1,518.4s | $5.1147 |
-| 80% | 45.0% | 63.3% | 23.9% | 0.025185 | 1,186.8s | $3.7550 |
-| 90% | 61.0% | 86.7% | 13.5% | 0.016461 | 901.5s | $2.4377 |
-| 100% (original) | 71.0% | 100.0% | 0.0% | 0.000000 | 116.8s | $0.7462 |
+| Prompt retained | Average accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Measured time |
+|---:|---:|---:|---:|---:|---:|
+| 50% | 22.0% | 30.6% | 58.2% | 0.090447 | 2,008.4s |
+| 60% | 36.0% | 50.7% | 45.3% | 0.054069 | 1,838.2s |
+| 70% | 38.0% | 53.1% | 34.5% | 0.036756 | 1,518.4s |
+| 80% | 45.0% | 63.3% | 23.9% | 0.025185 | 1,186.8s |
+| 90% | 61.0% | 86.7% | 13.5% | 0.016461 | 901.5s |
+| 100% (original) | 71.0% | 100.0% | 0.0% | 0.000000 | 116.8s |
 
 ![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
 
 ![Accuracy retention by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_retention_vs_retained.png)
-
-![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/cost_and_time_vs_retained.png)
 
 `cos_sim_diff` (`1 - cosine_similarity` between the original and reduced whole-prompt embeddings)
 is the quality knob the CLI exposes as `--cos-sim-diff-budget`. The next two figures connect it to
@@ -149,12 +147,11 @@ accuracy falls as semantic change grows — so you can pick a budget instead of 
 
 All five compressed conditions failed the predeclared paired-bootstrap release rule on both qualified benchmarks.
 The complete experiment, including LongBench's stopped baseline, recorded 650 case/condition results and 4,996
-metered usage events. Its estimated API cost was $27.2084 and its summed measured reduction-plus-answer time was
-7,631.6 seconds. The per-condition time table sums measured API work across the two qualified benchmarks; it is
-not the elapsed time of the parallel shell processes.
+metered usage events. Its summed measured reduction-plus-answer time was 7,631.6 seconds. The per-condition time
+table sums measured API work across the two qualified benchmarks; it is not the elapsed time of the parallel shell
+processes.
 
-The raw per-benchmark accuracy figure, cost assumptions and planning estimates, per-benchmark
-pass/fail decisions, exact commands, and links to the append-only raw records are in the
+The raw per-benchmark results, pass/fail decisions, exact commands, and links to the append-only records are in the
 [shared benchmark documentation](benchmarks/prompt_compression/README.md).
 
 ## How it works
