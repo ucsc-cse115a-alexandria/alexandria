@@ -1,0 +1,860 @@
+{
+  "schema_version": 1,
+  "label": "original_luna_reasoning_none",
+  "model": "gpt-5.6-luna",
+  "accuracy": 0.66,
+  "mean_input_prompt_tokens": 7540.82,
+  "measurement": {
+    "run": {
+      "condition": "original_only",
+      "model": "gpt-5.6-luna",
+      "reasoning": {
+        "effort": "none"
+      },
+      "n_cases": 100,
+      "seed": 42
+    },
+    "pricing_assumptions": {
+      "gpt-5.6-luna_standard_short_context_per_1m": {
+        "input": 1.0,
+        "cached_input": 0.1,
+        "output": 6.0
+      },
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "notes": [
+        "Cost uses SDK usage fields from this run.",
+        "Cached input discount is applied only to cached_input_tokens reported by usage.",
+        "Estimate excludes regional processing uplift and taxes."
+      ]
+    },
+    "api_usage_and_cost": {
+      "by_category": {
+        "answer": {
+          "requests": 100,
+          "input_tokens": 747255,
+          "cached_input_tokens": 0,
+          "output_tokens": 1056,
+          "total_tokens": 748311,
+          "elapsed_seconds": 109.16700621301425
+        }
+      },
+      "total_estimated_usd": 0.753591
+    },
+    "timing_seconds": {
+      "total_wall_clock": 109.17025107692461,
+      "mean_per_case": 1.0917025107692462
+    },
+    "score": {
+      "accuracy": 0.66,
+      "correct": 66,
+      "n": 100
+    },
+    "input_prompts": {
+      "n_prompts_sent": 100,
+      "mean_input_prompt_tokens_harness": 7540.82,
+      "total_input_prompt_tokens_harness": 754082
+    }
+  },
+  "records": [
+    {
+      "key": "qa1:42",
+      "task": "qa1",
+      "source_tokens": 7823,
+      "sent_tokens": 7823,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:41",
+      "task": "qa1",
+      "source_tokens": 7820,
+      "sent_tokens": 7820,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:91",
+      "task": "qa1",
+      "source_tokens": 7703,
+      "sent_tokens": 7703,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019bedroom\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:9",
+      "task": "qa1",
+      "source_tokens": 7309,
+      "sent_tokens": 7309,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the bedroom\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:65",
+      "task": "qa1",
+      "source_tokens": 7637,
+      "sent_tokens": 7637,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the garden\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:50",
+      "task": "qa1",
+      "source_tokens": 6953,
+      "sent_tokens": 6953,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:1",
+      "task": "qa1",
+      "source_tokens": 7659,
+      "sent_tokens": 7659,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:70",
+      "task": "qa1",
+      "source_tokens": 7778,
+      "sent_tokens": 7778,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:15",
+      "task": "qa1",
+      "source_tokens": 7716,
+      "sent_tokens": 7716,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:78",
+      "task": "qa1",
+      "source_tokens": 7814,
+      "sent_tokens": 7814,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the hallway\u2019.",
+      "correct": false
+    },
+    {
+      "key": "qa1:73",
+      "task": "qa1",
+      "source_tokens": 7689,
+      "sent_tokens": 7689,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:10",
+      "task": "qa1",
+      "source_tokens": 7614,
+      "sent_tokens": 7614,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:55",
+      "task": "qa1",
+      "source_tokens": 7830,
+      "sent_tokens": 7830,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:56",
+      "task": "qa1",
+      "source_tokens": 7761,
+      "sent_tokens": 7761,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:72",
+      "task": "qa1",
+      "source_tokens": 7661,
+      "sent_tokens": 7661,
+      "response": "The most recent location of \u2019John\u2019 is \u2019bedroom\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:45",
+      "task": "qa1",
+      "source_tokens": 7229,
+      "sent_tokens": 7229,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:48",
+      "task": "qa1",
+      "source_tokens": 7804,
+      "sent_tokens": 7804,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019the office\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:92",
+      "task": "qa1",
+      "source_tokens": 7807,
+      "sent_tokens": 7807,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:76",
+      "task": "qa1",
+      "source_tokens": 7141,
+      "sent_tokens": 7141,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019.",
+      "correct": true
+    },
+    {
+      "key": "qa1:37",
+      "task": "qa1",
+      "source_tokens": 7671,
+      "sent_tokens": 7671,
+      "response": "The most recent location of \u2019John\u2019 is \u2019London\u2019.",
+      "correct": false
+    },
+    {
+      "key": "qa2:35",
+      "task": "qa2",
+      "source_tokens": 7845,
+      "sent_tokens": 7845,
+      "response": "The apple is in the kitchen.",
+      "correct": true
+    },
+    {
+      "key": "qa2:67",
+      "task": "qa2",
+      "source_tokens": 7771,
+      "sent_tokens": 7771,
+      "response": "The football is in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa2:30",
+      "task": "qa2",
+      "source_tokens": 7692,
+      "sent_tokens": 7692,
+      "response": "The apple is in the hallway.",
+      "correct": true
+    },
+    {
+      "key": "qa2:32",
+      "task": "qa2",
+      "source_tokens": 7810,
+      "sent_tokens": 7810,
+      "response": "The apple is in the bathroom.",
+      "correct": false
+    },
+    {
+      "key": "qa2:0",
+      "task": "qa2",
+      "source_tokens": 7756,
+      "sent_tokens": 7756,
+      "response": "The football is in the hallway.",
+      "correct": false
+    },
+    {
+      "key": "qa2:14",
+      "task": "qa2",
+      "source_tokens": 7705,
+      "sent_tokens": 7705,
+      "response": "The \u2019apple\u2019 is in \u2019the kitchen\u2019.",
+      "correct": false
+    },
+    {
+      "key": "qa2:51",
+      "task": "qa2",
+      "source_tokens": 7181,
+      "sent_tokens": 7181,
+      "response": "The apple is in the garden.",
+      "correct": false
+    },
+    {
+      "key": "qa2:71",
+      "task": "qa2",
+      "source_tokens": 7841,
+      "sent_tokens": 7841,
+      "response": "The milk is in the office.",
+      "correct": true
+    },
+    {
+      "key": "qa2:62",
+      "task": "qa2",
+      "source_tokens": 7777,
+      "sent_tokens": 7777,
+      "response": "The football is in the bedroom.",
+      "correct": false
+    },
+    {
+      "key": "qa2:87",
+      "task": "qa2",
+      "source_tokens": 7693,
+      "sent_tokens": 7693,
+      "response": "The milk is in the hallway.",
+      "correct": false
+    },
+    {
+      "key": "qa2:25",
+      "task": "qa2",
+      "source_tokens": 6912,
+      "sent_tokens": 6912,
+      "response": "The football is in \u2019there\u2019.",
+      "correct": false
+    },
+    {
+      "key": "qa2:40",
+      "task": "qa2",
+      "source_tokens": 7715,
+      "sent_tokens": 7715,
+      "response": "The football is in the bathroom.",
+      "correct": true
+    },
+    {
+      "key": "qa2:26",
+      "task": "qa2",
+      "source_tokens": 7668,
+      "sent_tokens": 7668,
+      "response": "The football is in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa2:42",
+      "task": "qa2",
+      "source_tokens": 7874,
+      "sent_tokens": 7874,
+      "response": "The apple is in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa2:92",
+      "task": "qa2",
+      "source_tokens": 7912,
+      "sent_tokens": 7912,
+      "response": "The football is in the bedroom.",
+      "correct": true
+    },
+    {
+      "key": "qa2:1",
+      "task": "qa2",
+      "source_tokens": 7493,
+      "sent_tokens": 7493,
+      "response": "The milk is in the bathroom.",
+      "correct": false
+    },
+    {
+      "key": "qa2:75",
+      "task": "qa2",
+      "source_tokens": 7826,
+      "sent_tokens": 7826,
+      "response": "The milk is in the garden.",
+      "correct": false
+    },
+    {
+      "key": "qa2:27",
+      "task": "qa2",
+      "source_tokens": 7519,
+      "sent_tokens": 7519,
+      "response": "The apple is in the bedroom.",
+      "correct": true
+    },
+    {
+      "key": "qa2:74",
+      "task": "qa2",
+      "source_tokens": 6251,
+      "sent_tokens": 6251,
+      "response": "The football is in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa2:9",
+      "task": "qa2",
+      "source_tokens": 7529,
+      "sent_tokens": 7529,
+      "response": "The milk is in the bathroom.",
+      "correct": true
+    },
+    {
+      "key": "qa3:54",
+      "task": "qa3",
+      "source_tokens": 7820,
+      "sent_tokens": 7820,
+      "response": "Before the office the apple was in the garden.",
+      "correct": true
+    },
+    {
+      "key": "qa3:31",
+      "task": "qa3",
+      "source_tokens": 6256,
+      "sent_tokens": 6256,
+      "response": "Before the garden the milk was in the kitchen.",
+      "correct": true
+    },
+    {
+      "key": "qa3:82",
+      "task": "qa3",
+      "source_tokens": 7741,
+      "sent_tokens": 7741,
+      "response": "Before the garden the apple was in the bedroom.",
+      "correct": false
+    },
+    {
+      "key": "qa3:46",
+      "task": "qa3",
+      "source_tokens": 7899,
+      "sent_tokens": 7899,
+      "response": "Before the bedroom the football was in the office.",
+      "correct": true
+    },
+    {
+      "key": "qa3:25",
+      "task": "qa3",
+      "source_tokens": 7735,
+      "sent_tokens": 7735,
+      "response": "Before the hallway the apple was in the kitchen.",
+      "correct": false
+    },
+    {
+      "key": "qa3:63",
+      "task": "qa3",
+      "source_tokens": 7842,
+      "sent_tokens": 7842,
+      "response": "Before the hallway the apple was in the bedroom.",
+      "correct": false
+    },
+    {
+      "key": "qa3:70",
+      "task": "qa3",
+      "source_tokens": 7905,
+      "sent_tokens": 7905,
+      "response": "Before the bathroom the milk was in the hallway.",
+      "correct": false
+    },
+    {
+      "key": "qa3:10",
+      "task": "qa3",
+      "source_tokens": 7889,
+      "sent_tokens": 7889,
+      "response": "Before the bedroom the milk was in the kitchen.",
+      "correct": true
+    },
+    {
+      "key": "qa3:32",
+      "task": "qa3",
+      "source_tokens": 7574,
+      "sent_tokens": 7574,
+      "response": "Before the garden the milk was in the hallway.",
+      "correct": false
+    },
+    {
+      "key": "qa3:26",
+      "task": "qa3",
+      "source_tokens": 7833,
+      "sent_tokens": 7833,
+      "response": "Before the office the milk was in the bathroom.",
+      "correct": true
+    },
+    {
+      "key": "qa3:53",
+      "task": "qa3",
+      "source_tokens": 7255,
+      "sent_tokens": 7255,
+      "response": "Before the hallway the milk was in the office.",
+      "correct": false
+    },
+    {
+      "key": "qa3:99",
+      "task": "qa3",
+      "source_tokens": 7946,
+      "sent_tokens": 7946,
+      "response": "Before the garden the football was in the hallway.",
+      "correct": false
+    },
+    {
+      "key": "qa3:86",
+      "task": "qa3",
+      "source_tokens": 7819,
+      "sent_tokens": 7819,
+      "response": "Before the hallway the milk was in the bedroom.",
+      "correct": true
+    },
+    {
+      "key": "qa3:35",
+      "task": "qa3",
+      "source_tokens": 7755,
+      "sent_tokens": 7755,
+      "response": "Before the bathroom the apple was in the hallway.",
+      "correct": true
+    },
+    {
+      "key": "qa3:33",
+      "task": "qa3",
+      "source_tokens": 7239,
+      "sent_tokens": 7239,
+      "response": "Before the garden the milk was in the kitchen.",
+      "correct": false
+    },
+    {
+      "key": "qa3:50",
+      "task": "qa3",
+      "source_tokens": 7578,
+      "sent_tokens": 7578,
+      "response": "Before the kitchen the football was in the office.",
+      "correct": false
+    },
+    {
+      "key": "qa3:56",
+      "task": "qa3",
+      "source_tokens": 7629,
+      "sent_tokens": 7629,
+      "response": "Before the hallway the milk was in the bedroom.",
+      "correct": false
+    },
+    {
+      "key": "qa3:60",
+      "task": "qa3",
+      "source_tokens": 7880,
+      "sent_tokens": 7880,
+      "response": "Before the office the milk was in the bedroom.",
+      "correct": false
+    },
+    {
+      "key": "qa3:11",
+      "task": "qa3",
+      "source_tokens": 7868,
+      "sent_tokens": 7868,
+      "response": "Before the hallway the football was in the bathroom.",
+      "correct": false
+    },
+    {
+      "key": "qa3:73",
+      "task": "qa3",
+      "source_tokens": 7861,
+      "sent_tokens": 7861,
+      "response": "Before the kitchen the milk was in the office.",
+      "correct": true
+    },
+    {
+      "key": "qa4:81",
+      "task": "qa4",
+      "source_tokens": 7670,
+      "sent_tokens": 7670,
+      "response": "bedroom",
+      "correct": false
+    },
+    {
+      "key": "qa4:59",
+      "task": "qa4",
+      "source_tokens": 5424,
+      "sent_tokens": 5424,
+      "response": "kitchen",
+      "correct": false
+    },
+    {
+      "key": "qa4:6",
+      "task": "qa4",
+      "source_tokens": 7730,
+      "sent_tokens": 7730,
+      "response": "bathroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:63",
+      "task": "qa4",
+      "source_tokens": 7181,
+      "sent_tokens": 7181,
+      "response": "bathroom",
+      "correct": false
+    },
+    {
+      "key": "qa4:25",
+      "task": "qa4",
+      "source_tokens": 7663,
+      "sent_tokens": 7663,
+      "response": "hallway",
+      "correct": true
+    },
+    {
+      "key": "qa4:72",
+      "task": "qa4",
+      "source_tokens": 7539,
+      "sent_tokens": 7539,
+      "response": "bedroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:93",
+      "task": "qa4",
+      "source_tokens": 7727,
+      "sent_tokens": 7727,
+      "response": "hallway",
+      "correct": true
+    },
+    {
+      "key": "qa4:95",
+      "task": "qa4",
+      "source_tokens": 6338,
+      "sent_tokens": 6338,
+      "response": "bathroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:68",
+      "task": "qa4",
+      "source_tokens": 7544,
+      "sent_tokens": 7544,
+      "response": "bathroom",
+      "correct": false
+    },
+    {
+      "key": "qa4:87",
+      "task": "qa4",
+      "source_tokens": 7556,
+      "sent_tokens": 7556,
+      "response": "bathroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:29",
+      "task": "qa4",
+      "source_tokens": 5999,
+      "sent_tokens": 5999,
+      "response": "kitchen",
+      "correct": true
+    },
+    {
+      "key": "qa4:60",
+      "task": "qa4",
+      "source_tokens": 7401,
+      "sent_tokens": 7401,
+      "response": "bathroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:55",
+      "task": "qa4",
+      "source_tokens": 6373,
+      "sent_tokens": 6373,
+      "response": "bathroom",
+      "correct": true
+    },
+    {
+      "key": "qa4:64",
+      "task": "qa4",
+      "source_tokens": 7600,
+      "sent_tokens": 7600,
+      "response": "kitchen",
+      "correct": true
+    },
+    {
+      "key": "qa4:5",
+      "task": "qa4",
+      "source_tokens": 7780,
+      "sent_tokens": 7780,
+      "response": "office",
+      "correct": true
+    },
+    {
+      "key": "qa4:94",
+      "task": "qa4",
+      "source_tokens": 7730,
+      "sent_tokens": 7730,
+      "response": "hallway",
+      "correct": false
+    },
+    {
+      "key": "qa4:78",
+      "task": "qa4",
+      "source_tokens": 7763,
+      "sent_tokens": 7763,
+      "response": "garden",
+      "correct": false
+    },
+    {
+      "key": "qa4:49",
+      "task": "qa4",
+      "source_tokens": 7481,
+      "sent_tokens": 7481,
+      "response": "office",
+      "correct": false
+    },
+    {
+      "key": "qa4:0",
+      "task": "qa4",
+      "source_tokens": 7766,
+      "sent_tokens": 7766,
+      "response": "hallway",
+      "correct": false
+    },
+    {
+      "key": "qa4:58",
+      "task": "qa4",
+      "source_tokens": 7700,
+      "sent_tokens": 7700,
+      "response": "office",
+      "correct": false
+    },
+    {
+      "key": "qa5:71",
+      "task": "qa5",
+      "source_tokens": 7492,
+      "sent_tokens": 7492,
+      "response": "Bill",
+      "correct": true
+    },
+    {
+      "key": "qa5:85",
+      "task": "qa5",
+      "source_tokens": 7822,
+      "sent_tokens": 7822,
+      "response": "Bill",
+      "correct": true
+    },
+    {
+      "key": "qa5:30",
+      "task": "qa5",
+      "source_tokens": 7390,
+      "sent_tokens": 7390,
+      "response": "milk",
+      "correct": true
+    },
+    {
+      "key": "qa5:73",
+      "task": "qa5",
+      "source_tokens": 7781,
+      "sent_tokens": 7781,
+      "response": "apple",
+      "correct": true
+    },
+    {
+      "key": "qa5:86",
+      "task": "qa5",
+      "source_tokens": 7739,
+      "sent_tokens": 7739,
+      "response": "Mary",
+      "correct": true
+    },
+    {
+      "key": "qa5:41",
+      "task": "qa5",
+      "source_tokens": 7651,
+      "sent_tokens": 7651,
+      "response": "Bill",
+      "correct": false
+    },
+    {
+      "key": "qa5:36",
+      "task": "qa5",
+      "source_tokens": 6676,
+      "sent_tokens": 6676,
+      "response": "Jeff",
+      "correct": true
+    },
+    {
+      "key": "qa5:54",
+      "task": "qa5",
+      "source_tokens": 7562,
+      "sent_tokens": 7562,
+      "response": "Mary",
+      "correct": true
+    },
+    {
+      "key": "qa5:89",
+      "task": "qa5",
+      "source_tokens": 7583,
+      "sent_tokens": 7583,
+      "response": "Fred",
+      "correct": true
+    },
+    {
+      "key": "qa5:26",
+      "task": "qa5",
+      "source_tokens": 7670,
+      "sent_tokens": 7670,
+      "response": "Jeff",
+      "correct": false
+    },
+    {
+      "key": "qa5:64",
+      "task": "qa5",
+      "source_tokens": 7539,
+      "sent_tokens": 7539,
+      "response": "milk",
+      "correct": true
+    },
+    {
+      "key": "qa5:47",
+      "task": "qa5",
+      "source_tokens": 7340,
+      "sent_tokens": 7340,
+      "response": "Fred",
+      "correct": true
+    },
+    {
+      "key": "qa5:78",
+      "task": "qa5",
+      "source_tokens": 7096,
+      "sent_tokens": 7096,
+      "response": "Fred",
+      "correct": true
+    },
+    {
+      "key": "qa5:48",
+      "task": "qa5",
+      "source_tokens": 7857,
+      "sent_tokens": 7857,
+      "response": "Mary",
+      "correct": true
+    },
+    {
+      "key": "qa5:65",
+      "task": "qa5",
+      "source_tokens": 7627,
+      "sent_tokens": 7627,
+      "response": "Jeff",
+      "correct": true
+    },
+    {
+      "key": "qa5:1",
+      "task": "qa5",
+      "source_tokens": 7874,
+      "sent_tokens": 7874,
+      "response": "Bill",
+      "correct": true
+    },
+    {
+      "key": "qa5:16",
+      "task": "qa5",
+      "source_tokens": 7641,
+      "sent_tokens": 7641,
+      "response": "Mary",
+      "correct": true
+    },
+    {
+      "key": "qa5:27",
+      "task": "qa5",
+      "source_tokens": 7355,
+      "sent_tokens": 7355,
+      "response": "Mary",
+      "correct": true
+    },
+    {
+      "key": "qa5:62",
+      "task": "qa5",
+      "source_tokens": 7838,
+      "sent_tokens": 7838,
+      "response": "Bill",
+      "correct": true
+    },
+    {
+      "key": "qa5:52",
+      "task": "qa5",
+      "source_tokens": 7071,
+      "sent_tokens": 7071,
+      "response": "apple",
+      "correct": true
+    }
+  ]
+}

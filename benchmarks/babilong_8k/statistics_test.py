@@ -7,7 +7,7 @@ import pytest
 
 from benchmarks.babilong_8k.statistics import paired_retention_bootstrap
 
-_COMMITTED_RESULT = Path(__file__).parent / "results/2026-07-18-keep90-hard-target-n10-v4/summary.json"
+_COMMITTED_RESULT = Path(__file__).parent / "results/2026-07-18-keep90-hard-target-n100-v1/summary.json"
 
 
 def test_identical_correct_outcomes_clear_the_retention_gate() -> None:

@@ -109,13 +109,13 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The committed BABILong 8k validation used 10 task-balanced cases and a strict 90%-retained target. All 10 prompts
-met their token ceilings, reducing mean input from 7,374.3 to 6,564.5 tokens (10.98%). Original task accuracy was
-80% and compressed accuracy was 70%, so accuracy retention was 87.5% with a 95% paired-bootstrap interval of
-60%-100%.
+The committed BABILong 8k result used 100 task-balanced cases and a strict 90%-retained target. All 100 prompts met
+their token ceilings, reducing mean input from 7,540.82 to 6,716.60 tokens (10.93%). Original task accuracy was 66%
+and compressed accuracy was 65%, so accuracy retention was 98.48% with a 95% paired-bootstrap interval of
+85.71%-112.90%.
 
 **Release decision: FAIL.** The confidence interval does not clear the predeclared 90% retention threshold. This
-small run validates the hard-target behavior and measurement path; it does not support the release accuracy claim.
+run validates the hard-target behavior and measurement path; it does not support the release accuracy claim.
 See the [method, assumptions, costs, timing, and committed raw results](benchmarks/babilong_8k/README.md).
 
 ## How it works

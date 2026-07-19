@@ -73,25 +73,33 @@ semantic outliers. Target-safe candidates are ranked by local coverage and whole
 call normally returns two candidates; a second call is allowed only for quality refinement. Each result records
 merge calls, retries, generated candidates, repaired tokens, and final drift.
 
-## 10-case hard-target validation
+## 100-case hard-target result
 
-The committed validation run used `gpt-5.6-luna`, answer reasoning `none`, merge reasoning `low`, seed 42, and two
-cases from each of `qa1`-`qa5`. It is an implementation validation, not a publication-quality release result.
+The committed run used `gpt-5.6-luna`, answer reasoning `none`, merge reasoning `low`, seed 42, and 20 cases from
+each of `qa1`-`qa5`.
 
 | Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |
 |---|---:|---:|---:|---:|
-| Original | 7,374.3 | 0.00% | 80.0% (8/10) | - |
-| 90%-retained | 6,564.5 | 10.98% | 70.0% (7/10) | -10.0 pp |
+| Original | 7,540.82 | 0.00% | 66.0% (66/100) | - |
+| 90%-retained | 6,716.60 | 10.93% | 65.0% (65/100) | -1.0 pp |
 
-All 10 compressed prompts met their token ceilings. Compression took 159.5 seconds total (15.9 seconds/case), used
-10 merge calls with no retries, and had mean whole-prompt embedding drift 0.0078. The compressed run cost an
-estimated $0.1832; including the original answer baseline, the measured total was $0.2569. Prices and raw API usage
-are recorded in [`summary.json`](results/2026-07-18-keep90-hard-target-n10-v4/summary.json).
+All 100 compressed prompts met their token ceilings. Compression took 1,640.1 seconds total (16.4 seconds/case),
+used 99 merge calls with no retries, and had mean whole-prompt embedding drift 0.0072. Compression cost an estimated
+$1.2002, and compressed-answer generation cost $0.6723. Including the $0.7536 original baseline, the measured API
+total was $2.6260 and sequential wall time was 1,898.0 seconds. Prices and raw API usage are recorded in
+[`summary.json`](results/2026-07-18-keep90-hard-target-n100-v1/summary.json).
 
-Accuracy retention was 87.5%. Its 95% paired percentile-bootstrap interval was 60.0%-100.0% (10,000 resamples,
+Accuracy retention was 98.48%. Its 95% paired percentile-bootstrap interval was 85.71%-112.90% (10,000 resamples,
 seed 42). The release rule was fixed at a 90% retention threshold and requires the confidence interval's lower bound
-to be at least 90%. **Decision: FAIL. This run does not clear the release threshold.** The point estimate is below
-the threshold, and the small sample leaves substantial uncertainty.
+to be at least 90%. **Decision: FAIL. This run does not clear the release threshold.** The point estimate exceeds
+the threshold, but its confidence interval does not.
+
+The bootstrap resamples paired case indices with replacement and computes compressed accuracy divided by original
+accuracy in each resample. Ratios can exceed 100% when a resample contains more compressed-only successes than
+original-only successes. Resamples with zero original accuracy are discarded. The 100 observed pairs contained 11
+regressions, 10 improvements, 55 cases correct in both conditions, and 24 cases wrong in both conditions. Model
+generation is stochastic, so this interval describes this paired run and sampling procedure rather than repeat-run
+variance.
 
 The confidence calculation is reproducible from the per-case outcomes committed in `summary.json`:
 
@@ -102,7 +110,7 @@ from pathlib import Path
 
 from benchmarks.babilong_8k.statistics import paired_retention_bootstrap
 
-path = Path("benchmarks/babilong_8k/results/2026-07-18-keep90-hard-target-n10-v4/summary.json")
+path = Path("benchmarks/babilong_8k/results/2026-07-18-keep90-hard-target-n100-v1/summary.json")
 records = json.loads(path.read_text())["records"]
 result = paired_retention_bootstrap(
     [record["original_correct"] for record in records],
@@ -117,16 +125,17 @@ PY
 ```
 
 The full compressed prompts and metered API responses are in
-[`raw.json`](results/2026-07-18-keep90-hard-target-n10-v4/raw.json); compact original responses are in
-[`original.json`](results/2026-07-18-keep90-hard-target-n10-v4/original.json). Rerun measurement with:
+[`raw.json`](results/2026-07-18-keep90-hard-target-n100-v1/raw.json); compact original responses are in
+[`original.json`](results/2026-07-18-keep90-hard-target-n100-v1/original.json). Given a full original
+`ExperimentResult` from the same selected cases, rerun measurement with:
 
 ```bash
 uv run python -m scripts.babilong_8k_keep90_measure \
-  --n 10 --seed 42 --keep 90 \
+  --n 100 --seed 42 --keep 90 \
   --data-dir data/babilong/8k \
-  --baseline trial_results/babilong_8k/original_gpt56_luna_reasoning_none_n10_20260718/original_luna_reasoning_none.json \
-  --baseline-summary trial_results/babilong_8k/original_gpt56_luna_reasoning_none_n10_20260718/measured_summary.json \
-  --out trial_results/babilong_8k/keep90-hard-target-n10
+  --baseline trial_results/babilong_8k/original_n100/original_luna_reasoning_none.json \
+  --baseline-summary trial_results/babilong_8k/original_n100/original_summary.json \
+  --out trial_results/babilong_8k/keep90-hard-target-n100
 ```
 
 The `--baseline-summary` argument is optional; it adds original-run time and cost to the combined totals. Raw
