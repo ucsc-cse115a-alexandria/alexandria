@@ -8,6 +8,7 @@ from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score, score_rows
 from alexandria.ops.features.select import select
 from alexandria.ops.pipe import (
+    InfeasibleTargetError,
     OptimizationReport,
     Proposal,
     ReduceResult,
@@ -32,6 +33,7 @@ __all__ = [
     "Diff",
     "DiffSpan",
     "HashEmbedder",
+    "InfeasibleTargetError",
     "OptimizationReport",
     "Proposal",
     "ReduceResult",

@@ -54,27 +54,101 @@ For each task, the checker:
 Thus both `bathroom` and `The most recent location of Mary is bathroom.` can pass when the target is `bathroom`.
 The harness deliberately reports this as `Task accuracy`, not strict format compliance.
 
-## Reproducible n=50 experiment
+## Reproducible experiment
 
 The default phase-one run uses 50 cases selected with seed 42, balanced as 10 cases from each of `qa1`-`qa5`.
-It compares the original prompt with a 90% reduction target (10% of source tokens retained):
+It compares the original prompt with a 90%-retained target (at least a 10% token reduction):
 
 ```bash
 uv run python -m scripts.download_babilong_8k_data
 uv run python -m scripts.babilong_8k_phase1
 ```
 
-Results are written under `trial_results/babilong_8k/`. The comparison table uses this format:
+Results are written under `trial_results/babilong_8k/`.
 
 The reduction target is strict. Alexandria keeps instruction, example, format, and Markdown/XML boundaries fixed,
-then asks Luna to merge the largest content group to the remaining token budget. It verifies the complete prompt's
-token count and embedding drift. A rejected attempt is retried with the measured failures as feedback. Each result
-records merge calls, retries, attempted jobs, proposed edits, and applied edits.
+then asks Luna to rewrite a content window to the remaining token budget. It verifies the complete prompt's token
+count and deterministically repairs model overshoot. Candidate windows avoid query-linked terms and protect local
+semantic outliers. Target-safe candidates are ranked by local coverage and whole-prompt embedding drift. One merge
+call normally returns two candidates; a second call is allowed only for quality refinement. Each result records
+merge calls, retries, generated candidates, repaired tokens, and final drift.
+
+## 100-case hard-target result
+
+The committed run used `gpt-5.6-luna`, answer reasoning `none`, merge reasoning `low`, seed 42, and 20 cases from
+each of `qa1`-`qa5`.
+
+| Condition | Mean input tokens | Token reduction | Task accuracy | Accuracy change |
+|---|---:|---:|---:|---:|
+| Original | 7,540.82 | 0.00% | 66.0% (66/100) | - |
+| 90%-retained | 6,716.60 | 10.93% | 65.0% (65/100) | -1.0 pp |
+
+All 100 compressed prompts met their token ceilings. Compression took 1,640.1 seconds total (16.4 seconds/case),
+used 99 merge calls with no retries, and had mean whole-prompt embedding drift 0.0072. Compression cost an estimated
+$1.2002, and compressed-answer generation cost $0.6723. Including the $0.7536 original baseline, the measured API
+total was $2.6260 and sequential wall time was 1,898.0 seconds. Prices and raw API usage are recorded in
+[`summary.json`](results/2026-07-18-keep90-hard-target-n100-v1/summary.json).
+
+Accuracy retention was 98.48%. Its 95% paired percentile-bootstrap interval was 85.71%-112.90% (10,000 resamples,
+seed 42). The release rule was fixed at a 90% retention threshold and requires the confidence interval's lower bound
+to be at least 90%. **Decision: FAIL. This run does not clear the release threshold.** The point estimate exceeds
+the threshold, but its confidence interval does not.
+
+The bootstrap resamples paired case indices with replacement and computes compressed accuracy divided by original
+accuracy in each resample. Ratios can exceed 100% when a resample contains more compressed-only successes than
+original-only successes. Resamples with zero original accuracy are discarded. The 100 observed pairs contained 11
+regressions, 10 improvements, 55 cases correct in both conditions, and 24 cases wrong in both conditions. Model
+generation is stochastic, so this interval describes this paired run and sampling procedure rather than repeat-run
+variance.
+
+The confidence calculation is reproducible from the per-case outcomes committed in `summary.json`:
+
+```bash
+uv run python - <<'PY'
+import json
+from pathlib import Path
+
+from benchmarks.babilong_8k.statistics import paired_retention_bootstrap
+
+path = Path("benchmarks/babilong_8k/results/2026-07-18-keep90-hard-target-n100-v1/summary.json")
+records = json.loads(path.read_text())["records"]
+result = paired_retention_bootstrap(
+    [record["original_correct"] for record in records],
+    [record["compressed_correct"] for record in records],
+    samples=10_000,
+    seed=42,
+    confidence_level=0.95,
+    release_threshold=0.90,
+)
+print(result.model_dump_json(indent=2))
+PY
+```
+
+The full compressed prompts and metered API responses are in
+[`raw.json`](results/2026-07-18-keep90-hard-target-n100-v1/raw.json); compact original responses are in
+[`original.json`](results/2026-07-18-keep90-hard-target-n100-v1/original.json). Given a full original
+`ExperimentResult` from the same selected cases, rerun measurement with:
+
+```bash
+uv run python -m scripts.babilong_8k_keep90_measure \
+  --n 100 --seed 42 --keep 90 \
+  --data-dir data/babilong/8k \
+  --baseline trial_results/babilong_8k/original_n100/original_luna_reasoning_none.json \
+  --baseline-summary trial_results/babilong_8k/original_n100/original_summary.json \
+  --out trial_results/babilong_8k/keep90-hard-target-n100
+```
+
+The `--baseline-summary` argument is optional; it adds original-run time and cost to the combined totals. Raw
+results are checkpointed after each case, so rerunning the same command resumes an interrupted run.
+
+## Reporting format
+
+Use this table format for larger runs:
 
 | Condition | Mean input tokens | Token reduction | Merge calls | Retries | Task accuracy | Accuracy change |
 |---|---:|---:|---:|---:|---:|---:|
-| original_luna | 7,720.0 | 0.0% | 0 | 0 | 90.0% (45/50) | — |
-| reduction90_luna | 772.0 | 90.0% | 35 | 4 | 86.0% (43/50) | -4.0 pp |
+| original_luna | 7,720.0 | 0.0% | 0 | 0 | 90.0% (45/50) | - |
+| keep90_luna | 6,948.0 | 10.0% | 50 | 0 | 86.0% (43/50) | -4.0 pp |
 
 The numbers above illustrate reporting only; they are not benchmark results.
 

@@ -1,0 +1,901 @@
+{
+  "schema_version": 1,
+  "method": {
+    "benchmark": "BABILong 8k qa1-qa5 task-balanced sample",
+    "n_cases": 100,
+    "seed": 42,
+    "keep_percent": 90.0,
+    "model": "gpt-5.6-luna",
+    "answer_reasoning": "none",
+    "merge_reasoning": "low",
+    "tokenizer": "cl100k_base",
+    "bootstrap": "paired percentile bootstrap over case indices",
+    "pricing_usd_per_million": {
+      "gpt_input": 1.0,
+      "gpt_cached_input": 0.1,
+      "gpt_output": 6.0,
+      "embedding_input": 0.02
+    },
+    "pricing_source": "https://developers.openai.com/api/docs/pricing"
+  },
+  "implementation_commit": "899375047065b06fc2fd7c59320ca6c70449a3bd",
+  "target": {
+    "successes": 100,
+    "failures": 0,
+    "source_tokens": 754082,
+    "reduced_tokens": 671660,
+    "token_reduction": 0.10930111048931013,
+    "mean_input_prompt_tokens": 6716.6,
+    "original_mean_input_prompt_tokens": 7540.82
+  },
+  "quality": {
+    "n_cases": 100,
+    "original_accuracy": 0.66,
+    "compressed_accuracy": 0.65,
+    "accuracy_change_pp": -1.0000000000000009,
+    "retention": 0.9848484848484849,
+    "confidence_level": 0.95,
+    "confidence_low": 0.8571428571428571,
+    "confidence_high": 1.1290471923536438,
+    "bootstrap_samples": 10000,
+    "bootstrap_seed": 42,
+    "release_threshold": 0.9,
+    "clears_release_threshold": false,
+    "drift_budget_met": 100,
+    "mean_embedding_drift": 0.007167115807533264,
+    "p95_embedding_drift": 0.025801575183868407,
+    "release_decision": "FAIL: retention confidence interval does not clear the release threshold"
+  },
+  "performance": {
+    "merge_calls": 99,
+    "merge_retries": 0,
+    "merge_candidates": 198,
+    "repaired_tokens": 1995,
+    "compression_total_seconds": 1640.1412091330421,
+    "compression_mean_seconds": 16.40141209133042,
+    "compression_p95_seconds": 19.234305325003515,
+    "answer_total_seconds": 148.68820236911415,
+    "answer_mean_seconds": 1.4868820236911415
+  },
+  "api_usage": {
+    "answer": {
+      "requests": 100,
+      "input_tokens": 665921,
+      "cached_input_tokens": 0,
+      "output_tokens": 1057,
+      "total_tokens": 666978,
+      "elapsed_seconds": 148.68616608387674
+    },
+    "embedding": {
+      "requests": 332,
+      "input_tokens": 6071924,
+      "cached_input_tokens": 0,
+      "output_tokens": 0,
+      "total_tokens": 6071924,
+      "elapsed_seconds": 618.8711584551056
+    },
+    "target_merge": {
+      "requests": 99,
+      "input_tokens": 173320,
+      "cached_input_tokens": 3657,
+      "output_tokens": 151453,
+      "total_tokens": 324773,
+      "elapsed_seconds": 1002.3973466689931
+    }
+  },
+  "estimated_api_cost_usd": {
+    "answer": 0.6722630000000003,
+    "target_merge": 1.0787466999999997,
+    "embedding": 0.12143847999999995,
+    "total": 1.87244818,
+    "original_baseline": 0.753591,
+    "combined_with_original": 2.62603918
+  },
+  "wall_clock_seconds": {
+    "original_baseline": 109.17025107692461,
+    "compression_and_compressed_answers": 1788.8294115021563,
+    "combined_sequential": 1897.999662579081
+  },
+  "records": [
+    {
+      "key": "qa1:42",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7823,
+      "reduced_tokens": 7010,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the office\u2019."
+    },
+    {
+      "key": "qa1:41",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7820,
+      "reduced_tokens": 7036,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019."
+    },
+    {
+      "key": "qa1:91",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7703,
+      "reduced_tokens": 6826,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019the bedroom\u2019."
+    },
+    {
+      "key": "qa1:9",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7309,
+      "reduced_tokens": 6572,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the bedroom\u2019."
+    },
+    {
+      "key": "qa1:65",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7637,
+      "reduced_tokens": 6670,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the garden\u2019."
+    },
+    {
+      "key": "qa1:50",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 6953,
+      "reduced_tokens": 6251,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019the hallway\u2019."
+    },
+    {
+      "key": "qa1:1",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7659,
+      "reduced_tokens": 6879,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019."
+    },
+    {
+      "key": "qa1:70",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7778,
+      "reduced_tokens": 6835,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the bedroom\u2019."
+    },
+    {
+      "key": "qa1:15",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7716,
+      "reduced_tokens": 6730,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019."
+    },
+    {
+      "key": "qa1:78",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7814,
+      "reduced_tokens": 7031,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the office\u2019."
+    },
+    {
+      "key": "qa1:73",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7689,
+      "reduced_tokens": 6829,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019the office\u2019."
+    },
+    {
+      "key": "qa1:10",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7614,
+      "reduced_tokens": 6808,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019office\u2019."
+    },
+    {
+      "key": "qa1:55",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7830,
+      "reduced_tokens": 7026,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019."
+    },
+    {
+      "key": "qa1:56",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7761,
+      "reduced_tokens": 6940,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the office\u2019."
+    },
+    {
+      "key": "qa1:72",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7661,
+      "reduced_tokens": 6894,
+      "response": "The most recent location of \u2019John\u2019 is \u2019bedroom\u2019."
+    },
+    {
+      "key": "qa1:45",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7229,
+      "reduced_tokens": 6458,
+      "response": "The most recent location of \u2019Sandra\u2019 is \u2019the kitchen\u2019."
+    },
+    {
+      "key": "qa1:48",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7804,
+      "reduced_tokens": 7008,
+      "response": "The most recent location of \u2019Daniel\u2019 is \u2019office\u2019."
+    },
+    {
+      "key": "qa1:92",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7807,
+      "reduced_tokens": 6847,
+      "response": "The most recent location of \u2019John\u2019 is \u2019the hallway\u2019."
+    },
+    {
+      "key": "qa1:76",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7141,
+      "reduced_tokens": 6426,
+      "response": "The most recent location of \u2019Mary\u2019 is \u2019the hallway\u2019."
+    },
+    {
+      "key": "qa1:37",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7671,
+      "reduced_tokens": 6845,
+      "response": "The most recent location of \u2019John\u2019 is \u2019London\u2019."
+    },
+    {
+      "key": "qa2:35",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7845,
+      "reduced_tokens": 7060,
+      "response": "The apple is in the kitchen."
+    },
+    {
+      "key": "qa2:67",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7771,
+      "reduced_tokens": 6892,
+      "response": "The football is in the hallway."
+    },
+    {
+      "key": "qa2:30",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7692,
+      "reduced_tokens": 6780,
+      "response": "The apple is in the hallway."
+    },
+    {
+      "key": "qa2:32",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7810,
+      "reduced_tokens": 6810,
+      "response": "The apple is in the bathroom."
+    },
+    {
+      "key": "qa2:0",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7756,
+      "reduced_tokens": 6863,
+      "response": "The football is in the kitchen."
+    },
+    {
+      "key": "qa2:14",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7705,
+      "reduced_tokens": 6865,
+      "response": "The apple is in the kitchen."
+    },
+    {
+      "key": "qa2:51",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7181,
+      "reduced_tokens": 6393,
+      "response": "The apple is in the garden."
+    },
+    {
+      "key": "qa2:71",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7841,
+      "reduced_tokens": 6876,
+      "response": "The milk is in the bedroom."
+    },
+    {
+      "key": "qa2:62",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7777,
+      "reduced_tokens": 6999,
+      "response": "The football is in the garden."
+    },
+    {
+      "key": "qa2:87",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7693,
+      "reduced_tokens": 6917,
+      "response": "The milk is in the hallway."
+    },
+    {
+      "key": "qa2:25",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 6912,
+      "reduced_tokens": 6121,
+      "response": "The football is in the Rodman."
+    },
+    {
+      "key": "qa2:40",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7715,
+      "reduced_tokens": 6931,
+      "response": "The football is in the bathroom."
+    },
+    {
+      "key": "qa2:26",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7668,
+      "reduced_tokens": 6843,
+      "response": "The football is in the garden."
+    },
+    {
+      "key": "qa2:42",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7874,
+      "reduced_tokens": 7001,
+      "response": "The \u2019apple\u2019 is in \u2019the garden\u2019."
+    },
+    {
+      "key": "qa2:92",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7912,
+      "reduced_tokens": 7112,
+      "response": "The football is in the bedroom."
+    },
+    {
+      "key": "qa2:1",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7493,
+      "reduced_tokens": 6739,
+      "response": "The milk is in the garden."
+    },
+    {
+      "key": "qa2:75",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7826,
+      "reduced_tokens": 6966,
+      "response": "The milk is in the garden."
+    },
+    {
+      "key": "qa2:27",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7519,
+      "reduced_tokens": 6716,
+      "response": "The apple is in the hallway."
+    },
+    {
+      "key": "qa2:74",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 6251,
+      "reduced_tokens": 5599,
+      "response": "The football is in the hallway."
+    },
+    {
+      "key": "qa2:9",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7529,
+      "reduced_tokens": 6748,
+      "response": "The milk is in the bathroom."
+    },
+    {
+      "key": "qa3:54",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7820,
+      "reduced_tokens": 7002,
+      "response": "Before the office the apple was in the garden."
+    },
+    {
+      "key": "qa3:31",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 6256,
+      "reduced_tokens": 5529,
+      "response": "Before the garden the milk was in the office."
+    },
+    {
+      "key": "qa3:82",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7741,
+      "reduced_tokens": 6953,
+      "response": "Before the garden the apple was in the kitchen."
+    },
+    {
+      "key": "qa3:46",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7899,
+      "reduced_tokens": 7072,
+      "response": "Before the bedroom the football was in the hallway."
+    },
+    {
+      "key": "qa3:25",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7735,
+      "reduced_tokens": 6954,
+      "response": "Before the hallway the apple was in the bathroom."
+    },
+    {
+      "key": "qa3:63",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7842,
+      "reduced_tokens": 6885,
+      "response": "Before the hallway the apple was in the bedroom."
+    },
+    {
+      "key": "qa3:70",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7905,
+      "reduced_tokens": 6945,
+      "response": "Before the bathroom the milk was in the office."
+    },
+    {
+      "key": "qa3:10",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7889,
+      "reduced_tokens": 6973,
+      "response": "Before the bedroom the milk was in the kitchen."
+    },
+    {
+      "key": "qa3:32",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7574,
+      "reduced_tokens": 6713,
+      "response": "Before the garden the milk was in the kitchen."
+    },
+    {
+      "key": "qa3:26",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7833,
+      "reduced_tokens": 7001,
+      "response": "Before the office the milk was in the bathroom."
+    },
+    {
+      "key": "qa3:53",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7255,
+      "reduced_tokens": 6529,
+      "response": "Before the hallway the milk was in the hallway."
+    },
+    {
+      "key": "qa3:99",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7946,
+      "reduced_tokens": 7135,
+      "response": "Before the garden the football was in the hallway."
+    },
+    {
+      "key": "qa3:86",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 7819,
+      "reduced_tokens": 7008,
+      "response": "Before the hallway the milk was in the kitchen."
+    },
+    {
+      "key": "qa3:35",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7755,
+      "reduced_tokens": 6876,
+      "response": "Before the bathroom the apple was in the hallway."
+    },
+    {
+      "key": "qa3:33",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7239,
+      "reduced_tokens": 6495,
+      "response": "Before the garden the milk was in the kitchen."
+    },
+    {
+      "key": "qa3:50",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7578,
+      "reduced_tokens": 6732,
+      "response": "Before the kitchen the football was in the office."
+    },
+    {
+      "key": "qa3:56",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7629,
+      "reduced_tokens": 6834,
+      "response": "Before the hallway the milk was in the office."
+    },
+    {
+      "key": "qa3:60",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7880,
+      "reduced_tokens": 7059,
+      "response": "Before the office the milk was in the bedroom."
+    },
+    {
+      "key": "qa3:11",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7868,
+      "reduced_tokens": 6958,
+      "response": "Before the hallway the football was in the garden."
+    },
+    {
+      "key": "qa3:73",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7861,
+      "reduced_tokens": 6995,
+      "response": "Before the kitchen the milk was in the office."
+    },
+    {
+      "key": "qa4:81",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7670,
+      "reduced_tokens": 6730,
+      "response": "bedroom"
+    },
+    {
+      "key": "qa4:59",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 5424,
+      "reduced_tokens": 4862,
+      "response": "kitchen"
+    },
+    {
+      "key": "qa4:6",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7730,
+      "reduced_tokens": 6865,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:63",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7181,
+      "reduced_tokens": 6371,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:25",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7663,
+      "reduced_tokens": 6823,
+      "response": "hallway"
+    },
+    {
+      "key": "qa4:72",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7539,
+      "reduced_tokens": 6741,
+      "response": "bedroom"
+    },
+    {
+      "key": "qa4:93",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7727,
+      "reduced_tokens": 6869,
+      "response": "hallway"
+    },
+    {
+      "key": "qa4:95",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 6338,
+      "reduced_tokens": 5693,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:68",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7544,
+      "reduced_tokens": 6591,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:87",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7556,
+      "reduced_tokens": 6767,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:29",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 5999,
+      "reduced_tokens": 5386,
+      "response": "kitchen"
+    },
+    {
+      "key": "qa4:60",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7401,
+      "reduced_tokens": 6644,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:55",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 6373,
+      "reduced_tokens": 5696,
+      "response": "bathroom"
+    },
+    {
+      "key": "qa4:64",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7600,
+      "reduced_tokens": 6652,
+      "response": "kitchen"
+    },
+    {
+      "key": "qa4:5",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7780,
+      "reduced_tokens": 6995,
+      "response": "office"
+    },
+    {
+      "key": "qa4:94",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7730,
+      "reduced_tokens": 6876,
+      "response": "kitchen"
+    },
+    {
+      "key": "qa4:78",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7763,
+      "reduced_tokens": 6954,
+      "response": "garden"
+    },
+    {
+      "key": "qa4:49",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7481,
+      "reduced_tokens": 6732,
+      "response": "office"
+    },
+    {
+      "key": "qa4:0",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7766,
+      "reduced_tokens": 6784,
+      "response": "hallway"
+    },
+    {
+      "key": "qa4:58",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7700,
+      "reduced_tokens": 6733,
+      "response": "office"
+    },
+    {
+      "key": "qa5:71",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7492,
+      "reduced_tokens": 6728,
+      "response": "Bill"
+    },
+    {
+      "key": "qa5:85",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7822,
+      "reduced_tokens": 6958,
+      "response": "Bill"
+    },
+    {
+      "key": "qa5:30",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7390,
+      "reduced_tokens": 6638,
+      "response": "milk"
+    },
+    {
+      "key": "qa5:73",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7781,
+      "reduced_tokens": 7000,
+      "response": "apple"
+    },
+    {
+      "key": "qa5:86",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7739,
+      "reduced_tokens": 6836,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:41",
+      "original_correct": false,
+      "compressed_correct": true,
+      "source_tokens": 7651,
+      "reduced_tokens": 6823,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:36",
+      "original_correct": true,
+      "compressed_correct": false,
+      "source_tokens": 6676,
+      "reduced_tokens": 5919,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:54",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7562,
+      "reduced_tokens": 6775,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:89",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7583,
+      "reduced_tokens": 6823,
+      "response": "Fred"
+    },
+    {
+      "key": "qa5:26",
+      "original_correct": false,
+      "compressed_correct": false,
+      "source_tokens": 7670,
+      "reduced_tokens": 6708,
+      "response": "Jeff"
+    },
+    {
+      "key": "qa5:64",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7539,
+      "reduced_tokens": 6569,
+      "response": "milk"
+    },
+    {
+      "key": "qa5:47",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7340,
+      "reduced_tokens": 6592,
+      "response": "Fred"
+    },
+    {
+      "key": "qa5:78",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7096,
+      "reduced_tokens": 6310,
+      "response": "Fred"
+    },
+    {
+      "key": "qa5:48",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7857,
+      "reduced_tokens": 6984,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:65",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7627,
+      "reduced_tokens": 6720,
+      "response": "Jeff"
+    },
+    {
+      "key": "qa5:1",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7874,
+      "reduced_tokens": 7015,
+      "response": "Bill"
+    },
+    {
+      "key": "qa5:16",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7641,
+      "reduced_tokens": 6788,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:27",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7355,
+      "reduced_tokens": 6619,
+      "response": "Mary"
+    },
+    {
+      "key": "qa5:62",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7838,
+      "reduced_tokens": 6962,
+      "response": "Bill"
+    },
+    {
+      "key": "qa5:52",
+      "original_correct": true,
+      "compressed_correct": true,
+      "source_tokens": 7071,
+      "reduced_tokens": 6329,
+      "response": "apple"
+    }
+  ]
+}

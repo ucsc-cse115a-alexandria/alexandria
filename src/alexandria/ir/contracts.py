@@ -57,6 +57,9 @@ class MergeMetrics(BaseModel):
     applied_edits: int = Field(default=0, ge=0)
     pruned_sentences: int = Field(default=0, ge=0)
     pruned_tokens: int = Field(default=0, ge=0)
+    repaired_tokens: int = Field(default=0, ge=0)
+    final_drift: float | None = Field(default=None, ge=0.0)
+    drift_budget_met: bool | None = None
     embed_calls: int = Field(default=0, ge=0)
     embed_texts: int = Field(default=0, ge=0)
     elapsed_seconds: float = Field(default=0.0, ge=0.0)
@@ -184,11 +187,11 @@ class Delete(BaseModel):
 
 
 class Replace(BaseModel):
-    """Swap the first target's text for the merged replacement and remove the remaining targets."""
+    """Rewrite the first target and remove any remaining merged targets."""
 
     model_config = ConfigDict(frozen=True)
     op: Literal["replace"] = "replace"
-    targets: tuple[SentenceId, ...] = Field(min_length=2)
+    targets: tuple[SentenceId, ...] = Field(min_length=1)
     replacement: Encoded  # merged text with its token count and embedding, precomputed at plan time
 
     _no_duplicate_targets = field_validator("targets")(_reject_duplicate_targets)

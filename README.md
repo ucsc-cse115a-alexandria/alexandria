@@ -50,19 +50,20 @@ uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
 ```
 
 Use `--target-reduction P` when the reduction percentage is a requirement rather than a best-effort
-budget. It exits with an error if the drift gate prevents reducing by P percent, so an unmet target
-cannot be mistaken for success:
+budget. The returned prompt is always at or below the derived token ceiling. The command fails before
+calling the merge model only when protected Markdown/XML structure alone cannot fit:
 
 ```bash
 uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
 ```
 
-Strict targets keep Markdown/XML boundaries fixed and ask the merge model to rewrite the largest content groups to
-the exact budget needed by the complete prompt. The result must satisfy the requested token count and stay within
-the whole-prompt embedding drift budget. Rejected attempts feed their measured token and drift failures back for
-correction. Exact duplicate text in best-effort reduction is still removed without a merge-model call. `--json`
-includes `merge_metrics` with call, retry, job, proposal, and applied-edit counts; text mode prints call and retry
-counts to stderr. Add `-v`/`--verbose` (automatic reduction only) to stream that progress live to stderr instead of
+Strict targets keep Markdown/XML boundaries fixed and ask the merge model to rewrite the largest content groups with
+token headroom. Alexandria checks every candidate with `cl100k_base` and deterministically repairs any overshoot.
+Among target-safe candidates it selects the lowest whole-prompt drift, with one optional quality-refinement call.
+When no candidate meets the drift budget, the best target-safe result is returned and
+`merge_metrics.drift_budget_met` is `false`. `--json` also reports final drift, repaired tokens, calls, and retries.
+Exact duplicate text in best-effort reduction is still removed without a merge-model call. Text mode prints call
+and retry counts to stderr. Add `-v`/`--verbose` to stream automatic-reduction progress live to stderr instead of
 waiting for the final summary.
 
 `report` runs the full optimization and always emits machine-readable JSON with token metrics and
@@ -109,6 +110,17 @@ print(result.text)
 See [the library guide](docs/library.md) for injecting your own embedder and merger for offline tests,
 direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
+## Benchmark
+
+The committed BABILong 8k result used 100 task-balanced cases and a strict 90%-retained target. All 100 prompts met
+their token ceilings, reducing mean input from 7,540.82 to 6,716.60 tokens (10.93%). Original task accuracy was 66%
+and compressed accuracy was 65%, so accuracy retention was 98.48% with a 95% paired-bootstrap interval of
+85.71%-112.90%.
+
+**Release decision: FAIL.** The confidence interval does not clear the predeclared 90% retention threshold. This
+run validates the hard-target behavior and measurement path; it does not support the release accuracy claim.
+See the [method, assumptions, costs, timing, and committed raw results](benchmarks/babilong_8k/README.md).
+
 ## How it works
 
 Four pure phases over one intermediate representation (`Document` → `Section` → `Sentence`):
@@ -120,8 +132,8 @@ Four pure phases over one intermediate representation (`Document` → `Section` 
    applying it and measuring the whole-document embedding drift; if it exceeds the drift budget the
    LLM is re-asked with feedback, up to 3 attempts, then the pair is skipped.
 4. **Select** — apply the accepted edits least-drift-first under the cumulative drift budget, stopping
-   at the requested token budget. `--target-reduction` additionally fails the command if its percentage
-   target is not reached.
+   at the requested token budget. `--target-reduction` uses a hard-target path that repairs model overshoot
+   deterministically and reports whether the resulting prompt also met the drift budget.
 
 ## Tech stack
 
