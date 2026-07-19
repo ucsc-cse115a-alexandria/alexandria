@@ -148,3 +148,6 @@ uv run pytest        # tests + coverage
 uv run ruff check .  # lint
 uv run pyright       # types
 ```
+
+See [the contributing guide](docs/contributing.md) for the optimization-quality CI command, the
+committed report baseline, and the review process for intentional baseline updates.
