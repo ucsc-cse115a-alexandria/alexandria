@@ -54,11 +54,11 @@ def test_phase_verbs_pipe_to_the_same_text_as_reduce() -> None:
 
     document = runner.invoke(cli, ["represent"], input=prompt)
     scored = runner.invoke(cli, ["score"], input=document.output)
-    plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0"], input=scored.output)
-    reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0"], input=plan.output)
+    plan = runner.invoke(cli, ["optimize", "--cos-sim-diff-budget", "2.0"], input=scored.output)
+    reduced = runner.invoke(cli, ["select", "--cos-sim-diff-budget", "2.0"], input=plan.output)
 
     assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
-    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(cos_sim_diff_budget=2.0))
     assert reduced.output == expected.text
 
 
@@ -69,13 +69,15 @@ def test_out_is_a_tee_so_the_piped_run_still_matches_reduce() -> None:
     with runner.isolated_filesystem():
         document = runner.invoke(cli, ["represent", "--out", "doc.json"], input=prompt)
         scored = runner.invoke(cli, ["score", "--out", "scored.json"], input=document.output)
-        plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "--out", "plan.json"], input=scored.output)
-        reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0"], input=plan.output)
+        plan = runner.invoke(
+            cli, ["optimize", "--cos-sim-diff-budget", "2.0", "--out", "plan.json"], input=scored.output
+        )
+        reduced = runner.invoke(cli, ["select", "--cos-sim-diff-budget", "2.0"], input=plan.output)
 
         assert [document.exit_code, scored.exit_code, plan.exit_code, reduced.exit_code] == [0, 0, 0, 0]
         assert [Path(name).exists() for name in ("doc.json", "scored.json", "plan.json")] == [True, True, True]
 
-    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(cos_sim_diff_budget=2.0))
     assert reduced.output == expected.text
 
 
@@ -88,12 +90,12 @@ def test_a_phase_starts_from_a_saved_file_matching_the_in_memory_reduce() -> Non
         Path("d.json").write_text(runner.invoke(cli, ["represent"], input=prompt).output)
         Path("s.json").write_text(runner.invoke(cli, ["score", "d.json"]).output)  # starts from the saved file
         Path("pl.json").write_text(
-            runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "s.json"]).output
+            runner.invoke(cli, ["optimize", "--cos-sim-diff-budget", "2.0", "s.json"]).output
         )  # starts from the saved file
-        reduced = runner.invoke(cli, ["select", "--drift-budget", "2.0", "pl.json"])
+        reduced = runner.invoke(cli, ["select", "--cos-sim-diff-budget", "2.0", "pl.json"])
 
     assert reduced.exit_code == 0
-    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
+    expected = reduce(prompt, HashEmbedder(), _FakeMerger(), params=Params(cos_sim_diff_budget=2.0))
     assert reduced.output == expected.text
 
 
@@ -103,9 +105,9 @@ def test_select_json_reports_the_reduction_summary() -> None:
     prompt = "keep one\nkeep one\nunique line\n"
     document = runner.invoke(cli, ["represent"], input=prompt)
     scored = runner.invoke(cli, ["score"], input=document.output)
-    plan = runner.invoke(cli, ["optimize", "--drift-budget", "2.0"], input=scored.output)
+    plan = runner.invoke(cli, ["optimize", "--cos-sim-diff-budget", "2.0"], input=scored.output)
 
-    result = runner.invoke(cli, ["select", "--drift-budget", "2.0", "--json"], input=plan.output)
+    result = runner.invoke(cli, ["select", "--cos-sim-diff-budget", "2.0", "--json"], input=plan.output)
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
@@ -123,8 +125,8 @@ def test_select_json_reports_the_reduction_summary() -> None:
         "pruned_sentences": 0,
         "pruned_tokens": 0,
         "repaired_tokens": 0,
-        "final_drift": None,
-        "drift_budget_met": None,
+        "final_cos_sim_diff": None,
+        "cos_sim_diff_budget_met": None,
         "embed_calls": 0,
         "embed_texts": 0,
         "elapsed_seconds": 0.0,
@@ -171,7 +173,7 @@ def test_optimize_out_saves_a_roundtrippable_plan_envelope() -> None:
     document = DocumentEnvelope(document=represent("dup\ndup\n", HashEmbedder())).model_dump_json()
     scored = runner.invoke(cli, ["score"], input=document).output
     with runner.isolated_filesystem():
-        result = runner.invoke(cli, ["optimize", "--drift-budget", "2.0", "--out", "plan.json"], input=scored)
+        result = runner.invoke(cli, ["optimize", "--cos-sim-diff-budget", "2.0", "--out", "plan.json"], input=scored)
 
         assert result.exit_code == 0
         saved = Path("plan.json").read_text()
@@ -224,7 +226,7 @@ def test_optimize_reports_a_missing_required_scorer_cleanly() -> None:
 @pytest.mark.usefixtures("offline_models")
 def test_reduce_drops_a_duplicate_under_a_generous_budget() -> None:
     runner = CliRunner()
-    result = runner.invoke(cli, ["reduce", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
+    result = runner.invoke(cli, ["reduce", "--cos-sim-diff-budget", "2.0"], input="keep one\nkeep one\nunique\n")
     assert result.exit_code == 0
     assert result.output.count("keep one") == 1
     assert "unique" in result.output
@@ -243,7 +245,7 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     runner = CliRunner()
     result = runner.invoke(
         cli,
-        ["reduce", "--drift-budget", "2.0", "--json"],
+        ["reduce", "--cos-sim-diff-budget", "2.0", "--json"],
         input="keep one\nkeep one\nunique\n",
     )
     assert result.exit_code == 0
@@ -269,12 +271,13 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
 def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
     result = CliRunner().invoke(
         cli,
-        ["report", "--drift-budget", "2.0"],
+        ["report", "--cos-sim-diff-budget", "2.0"],
         input="keep one\nkeep one\nunique\n",
     )
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
+    assert payload["schema_version"] == 2
     assert payload["tokens"]["source"] > payload["tokens"]["reduced"]
     assert "instruction_coverage" in payload["quality"]
     assert "minimum_instruction_similarity" in payload["quality"]
@@ -285,11 +288,13 @@ def test_report_baseline_passes_then_flags_a_regression() -> None:
     runner = CliRunner()
     prompt = "keep one\nkeep one\nunique\n"
     with runner.isolated_filesystem():
-        baseline = runner.invoke(cli, ["report", "--drift-budget", "2.0"], input=prompt)
+        baseline = runner.invoke(cli, ["report", "--cos-sim-diff-budget", "2.0"], input=prompt)
         assert baseline.exit_code == 0
         Path("baseline.json").write_text(baseline.output)
 
-        passing = runner.invoke(cli, ["report", "--drift-budget", "2.0", "--baseline", "baseline.json"], input=prompt)
+        passing = runner.invoke(
+            cli, ["report", "--cos-sim-diff-budget", "2.0", "--baseline", "baseline.json"], input=prompt
+        )
         assert passing.exit_code == 0
         assert json.loads(passing.output)["comparison"] == {"passed": True, "regressions": []}
 
@@ -297,7 +302,7 @@ def test_report_baseline_passes_then_flags_a_regression() -> None:
         doctored["tokens"]["reduced"] -= 1  # the baseline now claims a smaller prompt than we can produce
         Path("regressed.json").write_text(json.dumps(doctored))
         regressed = runner.invoke(
-            cli, ["report", "--drift-budget", "2.0", "--baseline", "regressed.json"], input=prompt
+            cli, ["report", "--cos-sim-diff-budget", "2.0", "--baseline", "regressed.json"], input=prompt
         )
 
     assert regressed.exit_code == 1
@@ -326,7 +331,9 @@ def test_save_tokens_stops_at_the_target() -> None:
     prompt = "repeat me\nrepeat me\nrepeat me\nunique line\n"
     source = count_tokens(prompt)
 
-    result = runner.invoke(cli, ["reduce", "--save-tokens", "3", "--drift-budget", "2.0", "--json"], input=prompt)
+    result = runner.invoke(
+        cli, ["reduce", "--save-tokens", "3", "--cos-sim-diff-budget", "2.0", "--json"], input=prompt
+    )
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
@@ -386,7 +393,7 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
     monkeypatch.setattr(main_module, "reduce", capture_params)
 
     result = CliRunner().invoke(
-        cli, ["reduce", "--target-reduction", "20", "--drift-budget", "2.0", "--json"], input=prompt
+        cli, ["reduce", "--target-reduction", "20", "--cos-sim-diff-budget", "2.0", "--json"], input=prompt
     )
 
     assert result.exit_code == 0
@@ -396,7 +403,7 @@ def test_target_reduction_derives_the_max_token_budget_and_requires_success(
 
 
 @pytest.mark.usefixtures("offline_models")
-def test_target_reduction_returns_a_target_safe_result_when_the_drift_budget_is_missed() -> None:
+def test_target_reduction_returns_a_target_safe_result_when_the_cos_sim_diff_budget_is_missed() -> None:
     result = CliRunner().invoke(
         cli,
         ["reduce", "--target-reduction", "10", "--json"],
@@ -406,7 +413,7 @@ def test_target_reduction_returns_a_target_safe_result_when_the_drift_budget_is_
     assert result.exit_code == 0
     payload = json.loads(result.output)
     assert payload["reduction_pct"] >= 0.10
-    assert isinstance(payload["merge_metrics"]["drift_budget_met"], bool)
+    assert isinstance(payload["merge_metrics"]["cos_sim_diff_budget_met"], bool)
 
 
 def test_budget_options_are_mutually_exclusive() -> None:
@@ -440,7 +447,7 @@ def test_keep_json_reports_the_existing_reduction_summary() -> None:
 
     result = CliRunner().invoke(
         cli,
-        ["reduce", "--keep", "60", "--drift-budget", "2.0", "--json"],
+        ["reduce", "--keep", "60", "--cos-sim-diff-budget", "2.0", "--json"],
         input=prompt,
     )
 
@@ -466,7 +473,7 @@ def test_removed_flags_are_gone_from_help() -> None:
 def test_reduce_verbose_writes_progress_to_stderr() -> None:
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["reduce", "-v", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
+    result = runner.invoke(cli, ["reduce", "-v", "--cos-sim-diff-budget", "2.0"], input="keep one\nkeep one\nunique\n")
 
     assert result.exit_code == 0
     assert "redundant pair" in result.stderr
@@ -478,7 +485,7 @@ def test_reduce_verbose_writes_progress_to_stderr() -> None:
 def test_reduce_without_verbose_writes_no_progress_to_stderr() -> None:
     runner = CliRunner()
 
-    result = runner.invoke(cli, ["reduce", "--drift-budget", "2.0"], input="keep one\nkeep one\nunique\n")
+    result = runner.invoke(cli, ["reduce", "--cos-sim-diff-budget", "2.0"], input="keep one\nkeep one\nunique\n")
 
     assert result.exit_code == 0
     assert "redundant pair" not in result.stderr
@@ -509,7 +516,7 @@ def test_reduce_interactive_applies_only_accepted_edits(monkeypatch: pytest.Monk
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--cos-sim-diff-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 1
@@ -522,7 +529,7 @@ def test_reduce_interactive_quit_leaves_the_prompt_unchanged(monkeypatch: pytest
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--cos-sim-diff-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 2
@@ -538,7 +545,7 @@ def _interactive_reduce_run(monkeypatch: pytest.MonkeyPatch, keys: str) -> tuple
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text(_TWO_PAIR_PROMPT)
-        result = runner.invoke(cli, ["reduce", "--interactive", "--drift-budget", "2.0", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--interactive", "--cos-sim-diff-budget", "2.0", "p.md"])
     return result.exit_code, result.stdout
 
 
@@ -547,7 +554,7 @@ def test_interactive_accept_all_matches_the_automatic_run(monkeypatch: pytest.Mo
     exit_code, stdout = _interactive_reduce_run(monkeypatch, "ad")  # check everything, done
 
     # A budget generous enough that the automatic selector rejects nothing (the #51 reading).
-    automatic = reduce(_TWO_PAIR_PROMPT, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
+    automatic = reduce(_TWO_PAIR_PROMPT, HashEmbedder(), _FakeMerger(), params=Params(cos_sim_diff_budget=2.0))
     assert exit_code == 0
     assert stdout == automatic.text
 
@@ -589,7 +596,7 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
     from alexandria.ops.pipe import Proposal, propose
 
     prompt = "keep one\nkeep one\nunique\n"
-    proposal = propose(prompt, HashEmbedder(), _FakeMerger(), params=Params(drift_budget=2.0))
+    proposal = propose(prompt, HashEmbedder(), _FakeMerger(), params=Params(cos_sim_diff_budget=2.0))
     accepted = (proposal.diffs[0].candidate,)
 
     def fake_run_browser_review(_proposal: Proposal, **_: object) -> tuple[Candidate, ...]:
@@ -600,7 +607,7 @@ def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPa
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text(prompt)
-        result = runner.invoke(cli, ["reduce", "--browser", "--drift-budget", "2.0", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--browser", "--cos-sim-diff-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 1
@@ -620,7 +627,7 @@ def test_reduce_browser_abort_leaves_the_prompt_unchanged(monkeypatch: pytest.Mo
     runner = CliRunner()
     with runner.isolated_filesystem():
         Path("p.md").write_text("keep one\nkeep one\nunique\n")
-        result = runner.invoke(cli, ["reduce", "--browser", "--drift-budget", "2.0", "p.md"])
+        result = runner.invoke(cli, ["reduce", "--browser", "--cos-sim-diff-budget", "2.0", "p.md"])
 
     assert result.exit_code == 0
     assert result.stdout.count("keep one") == 2

@@ -27,7 +27,7 @@ This paper challenges the common assumption that LLM performance on long-context
 
 ## Relevance to our project
 - Provides the strongest justification for our core premise: even without redundant instructions, long prompts hurt performance, so compression is beneficial beyond just cost savings
-- Suggests our drift_budget threshold may need to be more aggressive than 1% since even small amounts of added length degrade performance
+- Suggests our `cos_sim_diff_budget` threshold may need to be more aggressive than 1% since even small amounts of added length degrade performance
 - The mitigation strategy of reciting evidence before answering is analogous to our Select phase keeping only the most load-bearing instructions at the top of the reduced prompt
 - Confirms that Lost in the Middle's findings hold in newer models, validating our use of that paper as foundational
 

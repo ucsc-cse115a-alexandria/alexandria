@@ -16,7 +16,7 @@ def diffs(document: Document, plan: Plan) -> tuple[Diff, ...]:
     """Resolve a Plan into displayable Diffs, one per candidate, highest confidence first.
 
     One Diff per candidate, highest confidence first — the order an interactive review presents;
-    the automatic selector applies edits in its own least-drift order. The sort is stable, so
+    the automatic selector applies edits in ascending cos_sim_diff order. The sort is stable, so
     equal-confidence candidates keep their plan order.
 
     Raises ValueError when a candidate targets a sentence id absent from the document, so a

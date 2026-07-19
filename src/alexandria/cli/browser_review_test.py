@@ -36,7 +36,11 @@ def _reviewable_proposal() -> Proposal:
     embedder = HashEmbedder()
     document = represent(_REDUNDANT, embedder)
     plan = optimize(
-        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+        document,
+        score(document, names=("redundancy",)),
+        embedder,
+        _FirstWinsMerger(),
+        params=Params(cos_sim_diff_budget=2.0),
     )
     return Proposal(document=document, diffs=diffs(document, plan))
 

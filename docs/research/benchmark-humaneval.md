@@ -29,7 +29,7 @@ This paper introduces HumanEval, a benchmark of 164 hand-written Python programm
 ## Relevance to our project
 - HumanEval's exact prompts (function signatures + docstrings) and executable ground truth (unit tests) make it the right benchmark for validating output quality before and after compression
 - The pass@k metric gives a concrete way to measure whether the redundancy scorer and optimizer are dropping instructions that matter: if compressed prompts produce lower pass@k scores, compression went too far
-- The paper's finding that BLEU score is unreliable for measuring functional correctness reinforces why we use semantic similarity (cosine distance via embeddings) as the drift budget signal rather than surface-level text matching
+- The paper's finding that BLEU score is unreliable for measuring functional correctness reinforces why we use embedding `cos_sim_diff` as the budget signal rather than surface-level text matching
 - Functional correctness as a ground truth is cleaner than human judgment for an accuracy benchmark, since unit tests give a binary pass/fail signal that can be aggregated across the 164 problems without ambiguity
 
 ## Related papers

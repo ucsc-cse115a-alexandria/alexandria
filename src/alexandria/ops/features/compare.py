@@ -6,8 +6,8 @@ import numpy as np
 import tiktoken
 from pydantic import BaseModel, ConfigDict, computed_field
 
-from alexandria.ir.contracts import Drift
-from alexandria.ir.similarity import cosine_distance, normalize
+from alexandria.ir.contracts import CosSimDiff
+from alexandria.ir.similarity import compute_cos_sim_diff, normalize
 from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ class CompareResult(BaseModel):
 
     @computed_field
     @property
-    def drift(self) -> Drift:
+    def cos_sim_diff(self) -> CosSimDiff:
         # pydantic does not validate a computed_field's return, so this clamp is the real ge=0 guard.
         return max(0.0, 1.0 - self.similarity)
 
@@ -38,7 +38,7 @@ class CompareResult(BaseModel):
 def compare(original: str, edited: str, embedder: Embedder | None = None) -> CompareResult:
     """Compare two prompts: chunk-pooled cosine similarity and cl100k_base token reduction.
 
-    The caller applies the configured gate by comparing ``similarity`` against ``1 - Params.drift_budget``.
+    The caller applies the configured gate by comparing ``similarity`` against ``1 - Params.cos_sim_diff_budget``.
     When ``embedder`` is omitted, the default OpenAI embedder is built on first use (requires an API key).
     """
     model = embedder if embedder is not None else default_embedder()
@@ -46,7 +46,9 @@ def compare(original: str, edited: str, embedder: Embedder | None = None) -> Com
     edited_ids = _ENCODING.encode(edited)
     if not original_ids or not edited_ids:
         raise ValueError("cannot compare an empty text")
-    similarity = 1.0 - cosine_distance(_pooled_embedding(original_ids, model), _pooled_embedding(edited_ids, model))
+    similarity = 1.0 - compute_cos_sim_diff(
+        _pooled_embedding(original_ids, model), _pooled_embedding(edited_ids, model)
+    )
     return CompareResult(
         similarity=similarity,
         original_tokens=len(original_ids),

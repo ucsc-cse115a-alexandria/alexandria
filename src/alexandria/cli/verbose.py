@@ -30,7 +30,7 @@ class VerboseReporter:
         elif decision == "delete":
             self._write("    → kept the first; the second is redundant")
         else:
-            self._write("    → skipped: no rewrite fit the drift budget")
+            self._write("    → skipped: no rewrite fit the cos_sim_diff budget")
 
     def target_group(self, source_segment: str, group_tokens: int, required_savings: int) -> None:
         self._write(f"▶ compressing a content group of {group_tokens} tokens (need to save {required_savings})")
@@ -50,11 +50,11 @@ class VerboseReporter:
         for index, candidate in enumerate(candidates, start=1):
             structure_note = "" if candidate.structure_valid else " [invalid structure]"
             self._write(
-                f"    candidate {index}: {candidate.token_count} tok, drift {candidate.drift:.4f}"
+                f"    candidate {index}: {candidate.token_count} tok, cos_sim_diff {candidate.cos_sim_diff:.4f}"
                 f"{structure_note}: {_clip(candidate.text)}"
             )
         origin = "generated" if selected_from_generation else "kept base"
-        self._write(f"    → selected ({origin}): {selected.token_count} tok, drift {selected.drift:.4f}")
+        self._write(f"    → selected ({origin}): {selected.token_count} tok, cos_sim_diff {selected.cos_sim_diff:.4f}")
 
     def target_group_done(self, applied: bool, document_tokens: int) -> None:
         if applied:

@@ -37,7 +37,7 @@ def main() -> None:
     prompt = args.prompt.read_text(encoding="utf-8")
     if args.deterministic:
         embedder, merger = HashEmbedder(), _FirstWinsMerger()
-        proposal = propose(prompt, embedder, merger, params=Params(drift_budget=2.0))
+        proposal = propose(prompt, embedder, merger, params=Params(cos_sim_diff_budget=2.0))
     else:
         embedder, merger = default_embedder(), default_merger()
         proposal = propose(prompt, embedder, merger)

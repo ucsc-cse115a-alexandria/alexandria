@@ -36,17 +36,18 @@ uv run alexandria reduce prompt.txt --json
 ```
 
 Use `--keep P` to aim for P percent of the prompt's source tokens, or `--save-tokens N` to stop once N
-tokens are saved (edits are applied least-drift-first). These options are mutually exclusive. They are
-stopping points rather than guarantees: `--drift-budget` may stop compression sooner.
+tokens are saved (edits are applied in ascending `cos_sim_diff` order). These options are mutually exclusive. They are
+stopping points rather than guarantees: `--cos-sim-diff-budget` may stop compression sooner.
 
 Use `--target-reduction P` when the percentage itself is required: `P` means “reduce by P percent,” and
 the returned prompt is guaranteed to fit the corresponding token ceiling. It is mutually exclusive with
 `--keep` and `--save-tokens`. Protected Markdown/XML boundaries are never removed; if those boundaries alone
 exceed the target, the command reports that the target is infeasible before calling the merge model.
 
-`--drift-budget` caps the cumulative whole-document embedding drift for best-effort reductions (`0.01` =
-1%). For `--target-reduction`, the token target takes priority: the lowest-drift target-safe result is returned
-and JSON output sets `merge_metrics.drift_budget_met` to `false` if the quality budget was missed.
+`--cos-sim-diff-budget` caps the cumulative whole-document `cos_sim_diff` (`1 - cosine_similarity`)
+for best-effort reductions (`0.01` = 1%). For `--target-reduction`, the token target takes priority: the
+target-safe result with the lowest `cos_sim_diff` is returned
+and JSON output sets `merge_metrics.cos_sim_diff_budget_met` to `false` if the quality budget was missed.
 `--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the same in a browser.
 
 Use `-v`/`--verbose` to print compaction progress (redundant pairs, merge attempts, target-search
@@ -76,7 +77,7 @@ The first three commands write self-contained JSON envelopes:
 | `optimize` | `ScoredEnvelope` | `PlanEnvelope` |
 | `select` | `PlanEnvelope` | Reduced prompt text |
 
-`optimize` and `select` each accept `--drift-budget`, and `select` also accepts `--json`.
+`optimize` and `select` each accept `--cos-sim-diff-budget`, and `select` also accepts `--json`.
 
 ## Save an envelope and resume later
 

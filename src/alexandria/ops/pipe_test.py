@@ -69,7 +69,7 @@ class _CountingEmbedder:
 
 
 class _LengthEmbedder:
-    """Identical texts embed identically, but whole-document drift grows with deleted length."""
+    """Identical texts embed identically, but whole-document cos_sim_diff grows with deleted length."""
 
     @property
     def model_id(self) -> str:
@@ -110,8 +110,8 @@ class _RecordingReporter:
         self.target_group_done_calls.append((applied, document_tokens))
 
 
-def test_default_whole_prompt_drift_budget_is_fifty_percent() -> None:
-    assert Params().drift_budget == 0.5
+def test_default_whole_prompt_cos_sim_diff_budget_is_fifty_percent() -> None:
+    assert Params().cos_sim_diff_budget == 0.5
 
 
 def test_target_merge_window_scales_with_the_required_saving() -> None:
@@ -122,7 +122,7 @@ def test_target_merge_window_scales_with_the_required_saving() -> None:
         prompt,
         HashEmbedder(),
         merger,
-        params=Params(max_tokens=16, require_target=True, drift_budget=2.0),
+        params=Params(max_tokens=16, require_target=True, cos_sim_diff_budget=2.0),
     )
 
     assert result.source_tokens == 20
@@ -188,21 +188,21 @@ def test_strict_target_prunes_exact_duplicates_without_merge_calls() -> None:
     assert result.merge_metrics.pruned_tokens == 4
 
 
-def test_prune_drift_backoff_keeps_the_longest_prefix_within_budget() -> None:
-    # Full prune (2 deletions) drifts ~0.006, one deletion ~0.0013: a 0.003 budget keeps exactly one.
+def test_prune_cos_sim_diff_backoff_keeps_the_longest_prefix_within_budget() -> None:
+    # Full prune (2 deletions) has cos_sim_diff ~0.006; one deletion has ~0.0013, so 0.003 keeps one.
     merger = _TargetMerger(("aaaa\n",) * 10)
 
     result = reduce(
         "aaaa\n" * 10,
         _LengthEmbedder(),
         merger,
-        params=Params(max_tokens=16, require_target=True, drift_budget=0.003),
+        params=Params(max_tokens=16, require_target=True, cos_sim_diff_budget=0.003),
     )
 
     assert result.reduced_tokens <= 16
     assert result.merge_metrics.pruned_sentences == 1
     assert result.merge_metrics.pruned_tokens == 2
-    assert result.merge_metrics.drift_budget_met is False
+    assert result.merge_metrics.cos_sim_diff_budget_met is False
 
 
 def test_prune_may_undershoot_the_target_since_undershoot_is_allowed() -> None:
@@ -254,7 +254,7 @@ def test_reduce_records_merge_calls_and_retries() -> None:
         "aa bb\naaa bb\ncc\n",
         _CountingEmbedder(),
         _RetryOnceMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert result.merge_metrics.calls == 2
@@ -269,7 +269,7 @@ def test_reduce_stamps_embedding_and_wall_clock_metrics() -> None:
         "aa bb\naaa bb\ncc\n",
         _CountingEmbedder(),
         _RetryOnceMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     metrics = result.merge_metrics
@@ -284,7 +284,7 @@ def test_strict_target_repairs_an_over_budget_candidate_without_retry() -> None:
         "source prompt with tokens\nsecond source line\n",
         HashEmbedder(),
         merger,
-        params=Params(drift_budget=2.0, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=3, require_target=True),
     )
 
     assert result.reduced_tokens <= 3
@@ -294,14 +294,14 @@ def test_strict_target_repairs_an_over_budget_candidate_without_retry() -> None:
     assert result.merge_metrics.embed_calls == 3  # represent's two batches plus one repaired-candidate batch
 
 
-def test_strict_target_selects_the_lowest_drift_candidate_from_one_call() -> None:
+def test_strict_target_selects_the_lowest_cos_sim_diff_candidate_from_one_call() -> None:
     merger = _TargetMerger(("aaaa\n", "aa bb\n", "bbbb\n"))
 
     result = reduce(
         "aaaa\nbbbb\n",
         _CountingEmbedder(),
         merger,
-        params=Params(drift_budget=0.01, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=0.01, max_tokens=3, require_target=True),
     )
 
     assert result.text == "aa bb\n"
@@ -319,7 +319,7 @@ def test_strict_target_accepts_a_candidate_that_undershoots_the_budget() -> None
         "aaaa\nbbbb\n",
         _CountingEmbedder(),
         merger,
-        params=Params(drift_budget=2.0, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=3, require_target=True),
     )
 
     assert result.text == "a\n"
@@ -337,7 +337,7 @@ def test_target_merge_reports_group_round_and_completion_events() -> None:
         "aaaa\nbbbb\n",
         _CountingEmbedder(),
         merger,
-        params=Params(drift_budget=0.01, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=0.01, max_tokens=3, require_target=True),
         reporter=reporter,
     )
 
@@ -365,7 +365,7 @@ def test_strict_target_records_exactly_one_round_per_group() -> None:
         "aaaa\nbbbb\n",
         _CountingEmbedder(),
         merger,
-        params=Params(drift_budget=0.01, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=0.01, max_tokens=3, require_target=True),
     )
 
     assert result.text == "aa bb\n"
@@ -373,9 +373,11 @@ def test_strict_target_records_exactly_one_round_per_group() -> None:
     assert len(rounds) == 1
     assert rounds[0].round == 1
     assert rounds[0].base_tokens == result.source_tokens  # no pruning: the pre-merge doc is the source
-    assert rounds[0].base_drift == pytest.approx(0.0, abs=1e-6)  # the pre-merge doc equals the source
+    assert rounds[0].base_cos_sim_diff == pytest.approx(0.0, abs=1e-6)  # the pre-merge doc equals the source
     assert rounds[0].selected_tokens == result.reduced_tokens
-    assert rounds[0].generated_best_drift == rounds[0].selected_drift  # the chosen candidate was generated
+    assert (
+        rounds[0].generated_best_cos_sim_diff == rounds[0].selected_cos_sim_diff
+    )  # the chosen candidate was generated
     assert rounds[0].generated_best_tokens == rounds[0].selected_tokens
 
 
@@ -385,7 +387,7 @@ def test_strict_target_preserves_markup_structure() -> None:
         "<context>\nlong source text here\nsecond source line\n</context>\n",
         HashEmbedder(),
         merger,
-        params=Params(drift_budget=2.0, max_tokens=8, require_target=True),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=8, require_target=True),
     )
 
     assert result.text.startswith("<context>")
@@ -393,23 +395,23 @@ def test_strict_target_preserves_markup_structure() -> None:
     assert result.merge_metrics.calls == 1
 
 
-def test_strict_target_applies_the_best_candidate_even_when_drift_stays_over_budget() -> None:
-    # With the refinement round gone, an over-budget-drift candidate is still applied as the best
-    # available: the hard ceiling comes first and drift is only minimized best-effort.
+def test_strict_target_applies_the_best_candidate_even_when_cos_sim_diff_stays_over_budget() -> None:
+    # With the refinement round gone, a candidate over the cos_sim_diff budget is still applied as the best
+    # available: the hard ceiling comes first and cos_sim_diff is only minimized best-effort.
     merger = _TargetMerger(("short\n",) * 3)
 
     result = reduce(
         "source prompt with tokens\nsecond source line\n",
         HashEmbedder(),
         merger,
-        params=Params(drift_budget=0.0, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=0.0, max_tokens=3, require_target=True),
     )
 
     assert result.reduced_tokens <= 3
     assert result.merge_metrics.calls == 1
     assert result.merge_metrics.retries == 0
-    assert result.merge_metrics.final_drift is not None and result.merge_metrics.final_drift > 0
-    assert result.merge_metrics.drift_budget_met is False
+    assert result.merge_metrics.final_cos_sim_diff is not None and result.merge_metrics.final_cos_sim_diff > 0
+    assert result.merge_metrics.cos_sim_diff_budget_met is False
 
 
 def test_strict_target_result_stamps_embedding_and_wall_clock_metrics() -> None:
@@ -419,7 +421,7 @@ def test_strict_target_result_stamps_embedding_and_wall_clock_metrics() -> None:
         "source prompt with tokens\nsecond source line\n",
         HashEmbedder(),
         merger,
-        params=Params(drift_budget=0.0, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=0.0, max_tokens=3, require_target=True),
     )
 
     assert result.merge_metrics.embed_calls > 0
@@ -433,7 +435,7 @@ def test_strict_target_can_rewrite_a_single_long_sentence() -> None:
         "one two three four five six\n",
         HashEmbedder(),
         merger,
-        params=Params(drift_budget=2.0, max_tokens=3, require_target=True),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=3, require_target=True),
     )
 
     assert result.reduced_tokens <= 3
@@ -448,7 +450,7 @@ def test_strict_target_rejects_an_immutable_structure_that_exceeds_the_budget_be
             "<context>\n</context>\n",
             HashEmbedder(),
             merger,
-            params=Params(drift_budget=2.0, max_tokens=1, require_target=True),
+            params=Params(cos_sim_diff_budget=2.0, max_tokens=1, require_target=True),
         )
 
     assert merger.prompts == []
@@ -459,7 +461,7 @@ def test_optimization_report_includes_compression_and_quality_metrics() -> None:
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert report.tokens.reduced < report.tokens.source
@@ -473,7 +475,7 @@ def test_compare_reports_flags_token_and_quality_regressions() -> None:
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
     current = baseline.model_copy(
         update={
@@ -498,7 +500,7 @@ def test_propose_returns_the_document_and_one_diff_per_candidate() -> None:
         "# A\nrepeat me\nrepeat me\n# B\necho twice\necho twice\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert len(proposal.diffs) == 2

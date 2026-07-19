@@ -22,7 +22,11 @@ def _reviewable() -> tuple[Document, tuple[Diff, ...]]:
     embedder = HashEmbedder()
     document = represent(_REDUNDANT, embedder)
     plan = optimize(
-        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+        document,
+        score(document, names=("redundancy",)),
+        embedder,
+        _FirstWinsMerger(),
+        params=Params(cos_sim_diff_budget=2.0),
     )
     return document, diffs(document, plan)
 
@@ -116,7 +120,11 @@ def test_render_preview_builds_hunks_from_the_removed_sentences() -> None:
     embedder = HashEmbedder()
     document = represent(prompt, embedder)
     plan = optimize(
-        document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=Params(drift_budget=2.0)
+        document,
+        score(document, names=("redundancy",)),
+        embedder,
+        _FirstWinsMerger(),
+        params=Params(cos_sim_diff_budget=2.0),
     )
     proposed = diffs(document, plan)
     state = ReviewState(diffs=proposed, cursor=0, accepted=frozenset(range(len(proposed))))

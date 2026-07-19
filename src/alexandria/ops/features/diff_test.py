@@ -12,7 +12,7 @@ from alexandria.ops.features.select import select
 from alexandria.utils.embedders import HashEmbedder
 
 _REDUNDANT_SECTIONS = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
-_GENEROUS = Params(drift_budget=2.0)
+_GENEROUS = Params(cos_sim_diff_budget=2.0)
 
 
 class _FirstWinsMerger:
@@ -44,7 +44,7 @@ def test_accepting_every_diff_reproduces_the_automatic_run() -> None:
     embedder = HashEmbedder()
     document = represent(_REDUNDANT_SECTIONS, embedder)
     plan = optimize(document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=_GENEROUS)
-    params = Params(drift_budget=2.0)  # generous enough that the auto selector rejects nothing
+    params = Params(cos_sim_diff_budget=2.0)  # generous enough that the auto selector rejects nothing
 
     accepted = tuple(diff.candidate for diff in diffs(document, plan))
     interactive = select(document, accepted, embedder, params=params)

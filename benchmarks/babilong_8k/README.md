@@ -70,9 +70,9 @@ The reduction target is strict. Alexandria keeps instruction, example, format, a
 then, for each content window, fires three generation requests to Luna in parallel with different rewrite
 strategies (plain compression, extractive deletion, and dense paraphrase). It verifies the complete prompt's token
 count and deterministically repairs model overshoot. Candidate windows avoid query-linked terms and protect local
-semantic outliers. Among target-safe candidates it selects the one with the lowest whole-prompt embedding drift,
+semantic outliers. Among target-safe candidates it selects the one with the lowest whole-prompt `cos_sim_diff`,
 using local coverage as a tiebreaker. The three requests run concurrently, so each window costs roughly one
-generation call. Each result records merge calls, retries, generated candidates, repaired tokens, and final drift.
+generation call. Each result records merge calls, retries, generated candidates, repaired tokens, and final `cos_sim_diff`.
 
 ## 100-case hard-target result
 
@@ -85,7 +85,7 @@ each of `qa1`-`qa5`.
 | 90%-retained | 6,716.60 | 10.93% | 65.0% (65/100) | -1.0 pp |
 
 All 100 compressed prompts met their token ceilings. Compression took 1,640.1 seconds total (16.4 seconds/case),
-used 99 merge calls with no retries, and had mean whole-prompt embedding drift 0.0072. Compression cost an estimated
+used 99 merge calls with no retries, and had mean whole-prompt `cos_sim_diff` 0.0072. Compression cost an estimated
 $1.2002, and compressed-answer generation cost $0.6723. Including the $0.7536 original baseline, the measured API
 total was $2.6260 and sequential wall time was 1,898.0 seconds. Prices and raw API usage are recorded in
 [`summary.json`](results/2026-07-18-keep90-hard-target-n100-v1/summary.json).

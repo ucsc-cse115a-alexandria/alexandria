@@ -4,20 +4,20 @@ from typing import TYPE_CHECKING
 
 from alexandria.ir.contracts import Candidate, Params, Selection
 from alexandria.ir.registry import get_selector, register_selector
-from alexandria.ir.similarity import cosine_distance
+from alexandria.ir.similarity import compute_cos_sim_diff
 from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, Plan
     from alexandria.ir.document import Document
 
-DEFAULT_SELECTOR = "least_drift"
+DEFAULT_SELECTOR = "least_cos_sim_diff"
 
 
 @register_selector(DEFAULT_SELECTOR)
-def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
-    """Apply candidates in ascending whole-document drift order, under the cumulative drift
-    budget, stopping once params.max_tokens is met.
+def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
+    """Apply candidates in ascending whole-document cos_sim_diff order, under the cumulative
+    cos_sim_diff budget, stopping once params.max_tokens is met.
 
     Ranking embeds every candidate's trial text in one batched call; the cumulative re-check
     then embeds once per applied candidate.
@@ -32,7 +32,7 @@ def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Para
         if (trial := document.apply(candidate)) is not None and trial is not document
     ]
     vectors = embedder.embed([trial.text for _, trial in trials]) if trials else []
-    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: cosine_distance(pair[1], base))
+    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: compute_cos_sim_diff(pair[1], base))
 
     current = document
     applied: list[Candidate] = []
@@ -40,7 +40,7 @@ def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Para
         trial = current.apply(candidate)
         if trial is None or trial is current:
             continue
-        if cosine_distance(embedder.embed([trial.text])[0], base) > params.drift_budget:
+        if compute_cos_sim_diff(embedder.embed([trial.text])[0], base) > params.cos_sim_diff_budget:
             continue
         current = trial
         applied.append(candidate)
@@ -71,4 +71,4 @@ def select(
     return get_selector(name)(document, plan, embedder, params)
 
 
-__all__ = ["DEFAULT_SELECTOR", "least_drift", "select"]
+__all__ = ["DEFAULT_SELECTOR", "least_cos_sim_diff", "select"]

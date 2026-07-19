@@ -17,7 +17,7 @@ Scores = dict[str, dict[SentenceId, float]]  # scorer name -> sentence id -> sco
 Peers = Callable[[Document], list[tuple[SentenceId | None, float]]]
 
 Threshold = Annotated[float, Field(ge=0.0, le=1.0)]
-Drift = Annotated[float, Field(ge=0.0)]  # cosine distance from the original prompt; 0.5 == 50%
+CosSimDiff = Annotated[float, Field(ge=0.0)]  # 1 - cosine similarity to the original prompt
 
 
 class Params(BaseModel):
@@ -25,7 +25,7 @@ class Params(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     threshold: Threshold = 0.85
-    drift_budget: Drift = 0.5
+    cos_sim_diff_budget: CosSimDiff = 0.5
     max_tokens: int | None = Field(default=None, ge=1)
     require_target: bool = False
 
@@ -37,10 +37,10 @@ class TargetMergeRoundMetrics(BaseModel):
     round: int = Field(ge=1)
     base_tokens: int = Field(ge=1)
     selected_tokens: int = Field(ge=1)
-    base_drift: float = Field(ge=0.0)
-    selected_drift: float = Field(ge=0.0)
+    base_cos_sim_diff: float = Field(ge=0.0)
+    selected_cos_sim_diff: float = Field(ge=0.0)
     generated_best_tokens: int = Field(ge=1)
-    generated_best_drift: float = Field(ge=0.0)
+    generated_best_cos_sim_diff: float = Field(ge=0.0)
     improved: bool
 
 
@@ -58,8 +58,8 @@ class MergeMetrics(BaseModel):
     pruned_sentences: int = Field(default=0, ge=0)
     pruned_tokens: int = Field(default=0, ge=0)
     repaired_tokens: int = Field(default=0, ge=0)
-    final_drift: float | None = Field(default=None, ge=0.0)
-    drift_budget_met: bool | None = None
+    final_cos_sim_diff: float | None = Field(default=None, ge=0.0)
+    cos_sim_diff_budget_met: bool | None = None
     embed_calls: int = Field(default=0, ge=0)
     embed_texts: int = Field(default=0, ge=0)
     elapsed_seconds: float = Field(default=0.0, ge=0.0)
@@ -224,7 +224,7 @@ class ReportedCandidate(BaseModel):
     model_config = ConfigDict(frozen=True)
     text: str
     token_count: int
-    drift: float
+    cos_sim_diff: float
     structure_valid: bool
 
 

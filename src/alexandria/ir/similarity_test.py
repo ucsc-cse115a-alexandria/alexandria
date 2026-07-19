@@ -5,7 +5,7 @@ import pytest
 
 from alexandria.ir.document import Document, Section, SectionKind, Sentence, SentenceId
 from alexandria.ir.similarity import (
-    cosine_distance,
+    compute_cos_sim_diff,
     cosine_similarity_matrix,
     normalize,
     similarity_matrix_for,
@@ -22,15 +22,15 @@ def test_orthogonal_vectors_have_zero_similarity() -> None:
     assert cosine_similarity_matrix(vectors)[0, 1] == pytest.approx(0.0)
 
 
-def test_cosine_distance_is_zero_for_identical_vectors() -> None:
+def test_compute_cos_sim_diff_is_zero_for_identical_vectors() -> None:
     vector = np.array([3.0, 4.0], dtype=np.float32)
-    assert cosine_distance(vector, vector) == pytest.approx(0.0)
+    assert compute_cos_sim_diff(vector, vector) == pytest.approx(0.0)
 
 
-def test_cosine_distance_is_one_for_orthogonal_vectors() -> None:
+def test_compute_cos_sim_diff_is_one_for_orthogonal_vectors() -> None:
     a = np.array([1.0, 0.0], dtype=np.float32)
     b = np.array([0.0, 2.0], dtype=np.float32)
-    assert cosine_distance(a, b) == pytest.approx(1.0)
+    assert compute_cos_sim_diff(a, b) == pytest.approx(1.0)
 
 
 def test_normalize_returns_unit_length_vector() -> None:

@@ -40,7 +40,7 @@ their signatures coincide.
 
 ```
 signature(p, c) = [ softmax(logits(p · c_<t))  for t in positions of c ]   # (|c|, vocab)
-drift(p, p') = max over positions t of  JSD( signature(p,c)[t] ‖ signature(p',c)[t] )
+behavioral_jsd(p, p') = max over positions t of  JSD( signature(p,c)[t] ‖ signature(p',c)[t] )
 ```
 
 - **JSD, not KL.** Jensen–Shannon is symmetric and bounded in `[0, log 2]`, so it thresholds cleanly
@@ -49,7 +49,7 @@ drift(p, p') = max over positions t of  JSD( signature(p,c)[t] ‖ signature(p',
 - **Max per-token, not mean** — the decisive token, not the average, decides fidelity (see above).
 - **Truncated logits fail safe.** Local backends expose top-k logprobs; assign the residual mass
   `1 − Σ top-k` uniformly over the tail before computing JSD — a conservative **upper bound** on
-  drift, so truncation can only over-reject, never silently accept.
+  behavioral_jsd, so truncation can only over-reject, never silently accept.
 
 **The probe `c` is the reasoning prefix.** Default `c` = the model's own greedy decode of its
 reasoning/answer prefix under the *original* prompt — literally "what the model was about to do."
@@ -64,7 +64,7 @@ tokens ([2511.14773]), so a short prefix suffices.
 | Tier | Signal | Role | Cost |
 |---|---|---|---|
 | 1 — screen | embedding `redundancy` (v1, unchanged) | **propose** candidate drops | cheap |
-| 2 — gate | behavioral `drift` (v2, new) | **accept/reject** each drop | one teacher-forced pass / trial |
+| 2 — gate | `behavioral_jsd` (v2, new) | **accept/reject** each drop | one teacher-forced pass / trial |
 
 Embedding redundancy keeps proposing candidates; its negation-blindness is acceptable here because
 the Tier-2 gate catches the false positives it lets through. Fidelity is *guaranteed* only at the
@@ -96,8 +96,8 @@ chosen optimizer asks for it:
 @register_optimizer("behavioral_pairwise", requires=("redundancy",), decoder=True)
 ```
 
-`OptimizerParams` gains `max_behavioral_drift: Drift` (the JSD gate) and `probe_tokens: int`
-(prefix length). **The default `max_behavioral_drift` has no literature constant** — it must be
+`OptimizerParams` gains `max_behavioral_jsd: BehavioralJsd` (the JSD gate) and `probe_tokens: int`
+(prefix length). **The default `max_behavioral_jsd` has no literature constant** — it must be
 calibrated (see Evaluation); ship it flagged as provisional, not authoritative.
 
 **2. `ir/divergence.py` — new, pure.** `token_jsd(a, b)` and
@@ -110,8 +110,8 @@ function under test (the v1 `HashEmbedder` pattern). The `import-linter` forbidd
 `ir`, `ops`, and `cli` may not import a generative backend — only this shell may.
 
 **4. `ops/features/optimize/behavioral_pairwise.py` — new, one file.** Same candidate ranking as
-`greedy_pairwise` (redundant pairs, sorted by similarity), but the drop-safety guard swaps cosine
-drift for behavioral drift:
+`greedy_pairwise` (redundant pairs, sorted by similarity), but the drop-safety guard replaces
+`cos_sim_diff` with `behavioral_jsd`:
 
 ```
 c = decoder.decode(document.text, params.probe_tokens)     # probe: the reasoning prefix, once
@@ -121,11 +121,11 @@ for (a, b) in redundant pairs, sorted desc:                # Tier-1 screen (embe
         trial = decoder.signature(text_without(cand), c)
         d = max_token_jsd(trial, base)                     # Tier-2 gate (decoder distribution)
     drop = argmin over the pair of d
-    if min d <= params.max_behavioral_drift:               # was: cosine_distance <= max_drift
+    if min d <= params.max_behavioral_jsd:                  # was: cos_sim_diff <= budget
         propose Delete(drop)
 ```
 
-This is v1's `_drift` replaced by `_behavioral_drift`; the structure, the unique-sentence guard, and
+This replaces v1's `_cos_sim_diff` with `_behavioral_jsd`; the structure, unique-sentence guard, and
 the `Plan`/`apply` contract are identical.
 
 **5. CLI + pipeline.** `reduce`/`review` accept `--decoder MODEL` (mirrors `--model` for the
@@ -176,7 +176,7 @@ prior compressor uses. Kept as a stretch; the embedding screen is the cheap defa
   Equivalence judged by output-distribution matching does transfer across models (evil twins
   [2311.07064]), but LLMLingua needed an alignment step to close the proxy gap — prefer a probe model
   from the deployment family.
-- **No canonical safe threshold exists** — `max_behavioral_drift` is empirical; the divergence→safety
+- **No canonical safe threshold exists** — `max_behavioral_jsd` is empirical; the divergence→safety
   link is correlational, not a proven bound. Calibrate, don't import a constant.
 - **The probe biases the metric** — a generic suffix may be insensitive to the deleted content; the
   reasoning-prefix default is on-distribution but recomputed per Document.
@@ -191,7 +191,7 @@ into demonstrated.
 
 | Layer | Question | Ground truth | Leak risk |
 |---|---|---|---|
-| **B — Metric validation** (the core) | Does `drift` separate meaning-changing from meaning-preserving edits, and beat cosine/perplexity? | **Label by construction** (a program decides) | **None** if labels are programmatic — this is why Layer B leads |
+| **B — Metric validation** (the core) | Does `behavioral_jsd` separate meaning-changing from meaning-preserving edits, and beat cosine/perplexity? | **Label by construction** (a program decides) | **None** if labels are programmatic — this is why Layer B leads |
 | **A — System evaluation** | Does the full pipeline cut tokens while preserving downstream behavior? | Downstream task accuracy + multi-model behavior consensus | Contamination + circularity — controlled below |
 
 Layer B validates the *gate*; Layer A validates the *system*. Layer B is primary because it is the
@@ -209,12 +209,12 @@ if all three are closed.
    screen every candidate model with **Min-K% Prob** [2310.16789] / paraphrase decontamination
    [2311.04850] before trusting its score; record each model's training cutoff vs. item date.
 2. **Evaluation-set leakage** — tuning the gate threshold on the test set. *Neutralize:* strict
-   **train / dev / test** split; `max_behavioral_drift` and every hyperparameter tuned on **dev
+   **train / dev / test** split; `max_behavioral_jsd` and every hyperparameter tuned on **dev
    only**; test touched once (reusable-holdout discipline, Dwork et al. [1506.02629]). A freshly
    re-collected mirror split as a sanity check, interpreting drops as shift vs. overfit (ImageNetV2
    [1902.10811]).
 3. **Circularity** — the proxy that defines the gate also generates items, judges fidelity, or is the
-   model under test. Reference-free metrics provably drift toward their own model [2210.12563] and
+   model under test. Reference-free metrics provably shift toward their own model [2210.12563] and
    reward low-perplexity/familiar text regardless of fidelity [2410.21819]; judges favor their own
    generations [2404.13076]. *Neutralize:* the **role-separation matrix** below, and — wherever
    possible — **eliminate the judge entirely** by using programmatic labels (Layer B).
@@ -281,7 +281,7 @@ span only** (exclude the protected instruction/question) — state the denominat
 **System fidelity.** Downstream accuracy retention `acc(compressed)/acc(original)` per task, plus
 **answer-flip rate** on the differential jury. Operating-point curves: accuracy vs. compression ratio.
 
-**Gate quality (Layer B — the headline).** Treat `drift` as a soft classifier over MC/MP:
+**Gate quality (Layer B — the headline).** Treat `behavioral_jsd` as a soft classifier over MC/MP:
 - **AUROC** + **AUPRC** (AUPRC is the headline under MC-rarity) + **MCC** [Chicco & Jurman 2020].
 - **Recall-of-MC @ fixed FPR** (e.g. FPR=1%) — a safety gate's real operating summary; a false-accept
   of an MC edit is the dangerous error.
@@ -289,16 +289,16 @@ span only** (exclude the protected instruction/question) — state the denominat
   point where the ROC tangent slope = cost·prevalence ratio (iso-cost, [1107.5930]), **on dev**, then
   report confusion metrics at it on test.
 
-**The comparative claim (decoder-JSD beats the alternatives).** On the *same* pairs, compute `drift`,
+**The comparative claim (decoder-JSD beats the alternatives).** On the *same* pairs, compute `behavioral_jsd`,
 `1 − cosine(emb(P), emb(P'))`, and `Δperplexity`. Compare AUROCs with **DeLong's paired test**
 [DeLong 1988]. JSD wins iff its AUROC/AUPRC is significantly higher.
 
 **Non-spuriousness (the anti-circularity test).** A reference-free distributional metric can secretly
-be a perplexity/length/overlap proxy [2204.09890; 2410.21819]. Require `drift` to retain predictive
+be a perplexity/length/overlap proxy [2204.09890; 2410.21819]. Require `behavioral_jsd` to retain predictive
 power for the MC/MP label in **partial correlation controlling for Δperplexity, Δlength, and token
 overlap**. If it collapses, the gate is spurious — report it.
 
-**Correlation with the oracle.** Spearman/Kendall between `drift` and the jury's answer-flip rate
+**Correlation with the oracle.** Spearman/Kendall between `behavioral_jsd` and the jury's answer-flip rate
 (meta-evaluation recipe of MT metrics — BERTScore [1904.09675], BLEURT [2004.04696]; prefer rank /
 pairwise-accuracy framing [2305.14324], [2409.09598]).
 

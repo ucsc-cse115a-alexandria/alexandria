@@ -1,10 +1,10 @@
 import tiktoken
 
-from alexandria.ir.similarity import cosine_distance
+from alexandria.ir.similarity import compute_cos_sim_diff
 from alexandria.utils.embedders import default_embedder
 
-DRIFT_BUDGET = 0.5
-SIMILARITY_GATE = 1.0 - DRIFT_BUDGET
+COS_SIM_DIFF_BUDGET = 0.5
+SIMILARITY_GATE = 1.0 - COS_SIM_DIFF_BUDGET
 
 
 def check_compression(original: str, compressed: str) -> dict:
@@ -13,8 +13,8 @@ def check_compression(original: str, compressed: str) -> dict:
 
     orig_vec, comp_vec = embedder.embed([original, compressed])
 
-    drift = cosine_distance(orig_vec, comp_vec)
-    cosine = 1.0 - drift
+    cos_sim_diff = compute_cos_sim_diff(orig_vec, comp_vec)
+    cosine = 1.0 - cos_sim_diff
 
     source_tokens = len(enc.encode(original))
     reduced_tokens = len(enc.encode(compressed))
@@ -26,6 +26,6 @@ def check_compression(original: str, compressed: str) -> dict:
         "reduced_tokens": reduced_tokens,
         "token_reduction": token_reduction,
         "cosine_similarity": cosine,
-        "cosine_drift": drift,
-        "passed": drift <= DRIFT_BUDGET,
+        "cos_sim_diff": cos_sim_diff,
+        "passed": cos_sim_diff <= COS_SIM_DIFF_BUDGET,
     }

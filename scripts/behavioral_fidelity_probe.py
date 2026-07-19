@@ -7,11 +7,12 @@ induce.
 
     c            = greedy decode of the model under the *original* prompt   (decoded once per pair)
     signature(p) = [ softmax(logits(p . c_<t)) for t in positions of c ]    (teacher-forced, one pass)
-    drift(p, p') = max over positions t of  JSD( signature(p)[t] || signature(p')[t] )
+    behavioral_jsd(p, p') = max over positions t of  JSD( signature(p)[t] || signature(p')[t] )
 
-JSD is in bits, so drift is bounded in [0, 1]: 0 means the two prompts leave the model about to do the
-same thing, 1 means maximally different. A meaning-changing (MC) edit should drift high; a
-meaning-preserving (MP) one should drift low -- the separation cosine fails to make on flips.
+JSD is in bits, so behavioral_jsd is bounded in [0, 1]: 0 means the two prompts leave the model about
+to do the same thing, 1 means maximally different. A meaning-changing (MC) edit should have high
+behavioral_jsd; a meaning-preserving (MP) edit should have low behavioral_jsd -- the separation
+cosine fails to make on flips.
 
 Two backends produce the distributions behind a common interface: `mlx` (Apple-silicon native,
 `mlx-lm`) and `torch` (`transformers`). The JSD math is pure numpy, so the signal is identical across
@@ -53,7 +54,7 @@ class Backend(StrEnum):
 
 
 class PairResult(BaseModel):
-    """Probe and behavioral drift (max-position JSD, in bits) for a scored pair."""
+    """Probe and behavioral_jsd (max-position JSD, in bits) for a scored pair."""
 
     label: Label
     kind: str
@@ -62,7 +63,7 @@ class PairResult(BaseModel):
     edited: str
     probe: str
     probe_tokens: int
-    drift: float
+    behavioral_jsd: float
 
 
 class Decoder(Protocol):
@@ -187,7 +188,7 @@ def max_token_jsd(p: NDArray[np.float32], q: NDArray[np.float32]) -> float:
 
 
 def score_pair(pair: Pair, decoder: Decoder, probe_tokens: int) -> PairResult:
-    """Decode the probe under the original prompt, then drift the edited prompt's signature against it."""
+    """Decode under the original prompt, then compare the edited signature with behavioral_jsd."""
     original_ids = decoder.encode_prompt(pair.original)
     edited_ids = decoder.encode_prompt(pair.edited)
     probe_ids = decoder.greedy_probe(original_ids, probe_tokens)
@@ -201,45 +202,48 @@ def score_pair(pair: Pair, decoder: Decoder, probe_tokens: int) -> PairResult:
         edited=pair.edited,
         probe=decoder.detokenize(probe_ids),
         probe_tokens=len(probe_ids),
-        drift=max_token_jsd(base, trial),
+        behavioral_jsd=max_token_jsd(base, trial),
     )
 
 
 def print_dilution(results: list[PairResult]) -> None:
-    """Show drift staying high as the same flip is buried in more shared context (cosine climbs; JSD should not)."""
+    """Show behavioral_jsd staying high as shared context buries a flip and cosine climbs."""
     print("\nContext dilution -- one negation, growing shared context:")
-    print(f"  {'kind':<10}  {'drift':>6}  edit")
+    print(f"  {'kind':<10}  {'behavioral_jsd':>6}  edit")
     for r in sorted(results, key=lambda r: r.kind):
-        print(f"  {r.kind:<10}  {r.drift:>6.3f}  {r.edited!r}")
-    print("  => Same meaning flip; drift should stay high regardless of context length -- the flip stays visible.")
+        print(f"  {r.kind:<10}  {r.behavioral_jsd:>6.3f}  {r.edited!r}")
+    print(
+        "  => Same meaning flip; behavioral_jsd should stay high regardless of context length -- "
+        "the flip stays visible."
+    )
 
 
 def print_table(results: list[PairResult]) -> None:
-    """Print one row per pair, sorted by drift ascending (behaviorally closest first)."""
-    header = f"{'label':<9} {'kind':<22} {'src':<11} {'drift':>6}  original -> edited"
+    """Print one row per pair, sorted by behavioral_jsd ascending (behaviorally closest first)."""
+    header = f"{'label':<9} {'kind':<22} {'src':<11} {'behavioral_jsd':>6}  original -> edited"
     print(header)
     print("-" * len(header))
-    for result in sorted(results, key=lambda r: r.drift):
+    for result in sorted(results, key=lambda r: r.behavioral_jsd):
         print(
-            f"{result.label.value:<9} {result.kind:<22} {result.source:<11} {result.drift:>6.3f}  "
+            f"{result.label.value:<9} {result.kind:<22} {result.source:<11} {result.behavioral_jsd:>6.3f}  "
             f"{result.original!r} -> {result.edited!r}"
         )
 
 
 def print_threshold_squeeze(mc: list[PairResult], mp: list[PairResult]) -> None:
-    """A gate keeps an edit when drift <= cutoff. Report both ends: the cutoff that keeps every
+    """A gate keeps an edit when behavioral_jsd <= cutoff. Report both ends: the cutoff that keeps every
     paraphrase (and how many flips leak under it) and the cutoff that blocks all-but-one flip (and how
     many paraphrases it costs). If JSD separates MC from MP, both ends can be good at once.
     """
-    keep_all_cutoff = max(r.drift for r in mp)
-    leaked = sum(r.drift <= keep_all_cutoff for r in mc)
+    keep_all_cutoff = max(r.behavioral_jsd for r in mp)
+    leaked = sum(r.behavioral_jsd <= keep_all_cutoff for r in mc)
     print(
         f"\nKeep all {len(mp)} paraphrases (cutoff {keep_all_cutoff:.3f}): "
         f"{leaked}/{len(mc)} meaning flips leak through with them."
     )
 
-    safety_cutoff = sorted(r.drift for r in mc)[1] - 1e-6
-    survivors = sum(r.drift <= safety_cutoff for r in mp)
+    safety_cutoff = sorted(r.behavioral_jsd for r in mc)[1] - 1e-6
+    survivors = sum(r.behavioral_jsd <= safety_cutoff for r in mp)
     print(
         f"Allow at most one leaked flip (cutoff {safety_cutoff:.3f}): "
         f"{survivors}/{len(mp)} paraphrases survive the gate."
@@ -247,39 +251,46 @@ def print_threshold_squeeze(mc: list[PairResult], mp: list[PairResult]) -> None:
 
 
 def print_summary(results: list[PairResult]) -> None:
-    """Show whether drift separates MC from MP -- and call out the dangerous low-drift flips."""
+    """Show whether behavioral_jsd separates MC from MP -- and call out the dangerous low-behavioral_jsd flips."""
     mp = [r for r in results if r.label is Label.MEANING_PRESERVING]
     mc = [r for r in results if r.label is Label.MEANING_CHANGING]
     if not (mp and mc):
         return
 
-    print("\nMean drift by kind:")
+    print("\nMean behavioral_jsd by kind:")
     for kind in dict.fromkeys(r.kind for r in results):
-        drifts = [r.drift for r in results if r.kind == kind]
+        behavioral_jsd_values = [r.behavioral_jsd for r in results if r.kind == kind]
         label = next(r.label.value for r in results if r.kind == kind)
-        print(f"  {label:<9} {kind:<22} n={len(drifts)}  mean={sum(drifts) / len(drifts):.3f}")
+        mean_behavioral_jsd = sum(behavioral_jsd_values) / len(behavioral_jsd_values)
+        print(f"  {label:<9} {kind:<22} n={len(behavioral_jsd_values)}  mean={mean_behavioral_jsd:.3f}")
 
     print(
-        f"\nDistributions: MC drift in [{min(r.drift for r in mc):.3f}, {max(r.drift for r in mc):.3f}], "
-        f"MP drift in [{min(r.drift for r in mp):.3f}, {max(r.drift for r in mp):.3f}]."
+        f"\nDistributions: MC behavioral_jsd in "
+        f"[{min(r.behavioral_jsd for r in mc):.3f}, {max(r.behavioral_jsd for r in mc):.3f}], "
+        f"MP behavioral_jsd in [{min(r.behavioral_jsd for r in mp):.3f}, {max(r.behavioral_jsd for r in mp):.3f}]."
     )
 
     print_threshold_squeeze(mc, mp)
 
-    paraphrase_floor = min(r.drift for r in mp if r.kind in {"paraphrase", "synonym"})
-    blind = sorted((r for r in mc if r.drift < paraphrase_floor), key=lambda r: r.drift)
+    paraphrase_floor = min(r.behavioral_jsd for r in mp if r.kind in {"paraphrase", "synonym"})
+    blind = sorted((r for r in mc if r.behavioral_jsd < paraphrase_floor), key=lambda r: r.behavioral_jsd)
     print(f"\nBLIND -- meaning flips below the closest paraphrase ({paraphrase_floor:.3f}): {len(blind)}/{len(mc)}")
     for r in blind:
-        print(f"  {r.drift:.3f}  [{r.kind}]  {r.original!r} -> {r.edited!r}")
+        print(f"  {r.behavioral_jsd:.3f}  [{r.kind}]  {r.original!r} -> {r.edited!r}")
 
-    overeager = sorted((r for r in mp if r.drift > min(r.drift for r in mc)), key=lambda r: r.drift, reverse=True)
+    overeager = sorted(
+        (r for r in mp if r.behavioral_jsd > min(r.behavioral_jsd for r in mc)),
+        key=lambda r: r.behavioral_jsd,
+        reverse=True,
+    )
     rejected = [r for r in overeager if r.kind in {"paraphrase", "synonym"}]
-    print(f"\nOVER-EAGER -- valid paraphrases drifting above some meaning flip: {len(rejected)}/{len(mp)}")
+    print(f"\nOVER-EAGER -- valid paraphrases above some meaning flip: {len(rejected)}/{len(mp)}")
     for r in rejected:
-        print(f"  {r.drift:.3f}  [{r.kind}]  {r.original!r} -> {r.edited!r}")
+        print(f"  {r.behavioral_jsd:.3f}  [{r.kind}]  {r.original!r} -> {r.edited!r}")
 
     print(
-        "\n=> A behavioral gate works iff MC drift sits above MP drift with a usable margin -- catching "
+        "\n=> A behavioral gate works iff MC behavioral_jsd sits above MP behavioral_jsd with a usable "
+        "margin -- catching "
         "the truth-flipping operators cosine is blind to while keeping honest paraphrases."
     )
 

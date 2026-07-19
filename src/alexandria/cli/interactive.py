@@ -214,7 +214,7 @@ def review(
 
 
 def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
-    """Fold Document.apply over the candidates; accept means accept — no drift-budget re-filtering.
+    """Fold Document.apply over the candidates; accept means accept — no cos_sim_diff budget re-filtering.
 
     A candidate whose edit would empty the document or a section (apply returns None) is skipped.
     """

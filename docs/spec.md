@@ -26,7 +26,7 @@ prompt ─────────▶│  Represent   ──▶   Score   ──
 | **1. Represent** | Turn the prompt into the IR: split into instructions, count tokens, embed each one. | `represent(str, *, embedder: Embedder = ..., reuse: Document \| None = None) -> Document` |
 | **2. Score** | Rate every instruction. The first scorer rates **redundancy**. | `Scorer = (Document) -> list[float]` |
 | **3. Optimize** | Propose and rank the edits the scores justify. | `Optimizer = (Document, Scores, Params) -> Plan` |
-| **4. Select** | Apply candidates highest-confidence-first while the prompt stays within the drift budget. | `Selector = (Document, Plan, Embedder, Params) -> Document` |
+| **4. Select** | Apply candidates highest-confidence-first while the prompt stays within the `cos_sim_diff` budget. | `Selector = (Document, Plan, Embedder, Params) -> Document` |
 
 Each phase is a pure function over the IR, so each is tested on its own and the four compose in
 order. The split between **Optimize** and **Select** is deliberate: Optimize only *proposes and ranks*
@@ -42,7 +42,7 @@ stacks **concatenate** into one series.
 
 **Select** is an open set too: a *selector* reads the `Plan` and folds it into a smaller `Document`. The
 default `auto` selector sorts candidates by `confidence` (highest first) and applies each only while the
-reduced prompt stays within `drift_budget` cosine distance of the original prompt embedding — so an
+reduced prompt's `cos_sim_diff` from the original prompt embedding stays within `cos_sim_diff_budget` — so an
 unattended `reduce` compresses as far as the meaning budget allows. A future interactive selector (the
 `review` verb) walks the same ranked stack and asks a human to accept or reject each edit. Both call one
 pure primitive, `Document.apply`, folding the stack candidate by candidate into the smaller `Document` —
@@ -147,7 +147,7 @@ exposes the same trio — `text`, `token_count`, `embedding` — so the same uni
 granularity, and all three are **stored** because each `embedding` is a real model embedding (see
 below). A sentence's group is self-evident from where it sits in the tree. We parse, don't construct
 (validate on build) and make impossible states unrepresentable: nesting replaces parallel lists, so
-columns cannot drift out of sync.
+columns cannot fall out of sync.
 
 ```python
 type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # a 1-D vector
@@ -206,7 +206,7 @@ representation of that span. Because re-embedding needs a model call, the trio i
 Represent and stored at every level.
 
 **Validated on build.** Constructing the tree checks that each node's `text` equals the concatenation
-of its children and its `token_count` equals their sum (so stored values can never drift from the
+of its children and its `token_count` equals their sum (so stored values can never diverge from the
 children), that every embedding shares one dimension, that token counts are non-negative
 (`TokenCount`), that no `Section` or `Document` is empty (`min_length=1`), and that every `Sentence`
 `id` is unique within the `Document` (an `Edit` must name exactly one row, never two).
@@ -367,7 +367,7 @@ for (a, b) in pairs with similarity ≥ threshold, sorted by similarity desc:
 A per-pass `present` set keeps the proposals coherent — for three identical sentences it proposes two
 deletes, never all three — so at least one copy of every cluster survives the proposal stage. The
 optimizer does **not** re-embed and does **not** decide how far to compress; it hands Select a ranked,
-non-conflicting stack and lets the drift budget decide how much of it to apply.
+non-conflicting stack and lets the `cos_sim_diff` budget decide how much of it to apply.
 
 **`merge` (stretch).** Collapse a redundant cluster into one representative instruction — a single
 `replace` `Edit` over the cluster's ids, which the `delete` op alone cannot express. The `Edit`
@@ -385,8 +385,8 @@ step.
 **Meaning preservation — the hard constraint.** It is enforced at two points. (1) *Unique* sentences (no
 peer above the redundancy threshold) are never proposed for deletion, so no optimizer can put a
 load-bearing instruction on the stack. (2) Select re-embeds the reduced prompt after each tentative edit
-and keeps the edit only while the prompt stays within `drift_budget` cosine distance of the original — so
-even among redundant candidates, compression stops before meaning drifts too far (see
+and keeps the edit only while its `cos_sim_diff` from the original stays within `cos_sim_diff_budget` — so
+even among redundant candidates, compression stops before meaning changes too far (see
 [Phase 4 — Select](#phase-4--select)). As it folds, `apply` additionally rejects any edit that would empty a
 `Section` or the `Document` — the structural half of the guarantee, re-checked at each step against the
 current document rather than a stale snapshot.
@@ -396,10 +396,10 @@ current document rather than a stale snapshot.
 A *selector* turns a ranked `Plan` into a reduced `Document`: `(Document, Plan, Embedder, Params) -> Document`.
 Optimize decides *what could change* and *how confident* each change is; Select decides *which changes
 actually happen* and *when to stop*. Keeping that controller in one phase is why `confidence` is finally
-read here, and why the drift budget lives in one place instead of being threaded through every optimizer.
+read here, and why the `cos_sim_diff` budget lives in one place instead of being threaded through every optimizer.
 
 **The default selector — `auto`.** It applies candidates greedily, highest-confidence-first, accepting each
-only while the reduced prompt stays within the drift budget:
+only while the reduced prompt stays within the `cos_sim_diff` budget:
 
 ```
 base = Document.embedding                       # the real embedding of the original prompt
@@ -407,18 +407,18 @@ current = Document
 for candidate in plan sorted by confidence desc:
     trial = current.apply(candidate)            # None if it would empty a Section/Document → skip
     if trial is None: continue
-    drift = cosine_distance(embed(trial.text), base)   # re-embed the reduced prompt
-    if drift ≤ params.drift_budget:             # default 0.01 — within 1% of the original
+    cos_sim_diff = compute_cos_sim_diff(embed(trial.text), base)  # 1 - cosine_similarity
+    if cos_sim_diff ≤ params.cos_sim_diff_budget:          # default 0.01
         current = trial                         # accept; the budget is cumulative from here
 return current
 ```
 
-The drift is measured against `base` after *every* accepted edit, so the budget is **cumulative**: the
+The `cos_sim_diff` is measured against `base` after *every* accepted edit, so the budget is **cumulative**: the
 loop compresses as far as 1% of meaning allows and then stops. This is self-regulating — once one half of
-a redundant pair is dropped, removing its peer would delete genuinely unique content, drift past the
+a redundant pair is dropped, removing its peer would delete genuinely unique content, exceed the
 budget, and be skipped — so the `auto` selector keeps one copy of a cluster without any explicit
 "don't delete both" rule. `Params` carries both phases' knobs (`threshold` for Optimize's eligibility,
-`drift_budget` for Select's stop condition); `OptimizerParams`-style defaults live in one frozen model.
+`cos_sim_diff_budget` for Select's stop condition); `OptimizerParams`-style defaults live in one frozen model.
 
 Because `auto` re-embeds the reduced prompt, the budget reflects the embedding model's real
 representation of the shortened text. With a non-semantic embedder (the deterministic test backend, which
@@ -480,7 +480,7 @@ every addition looks the same:
    # ops/features/select.py
    @register_selector("auto")
    def auto(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Document:
-       ...   # fold the plan within params.drift_budget; return the reduced Document
+       ...   # fold the plan within params.cos_sim_diff_budget; return the reduced Document
    ```
 
 4. **Done.** The CLI resolves `--scorer NAME` / `--optimizer NAME` against the registry; for an
@@ -597,11 +597,11 @@ phases is its own verb, and they **compose over a Unix pipe**: every phase emits
   Document it is handed.
 - `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T] [--out PATH]` — `ScoredEnvelope` in, a
   **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
-- `alexandria select [FILE] [--model MODEL] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
+- `alexandria select [FILE] [--model MODEL] [--cos-sim-diff-budget D] [--json]` — `PlanEnvelope` in, the
   **reduced prompt** out (or a JSON reduction summary with `--json`). The `auto` selector folds the
-  ranked `Plan` highest-confidence-first while the prompt stays within `--drift-budget` (default `0.01`,
+  ranked `Plan` highest-confidence-first while the prompt stays within `--cos-sim-diff-budget` (default `0.01`,
   i.e. 1%) of the original.
-- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D] [--model MODEL] [--json]`
+- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--cos-sim-diff-budget D] [--model MODEL] [--json]`
   — prompt in, **reduced prompt out**, running all four phases in one process. This is the headline
   path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
   (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each

@@ -17,7 +17,7 @@ import tiktoken
 
 from alexandria import compare, represent
 from alexandria.ir.document import Section
-from alexandria.ir.similarity import cosine_distance, normalize
+from alexandria.ir.similarity import compute_cos_sim_diff, normalize
 from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
@@ -49,7 +49,7 @@ only the restatement.
 
 {prompt}"""
 _FEEDBACK_HEADER = (
-    "\nYour previous attempt drifted in meaning. Restate only what the prompt already says, reusing its key terms:\n"
+    "\nYour previous attempt changed the meaning. Restate only what the prompt already says, reusing its key terms:\n"
 )
 
 
@@ -81,16 +81,16 @@ def _pooled(section: Section) -> NDArray[np.float32]:
 
 
 def section_feedback(original: str, inflated: str, embedder: Embedder) -> list[str]:
-    """Notes for the next attempt: the sections that drifted, or the structure change itself."""
+    """Notes for the next attempt: sections whose meaning changed, or the structure change itself."""
     original_sections = _flatten(represent(original, embedder).sections)
     inflated_sections = _flatten(represent(inflated, embedder).sections)
     if [(s.kind, s.header) for s in original_sections] != [(s.kind, s.header) for s in inflated_sections]:
         return ["the section structure changed: keep every markdown header and XML tag exactly as in the original"]
     return [
-        f'section "{before.header or before.kind}" drifted (similarity {similarity:.3f}):'
+        f'section "{before.header or before.kind}" changed meaning (similarity {similarity:.3f}):'
         " restate only what it already says"
         for before, after in zip(original_sections, inflated_sections, strict=True)
-        if (similarity := 1.0 - cosine_distance(_pooled(before), _pooled(after))) < MIN_SIMILARITY
+        if (similarity := 1.0 - compute_cos_sim_diff(_pooled(before), _pooled(after))) < MIN_SIMILARITY
     ]
 
 
