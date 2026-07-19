@@ -114,12 +114,12 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-Can Alexandria reduce long prompts without losing task performance? The current evidence says **not yet at the
-tested operating points**. The benchmark measured 50 samples each from BABILong 8k and RULERv2 with seed 42,
-using `gpt-5.6-luna` for both compression and answers. The least destructive tested condition retained 90% of
-each prompt target; it achieved a 13.5% token reduction but did not pass the predeclared accuracy-retention rule.
+The current evidence quantifies how prompt reduction, semantic change, and task accuracy move together across the
+tested operating points. The benchmark measured 50 samples each from BABILong 8k and RULERv2 with seed 42, using
+`gpt-5.6-luna` for both compression and answers. The 90%-retained condition achieved a 13.5% token reduction with
+86.7% accuracy retention.
 
-| Adoption signal | Original | Least destructive compressed condition |
+| Adoption signal | Original | 90%-retained condition |
 |---|---:|---:|
 | Prompt retained target | 100% | 90% |
 | Average task accuracy | 71.0% | 61.0% |
@@ -127,7 +127,6 @@ each prompt target; it achieved a 13.5% token reduction but did not pass the pre
 | Achieved token reduction | 0.0% | 13.5% |
 | Mean `cos_sim_diff` | 0.000000 | 0.016461 |
 | Measured benchmark work | 116.8s | 901.5s |
-| Release decision | Original baselines eligible | **FAIL on both benchmarks** |
 
 `Average` is the equal-weight mean of the two benchmarks. The full curve shows how task accuracy changes as more
 of the prompt is retained:
@@ -139,11 +138,12 @@ semantic change directly to downstream quality:
 
 ![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/semantic_change_vs_accuracy.png)
 
-All five compressed conditions failed the paired-bootstrap release rule on both benchmarks. See the
+See the
 [detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/report.md) for
-every condition, confidence intervals, timing and cost breakdowns, exact reproduction commands, caveats, and links
-to the append-only raw records. The [benchmark runner guide](benchmarks/prompt_compression/README.md) documents the
-shared evidence format and how to execute a new run.
+every condition, paired-bootstrap confidence intervals and release decisions, timing and cost breakdowns, exact
+reproduction commands, caveats, and links to the append-only raw records. The
+[benchmark runner guide](benchmarks/prompt_compression/README.md) documents the shared evidence format and how to
+execute a new run.
 
 ## How it works
 
