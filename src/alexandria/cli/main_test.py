@@ -36,15 +36,8 @@ class _FakeMerger:
         del second, feedback
         return first.strip()
 
-    def merge_candidates_to_target(
-        self,
-        prompt: str,
-        max_tokens: int,
-        feedback: str | None = None,
-        base_candidate: str | None = None,
-    ) -> tuple[str, ...]:
-        del base_candidate
-        del max_tokens, feedback
+    def merge_candidates_to_target(self, prompt: str, max_tokens: int) -> tuple[str, ...]:
+        del max_tokens
         return (prompt.splitlines()[0],) * 10
 
 

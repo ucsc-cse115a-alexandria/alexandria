@@ -57,11 +57,13 @@ calling the merge model only when protected Markdown/XML structure alone cannot 
 uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
 ```
 
-Strict targets keep Markdown/XML boundaries fixed and ask the merge model to rewrite the largest content groups with
-token headroom. Alexandria checks every candidate with `cl100k_base` and deterministically repairs any overshoot.
-Among target-safe candidates it selects the lowest whole-prompt drift, with one optional quality-refinement call.
-When no candidate meets the drift budget, the best target-safe result is returned and
-`merge_metrics.drift_budget_met` is `false`. `--json` also reports final drift, repaired tokens, calls, and retries.
+Strict targets keep Markdown/XML boundaries fixed and, for each content group, fire three generation requests in
+parallel with different rewrite strategies (plain compression, extractive deletion, and dense paraphrase), each
+capped so a completed response fits the token budget. Alexandria checks every candidate with `cl100k_base` and
+deterministically repairs any overshoot. Among the structure-valid candidates within the token ceiling it selects
+the one with the lowest whole-prompt drift, breaking ties by coverage. Undershooting the target is acceptable: the
+guarantee is at most the requested token count. When no candidate meets the drift budget, the best target-safe
+result is returned and `merge_metrics.drift_budget_met` is `false`. `--json` also reports final drift, repaired tokens, calls, and retries.
 Exact duplicate text in best-effort reduction is still removed without a merge-model call. Text mode prints call
 and retry counts to stderr. Add `-v`/`--verbose` to stream automatic-reduction progress live to stderr instead of
 waiting for the final summary.
