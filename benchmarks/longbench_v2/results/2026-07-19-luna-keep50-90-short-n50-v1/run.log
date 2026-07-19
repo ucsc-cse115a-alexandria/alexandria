@@ -1,0 +1,61 @@
+completed 66fa7c81bb02136c067c6e09 original
+completed 66f6a14dbb02136c067c2453 original
+completed 67062a63bb02136c067cf5ac original
+completed 671b3d1bbb02136c067d5283 original
+completed 66f78ecfbb02136c067c2f12 original
+completed 66fea153bb02136c067ca3e7 original
+completed 66f39ac5821e116aacb2da81 original
+completed 66ece358821e116aacb1dc08 original
+completed 66ed2c87821e116aacb1f149 original
+completed 6719bc01bb02136c067d43fa original
+completed 66faac15bb02136c067c73f3 original
+completed 66eefa2f821e116aacb2284f original
+completed 66ed3e90821e116aacb1f82f original
+completed 66f6909bbb02136c067c2380 original
+completed 6703a0ecbb02136c067cd11b original
+completed 671b170cbb02136c067d4f4a original
+completed 66ebee0a5a08c7b9b35e1d05 original
+completed 66f618f1bb02136c067c16f9 original
+completed 66fcf36fbb02136c067c919e original
+completed 66f3edfb821e116aacb2fc91 original
+completed 671b3e0cbb02136c067d52e5 original
+completed 66ec356a821e116aacb1c22b original
+completed 66f8d84cbb02136c067c465f original
+completed 66f530ce821e116aacb32f09 original
+completed 66f9625fbb02136c067c5456 original
+completed 671b3d9fbb02136c067d52b2 original
+completed 66f95126bb02136c067c5070 original
+completed 66f52567821e116aacb329bc original
+completed 66fa50acbb02136c067c6827 original
+completed 66f578fa821e116aacb33c58 original
+completed 671b1480bb02136c067d4f14 original
+completed 66f59d31821e116aacb340f6 original
+completed 66f37635821e116aacb2d017 original
+completed 66fcfb5fbb02136c067c93ae original
+completed 66f68b33bb02136c067c2303 original
+completed 671b08c8bb02136c067d4e19 original
+completed 66f3abe6821e116aacb2e1d2 original
+completed 66f36490821e116aacb2cc22 original
+completed 66f3ad93821e116aacb2e29f original
+completed 66f56c9c821e116aacb33a45 original
+completed 671b2c67bb02136c067d50f7 original
+completed 66efa466821e116aacb23219 original
+completed 66ebed525a08c7b9b35e1cb4 original
+completed 66ec3644821e116aacb1c312 original
+completed 66f67c1bbb02136c067c21b9 original
+completed 671b17d5bb02136c067d4f7d original
+completed 66fab090bb02136c067c74e7 original
+completed 66f67c18bb02136c067c21b8 original
+completed 66ecf139821e116aacb1e0e1 original
+completed 66f2aac2821e116aacb2a9de original
+original baseline accuracy: 48.0% (minimum 50.0%)
+original baseline is too weak; compressed conditions were not run
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 37,369.9 | 0.0% | 0.0000 | 48.0% (24/50) | 61.5s | $1.8638 | 0.0s | $0.0000 |
+
+## Baseline qualification
+
+- **Original:** FAIL: original accuracy does not clear the minimum baseline (48.0% accuracy; minimum 50.0%)
+
+## Release decisions

@@ -1,0 +1,451 @@
+completed qa1:47 original
+completed qa2:40 original
+completed qa3:58 original
+completed qa4:82 original
+completed qa5:73 original
+completed qa1:46 original
+completed qa2:7 original
+completed qa3:37 original
+completed qa4:62 original
+completed qa5:86 original
+completed qa1:91 original
+completed qa2:36 original
+completed qa3:83 original
+completed qa4:14 original
+completed qa5:36 original
+completed qa1:17 original
+completed qa2:38 original
+completed qa3:50 original
+completed qa4:66 original
+completed qa5:75 original
+completed qa1:68 original
+completed qa2:0 original
+completed qa3:31 original
+completed qa4:31 original
+completed qa5:87 original
+completed qa1:54 original
+completed qa2:21 original
+completed qa3:66 original
+completed qa4:74 original
+completed qa5:46 original
+completed qa1:1 original
+completed qa2:55 original
+completed qa3:72 original
+completed qa4:93 original
+completed qa5:41 original
+completed qa1:72 original
+completed qa2:73 original
+completed qa3:18 original
+completed qa4:95 original
+completed qa5:58 original
+completed qa1:22 original
+completed qa2:65 original
+completed qa3:38 original
+completed qa4:70 original
+completed qa5:9 original
+completed qa1:8 original
+completed qa2:88 original
+completed qa3:32 original
+completed qa4:88 original
+completed qa5:32 original
+original baseline accuracy: 68.0% (minimum 50.0%)
+completed qa1:47 keep50
+completed qa1:47 keep60
+completed qa1:47 keep70
+completed qa1:47 keep80
+completed qa1:47 keep90
+completed qa2:40 keep50
+completed qa2:40 keep60
+completed qa2:40 keep70
+completed qa2:40 keep80
+completed qa2:40 keep90
+completed qa3:58 keep50
+completed qa3:58 keep60
+completed qa3:58 keep70
+completed qa3:58 keep80
+completed qa3:58 keep90
+completed qa4:82 keep50
+completed qa4:82 keep60
+completed qa4:82 keep70
+completed qa4:82 keep80
+completed qa4:82 keep90
+completed qa5:73 keep50
+completed qa5:73 keep60
+completed qa5:73 keep70
+completed qa5:73 keep80
+completed qa5:73 keep90
+completed qa1:46 keep50
+completed qa1:46 keep60
+completed qa1:46 keep70
+completed qa1:46 keep80
+completed qa1:46 keep90
+completed qa2:7 keep50
+completed qa2:7 keep60
+completed qa2:7 keep70
+completed qa2:7 keep80
+completed qa2:7 keep90
+completed qa3:37 keep50
+completed qa3:37 keep60
+completed qa3:37 keep70
+completed qa3:37 keep80
+completed qa3:37 keep90
+completed qa4:62 keep50
+completed qa4:62 keep60
+completed qa4:62 keep70
+completed qa4:62 keep80
+completed qa4:62 keep90
+completed qa5:86 keep50
+completed qa5:86 keep60
+completed qa5:86 keep70
+completed qa5:86 keep80
+completed qa5:86 keep90
+completed qa1:91 keep50
+completed qa1:91 keep60
+completed qa1:91 keep70
+completed qa1:91 keep80
+completed qa1:91 keep90
+completed qa2:36 keep50
+completed qa2:36 keep60
+completed qa2:36 keep70
+completed qa2:36 keep80
+completed qa2:36 keep90
+completed qa3:83 keep50
+completed qa3:83 keep60
+completed qa3:83 keep70
+completed qa3:83 keep80
+completed qa3:83 keep90
+completed qa4:14 keep50
+completed qa4:14 keep60
+completed qa4:14 keep70
+completed qa4:14 keep80
+completed qa4:14 keep90
+completed qa5:36 keep50
+completed qa5:36 keep60
+completed qa5:36 keep70
+completed qa5:36 keep80
+completed qa5:36 keep90
+completed qa1:17 keep50
+completed qa1:17 keep60
+completed qa1:17 keep70
+completed qa1:17 keep80
+completed qa1:17 keep90
+completed qa2:38 keep50
+completed qa2:38 keep60
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
+    raise exc
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 156, in _connect
+    stream = stream.start_tls(**kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1037, in request
+    response = self._send_request(
+        request,
+        stream=stream or self._should_stream_response_body(request=request),
+        **kwargs,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_client.py", line 478, in _send_request
+    response = self._send_with_auth_retry(request, stream=stream, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_client.py", line 456, in _send_with_auth_retry
+    response = super()._send_request(request, stream=stream, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 964, in _send_request
+    return self._client.send(request, stream=stream, **kwargs)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/utils/embedders.py", line 102, in embed
+    response = self._client.embeddings.create(
+        model=OPENAI_EMBEDDING_MODEL,
+        input=[text for text, _tokens in batch],
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/benchmarks/prompt_compression/metering.py", line 83, in embedding_create
+    response = original_embedding(resource, *args, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/resources/embeddings.py", line 136, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/embeddings",
+        ^^^^^^^^^^^^^^
+    ...<9 lines>...
+        cast_to=CreateEmbeddingResponse,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1332, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1055, in request
+    raise APITimeoutError(request=request) from err
+openai.APITimeoutError: Request timed out.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/scripts/prompt_compression_benchmark.py", line 340, in <module>
+    main()
+    ~~~~^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/scripts/prompt_compression_benchmark.py", line 302, in main
+    ) = compress_parts(case.prompt_parts, reduction, merge_model=args.merge_model)
+        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/scripts/prompt_compression_benchmark.py", line 64, in compress_parts
+    result = reduce(
+        parts.context,
+    ...<2 lines>...
+        params=Params(max_tokens=context_budget, require_target=True),
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/ops/pipe.py", line 88, in reduce
+    outcome = merge_to_target(document, embedder, tracked_merger, params, reporter)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/ops/features/target.py", line 181, in merge_to_target
+    evaluated = _evaluate_target_candidates(
+        generated,
+    ...<7 lines>...
+        expected_structure=expected_structure,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/ops/features/target.py", line 498, in _evaluate_target_candidates
+    embeddings = embedder.embed(embedding_inputs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/ir/contracts.py", line 115, in embed
+    for text, vector in zip(missing, self._embedder.embed(missing), strict=True):
+                                     ~~~~~~~~~~~~~~~~~~~~^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-run/src/alexandria/utils/embedders.py", line 109, in embed
+    raise ValueError(f"OpenAI embeddings request failed: {error}") from error
+ValueError: OpenAI embeddings request failed: Request timed out.
+original baseline accuracy: 68.0% (minimum 50.0%)
+completed qa2:38 keep70
+completed qa2:38 keep80
+completed qa2:38 keep90
+completed qa3:50 keep50
+completed qa3:50 keep60
+completed qa3:50 keep70
+completed qa3:50 keep80
+completed qa3:50 keep90
+completed qa4:66 keep50
+completed qa4:66 keep60
+completed qa4:66 keep70
+completed qa4:66 keep80
+completed qa4:66 keep90
+completed qa5:75 keep50
+completed qa5:75 keep60
+completed qa5:75 keep70
+completed qa5:75 keep80
+completed qa5:75 keep90
+completed qa1:68 keep50
+completed qa1:68 keep60
+completed qa1:68 keep70
+completed qa1:68 keep80
+completed qa1:68 keep90
+completed qa2:0 keep50
+completed qa2:0 keep60
+completed qa2:0 keep70
+completed qa2:0 keep80
+completed qa2:0 keep90
+completed qa3:31 keep50
+completed qa3:31 keep60
+completed qa3:31 keep70
+completed qa3:31 keep80
+completed qa3:31 keep90
+completed qa4:31 keep50
+completed qa4:31 keep60
+completed qa4:31 keep70
+completed qa4:31 keep80
+completed qa4:31 keep90
+completed qa5:87 keep50
+completed qa5:87 keep60
+completed qa5:87 keep70
+completed qa5:87 keep80
+completed qa5:87 keep90
+completed qa1:54 keep50
+completed qa1:54 keep60
+completed qa1:54 keep70
+completed qa1:54 keep80
+completed qa1:54 keep90
+completed qa2:21 keep50
+completed qa2:21 keep60
+completed qa2:21 keep70
+completed qa2:21 keep80
+completed qa2:21 keep90
+completed qa3:66 keep50
+completed qa3:66 keep60
+completed qa3:66 keep70
+completed qa3:66 keep80
+completed qa3:66 keep90
+completed qa4:74 keep50
+completed qa4:74 keep60
+completed qa4:74 keep70
+completed qa4:74 keep80
+completed qa4:74 keep90
+completed qa5:46 keep50
+completed qa5:46 keep60
+completed qa5:46 keep70
+completed qa5:46 keep80
+completed qa5:46 keep90
+completed qa1:1 keep50
+completed qa1:1 keep60
+completed qa1:1 keep70
+completed qa1:1 keep80
+completed qa1:1 keep90
+completed qa2:55 keep50
+completed qa2:55 keep60
+completed qa2:55 keep70
+completed qa2:55 keep80
+completed qa2:55 keep90
+completed qa3:72 keep50
+completed qa3:72 keep60
+completed qa3:72 keep70
+completed qa3:72 keep80
+completed qa3:72 keep90
+completed qa4:93 keep50
+completed qa4:93 keep60
+completed qa4:93 keep70
+completed qa4:93 keep80
+completed qa4:93 keep90
+completed qa5:41 keep50
+completed qa5:41 keep60
+completed qa5:41 keep70
+completed qa5:41 keep80
+completed qa5:41 keep90
+completed qa1:72 keep50
+completed qa1:72 keep60
+completed qa1:72 keep70
+completed qa1:72 keep80
+completed qa1:72 keep90
+completed qa2:73 keep50
+completed qa2:73 keep60
+completed qa2:73 keep70
+completed qa2:73 keep80
+completed qa2:73 keep90
+completed qa3:18 keep50
+completed qa3:18 keep60
+completed qa3:18 keep70
+completed qa3:18 keep80
+completed qa3:18 keep90
+completed qa4:95 keep50
+completed qa4:95 keep60
+completed qa4:95 keep70
+completed qa4:95 keep80
+completed qa4:95 keep90
+completed qa5:58 keep50
+completed qa5:58 keep60
+completed qa5:58 keep70
+completed qa5:58 keep80
+completed qa5:58 keep90
+completed qa1:22 keep50
+completed qa1:22 keep60
+completed qa1:22 keep70
+completed qa1:22 keep80
+completed qa1:22 keep90
+completed qa2:65 keep50
+completed qa2:65 keep60
+completed qa2:65 keep70
+completed qa2:65 keep80
+completed qa2:65 keep90
+completed qa3:38 keep50
+completed qa3:38 keep60
+completed qa3:38 keep70
+completed qa3:38 keep80
+completed qa3:38 keep90
+completed qa4:70 keep50
+completed qa4:70 keep60
+completed qa4:70 keep70
+completed qa4:70 keep80
+completed qa4:70 keep90
+completed qa5:9 keep50
+completed qa5:9 keep60
+completed qa5:9 keep70
+completed qa5:9 keep80
+completed qa5:9 keep90
+completed qa1:8 keep50
+completed qa1:8 keep60
+completed qa1:8 keep70
+completed qa1:8 keep80
+completed qa1:8 keep90
+completed qa2:88 keep50
+completed qa2:88 keep60
+completed qa2:88 keep70
+completed qa2:88 keep80
+completed qa2:88 keep90
+completed qa3:32 keep50
+completed qa3:32 keep60
+completed qa3:32 keep70
+completed qa3:32 keep80
+completed qa3:32 keep90
+completed qa4:88 keep50
+completed qa4:88 keep60
+completed qa4:88 keep70
+completed qa4:88 keep80
+completed qa4:88 keep90
+completed qa5:32 keep50
+completed qa5:32 keep60
+completed qa5:32 keep70
+completed qa5:32 keep80
+completed qa5:32 keep90
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 7,574.2 | 0.0% | 0.0000 | 68.0% (34/50) | 47.7s | $0.3787 | 0.0s | $0.0000 |
+| keep50 | 3,448.6 | 54.5% | 0.0724 | 14.0% (7/50) | 52.4s | $0.1745 | 1234.1s | $4.0457 |
+| keep60 | 4,235.1 | 44.1% | 0.0443 | 34.0% (17/50) | 51.4s | $0.2133 | 1049.7s | $3.4965 |
+| keep70 | 4,995.9 | 34.0% | 0.0255 | 30.0% (15/50) | 46.8s | $0.2511 | 834.4s | $2.6547 |
+| keep80 | 5,780.7 | 23.7% | 0.0147 | 42.0% (21/50) | 44.8s | $0.2899 | 623.1s | $1.8414 |
+| keep90 | 6,570.7 | 13.2% | 0.0074 | 72.0% (36/50) | 46.0s | $0.3290 | 446.5s | $1.0202 |
+
+## Baseline qualification
+
+- **Original:** PASS: original accuracy clears the minimum baseline (68.0% accuracy; minimum 50.0%)
+
+## Release decisions
+
+- **keep50:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep60:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep70:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep80:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep90:** FAIL: accuracy-retention confidence interval does not clear the release threshold

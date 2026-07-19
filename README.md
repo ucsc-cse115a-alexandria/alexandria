@@ -114,37 +114,44 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current cross-benchmark result is a five-case smoke test of the publication pipeline across
-BABILong 8k, RULERv2, and LongBench v2 (seed 42, `gpt-5.6-luna` for compression and answers,
-`text-embedding-3-small`). With only five paired cases per benchmark, one answer moves accuracy by
-20 percentage points — these curves are exploratory, not release evidence.
+The current evidence run samples 50 cases from each of BABILong 8k, RULERv2, and the official LongBench v2
+short subset with seed 42. It uses `gpt-5.6-luna` with reasoning `none` for both compression and answers, plus
+`text-embedding-3-small`. The runner measures every original first and only runs compressed conditions when
+original accuracy is at least 50%. BABILong (68%) and RULERv2 (74%) passed that gate. LongBench scored 48%
+(24/50), so its compressed calls were correctly stopped; the blue X below is its original-only result.
 
-| Prompt retained | Average accuracy | Average accuracy retention | Achieved token reduction | Total wall time | Estimated API cost |
-|---:|---:|---:|---:|---:|---:|
-| 50% | 20.0% | 27.8% | 56.9% | 395.5s | $1.4291 |
-| 60% | 40.0% | 50.6% | 45.8% | 351.5s | $1.2022 |
-| 70% | 53.3% | 68.9% | 33.1% | 294.2s | $0.9405 |
-| 80% | 53.3% | 65.6% | 23.4% | 222.8s | $0.7176 |
-| 90% | 73.3% | 93.3% | 12.4% | 151.8s | $0.4969 |
-| 100% (original) | 80.0% | 100.0% | 0.0% | 15.9s | $0.2425 |
+The table and `Average` curve are therefore the equal-weight mean of the two qualified benchmarks, not all three.
+`Accuracy retention` is calculated per benchmark relative to its own original accuracy before averaging.
 
-`Accuracy retention` divides each benchmark's compressed accuracy by its original accuracy before
-averaging equally across the three benchmarks. In this smoke, retaining 90% of the prompt saved
-12.4% of tokens while keeping 93.3% average accuracy retention; below 70% retained, accuracy
-degrades quickly.
+| Prompt retained | Average accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Measured time | Estimated API cost |
+|---:|---:|---:|---:|---:|---:|---:|
+| 50% | 22.0% | 30.6% | 58.2% | 0.090447 | 2,008.4s | $6.8575 |
+| 60% | 36.0% | 50.7% | 45.3% | 0.054069 | 1,838.2s | $6.4335 |
+| 70% | 38.0% | 53.1% | 34.5% | 0.036756 | 1,518.4s | $5.1147 |
+| 80% | 45.0% | 63.3% | 23.9% | 0.025185 | 1,186.8s | $3.7550 |
+| 90% | 61.0% | 86.7% | 13.5% | 0.016461 | 901.5s | $2.4377 |
+| 100% (original) | 71.0% | 100.0% | 0.0% | 0.000000 | 116.8s | $0.7462 |
 
-![Accuracy retention by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/accuracy_retention_vs_retained.png)
+![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
 
-![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cost_and_time_vs_retained.png)
+![Accuracy retention by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_retention_vs_retained.png)
+
+![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/cost_and_time_vs_retained.png)
 
 `cos_sim_diff` (`1 - cosine_similarity` between the original and reduced whole-prompt embeddings)
 is the quality knob the CLI exposes as `--cos-sim-diff-budget`. The next two figures connect it to
 both sides of the trade-off — how much semantic change each retention level introduces, and how
 accuracy falls as semantic change grows — so you can pick a budget instead of guessing:
 
-![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
+![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/cos_sim_diff_vs_retained.png)
 
-![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
+![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/semantic_change_vs_accuracy.png)
+
+All five compressed conditions failed the predeclared paired-bootstrap release rule on both qualified benchmarks.
+The complete experiment, including LongBench's stopped baseline, recorded 650 case/condition results and 4,996
+metered usage events. Its estimated API cost was $27.2084 and its summed measured reduction-plus-answer time was
+7,631.6 seconds. The per-condition time table sums measured API work across the two qualified benchmarks; it is
+not the elapsed time of the parallel shell processes.
 
 The raw per-benchmark accuracy figure, cost assumptions and planning estimates, per-benchmark
 pass/fail decisions, exact commands, and links to the append-only raw records are in the

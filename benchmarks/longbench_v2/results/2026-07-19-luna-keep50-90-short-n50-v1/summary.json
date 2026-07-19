@@ -1,0 +1,181 @@
+{
+  "schema_version": 1,
+  "benchmark": "longbench_v2",
+  "release_threshold": 0.9,
+  "bootstrap": {
+    "method": "paired percentile bootstrap over case indices",
+    "samples": 10000,
+    "seed": 42,
+    "confidence_level": 0.95
+  },
+  "baseline_qualification": {
+    "minimum_original_accuracy": 0.5,
+    "original_accuracy": 0.48,
+    "qualifies": false,
+    "decision": "FAIL: original accuracy does not clear the minimum baseline"
+  },
+  "conditions": {
+    "original": {
+      "n_cases": 50,
+      "accuracy": 0.48,
+      "official_score": 0.48,
+      "correct": 24,
+      "mean_source_tokens": 37369.92,
+      "mean_sent_tokens": 37369.92,
+      "token_reduction": 0.0,
+      "mean_prompt_embedding_cosine_difference": 0.0,
+      "p95_prompt_embedding_cosine_difference": 0.0,
+      "compression_seconds": 0.0,
+      "answer_seconds": 61.531765705993166,
+      "reduction_seconds": 0.0,
+      "execution_seconds": 61.531765705993166,
+      "estimated_reduction_cost_usd": 0.0,
+      "estimated_answer_cost_usd": 1.8637999999999997,
+      "estimated_execution_cost_usd": 1.8637999999999997,
+      "estimated_cost_usd": 1.8638,
+      "merge_calls": 0,
+      "merge_retries": 0
+    }
+  },
+  "tasks": {
+    "Code Repository Understanding": {
+      "original": {
+        "n_cases": 10,
+        "accuracy": 0.7,
+        "official_score": 0.7,
+        "correct": 7,
+        "mean_source_tokens": 62146.8,
+        "mean_sent_tokens": 62146.8,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 14.132108207999408,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 14.132108207999408,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.625537,
+        "estimated_execution_cost_usd": 0.625537,
+        "estimated_cost_usd": 0.625537,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    },
+    "Long In-context Learning": {
+      "original": {
+        "n_cases": 10,
+        "accuracy": 0.6,
+        "official_score": 0.6,
+        "correct": 6,
+        "mean_source_tokens": 29155.7,
+        "mean_sent_tokens": 29155.7,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 11.463161707000836,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 11.463161707000836,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.28740000000000004,
+        "estimated_execution_cost_usd": 0.28740000000000004,
+        "estimated_cost_usd": 0.2874,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    },
+    "Long Structured Data Understanding": {
+      "original": {
+        "n_cases": 3,
+        "accuracy": 0.0,
+        "official_score": 0.0,
+        "correct": 0,
+        "mean_source_tokens": 42648.666666666664,
+        "mean_sent_tokens": 42648.666666666664,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 3.6760068330040667,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 3.6760068330040667,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.127521,
+        "estimated_execution_cost_usd": 0.127521,
+        "estimated_cost_usd": 0.127521,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    },
+    "Long-dialogue History Understanding": {
+      "original": {
+        "n_cases": 9,
+        "accuracy": 0.2222222222222222,
+        "official_score": 0.2222222222222222,
+        "correct": 2,
+        "mean_source_tokens": 33384.666666666664,
+        "mean_sent_tokens": 33384.666666666664,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 11.459103333996609,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 11.459103333996609,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.30111800000000005,
+        "estimated_execution_cost_usd": 0.30111800000000005,
+        "estimated_cost_usd": 0.301118,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    },
+    "Multi-Document QA": {
+      "original": {
+        "n_cases": 9,
+        "accuracy": 0.6666666666666666,
+        "official_score": 0.6666666666666666,
+        "correct": 6,
+        "mean_source_tokens": 32215.0,
+        "mean_sent_tokens": 32215.0,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 9.464085207993776,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 9.464085207993776,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.28715199999999996,
+        "estimated_execution_cost_usd": 0.28715199999999996,
+        "estimated_cost_usd": 0.287152,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    },
+    "Single-Document QA": {
+      "original": {
+        "n_cases": 9,
+        "accuracy": 0.3333333333333333,
+        "official_score": 0.3333333333333333,
+        "correct": 3,
+        "mean_source_tokens": 26347.555555555555,
+        "mean_sent_tokens": 26347.555555555555,
+        "token_reduction": 0.0,
+        "mean_prompt_embedding_cosine_difference": 0.0,
+        "p95_prompt_embedding_cosine_difference": 0.0,
+        "compression_seconds": 0.0,
+        "answer_seconds": 11.33730041599847,
+        "reduction_seconds": 0.0,
+        "execution_seconds": 11.33730041599847,
+        "estimated_reduction_cost_usd": 0.0,
+        "estimated_answer_cost_usd": 0.235072,
+        "estimated_execution_cost_usd": 0.235072,
+        "estimated_cost_usd": 0.235072,
+        "merge_calls": 0,
+        "merge_retries": 0
+      }
+    }
+  },
+  "comparisons": {}
+}

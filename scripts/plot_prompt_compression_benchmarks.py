@@ -56,19 +56,36 @@ def load_summaries(run_dirs: Sequence[Path]) -> dict[str, dict[str, Any]]:
 
 def aggregate_summaries(summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
     """Build the cross-benchmark points used by plots and user-facing tables."""
-    condition_sets = [set(summary["conditions"]) for summary in summaries.values()]
+    qualified_benchmarks = [
+        benchmark
+        for benchmark in BENCHMARK_LABELS
+        if bool(summaries[benchmark].get("baseline_qualification", {}).get("qualifies", True))
+    ]
+    if not qualified_benchmarks:
+        raise ValueError("no benchmark clears the original-accuracy baseline")
+    excluded_benchmarks = {
+        benchmark: str(
+            summaries[benchmark].get("baseline_qualification", {}).get(
+                "decision", "FAIL: original accuracy does not clear the minimum baseline"
+            )
+        )
+        for benchmark in BENCHMARK_LABELS
+        if benchmark not in qualified_benchmarks
+    }
+    condition_sets = [set(summaries[benchmark]["conditions"]) for benchmark in qualified_benchmarks]
     if any(conditions != condition_sets[0] for conditions in condition_sets[1:]):
-        raise ValueError("all benchmark summaries must contain the same conditions")
+        raise ValueError("all qualified benchmark summaries must contain the same conditions")
     conditions = sorted(condition_sets[0], key=retained_percent)
     original_accuracies = {
-        benchmark: float(summary["conditions"]["original"]["accuracy"]) for benchmark, summary in summaries.items()
+        benchmark: float(summaries[benchmark]["conditions"]["original"]["accuracy"])
+        for benchmark in qualified_benchmarks
     }
     if any(accuracy == 0.0 for accuracy in original_accuracies.values()):
         raise ValueError("accuracy retention is undefined when an original accuracy is zero")
     points: list[dict[str, Any]] = []
     for condition in conditions:
         benchmark_points: dict[str, dict[str, float]] = {}
-        for benchmark in BENCHMARK_LABELS:
+        for benchmark in qualified_benchmarks:
             raw = summaries[benchmark]["conditions"][condition]
             benchmark_points[benchmark] = {
                 "accuracy": float(raw["accuracy"]),
@@ -98,7 +115,25 @@ def aggregate_summaries(summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
                 "total_estimated_cost_usd": sum(point["estimated_cost_usd"] for point in benchmark_points.values()),
             }
         )
-    return {"schema_version": 1, "benchmarks": list(BENCHMARK_LABELS), "points": points}
+    baseline_only: dict[str, dict[str, float]] = {}
+    for benchmark in excluded_benchmarks:
+        raw = summaries[benchmark]["conditions"]["original"]
+        baseline_only[benchmark] = {
+            "accuracy": float(raw["accuracy"]),
+            "official_score": float(raw["official_score"]),
+            "cos_sim_diff": float(raw["mean_prompt_embedding_cosine_difference"]),
+            "token_reduction": float(raw["token_reduction"]),
+            "wall_clock_seconds": float(raw["reduction_seconds"]) + float(raw["execution_seconds"]),
+            "estimated_cost_usd": float(raw["estimated_cost_usd"]),
+        }
+    return {
+        "schema_version": 1,
+        "benchmarks": list(BENCHMARK_LABELS),
+        "qualified_benchmarks": qualified_benchmarks,
+        "excluded_benchmarks": excluded_benchmarks,
+        "baseline_only": baseline_only,
+        "points": points,
+    }
 
 
 def _style_axis(axis: Any, *, ylabel: str) -> None:
@@ -125,7 +160,8 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
     points = aggregate["points"]
     x = [point["retained_percent"] for point in points]
     figure, axis = plt.subplots(figsize=(10, 6), constrained_layout=True)
-    for benchmark, label in BENCHMARK_LABELS.items():
+    for benchmark in aggregate["qualified_benchmarks"]:
+        label = BENCHMARK_LABELS[benchmark]
         y = [point["benchmarks"][benchmark][metric] for point in points]
         axis.plot(
             x,
@@ -138,6 +174,18 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
             label=label,
             zorder=2,
         )
+    if metric == "accuracy":
+        for benchmark, baseline in aggregate["baseline_only"].items():
+            axis.scatter(
+                [100.0],
+                [baseline["accuracy"]],
+                marker="X",
+                s=58,
+                color=COLORS[benchmark],
+                alpha=0.7,
+                label=f"{BENCHMARK_LABELS[benchmark]} (baseline only)",
+                zorder=4,
+            )
     average = [point["macro_average"][metric] for point in points]
     axis.plot(
         x,
@@ -180,8 +228,8 @@ def _plot_efficiency(aggregate: dict[str, Any], path: Path) -> None:
     )
     _style_axis(cost_axis, ylabel="Estimated API cost (USD)")
     _style_axis(time_axis, ylabel="Measured wall-clock time (seconds)")
-    cost_axis.set_title("Cost across all three benchmarks", loc="left", fontsize=14, fontweight="bold")
-    time_axis.set_title("Time across all three benchmarks", loc="left", fontsize=14, fontweight="bold")
+    cost_axis.set_title("Cost across qualified benchmarks", loc="left", fontsize=14, fontweight="bold")
+    time_axis.set_title("Time across qualified benchmarks", loc="left", fontsize=14, fontweight="bold")
     figure.savefig(path, dpi=180)
     plt.close(figure)
 
@@ -190,7 +238,10 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
     """Plot downstream quality directly against whole-prompt semantic change."""
     points = aggregate["points"]
     figure, (accuracy_axis, retention_axis) = plt.subplots(1, 2, figsize=(14, 6), constrained_layout=True)
-    series = (*BENCHMARK_LABELS.items(), ("macro_average", "Average"))
+    series = (
+        *((benchmark, BENCHMARK_LABELS[benchmark]) for benchmark in aggregate["qualified_benchmarks"]),
+        ("macro_average", "Average"),
+    )
     for key, label in series:
         x = [
             point["macro_average"]["cos_sim_diff"]

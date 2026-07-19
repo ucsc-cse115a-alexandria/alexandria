@@ -1,0 +1,460 @@
+completed mk_niah_basic:7 original
+completed mk_niah_easy:6211 original
+completed mk_niah_hard:13749 original
+completed mk_niah_medium:11266 original
+completed mv_niah_basic:3 original
+completed mv_niah_easy:12344 original
+completed mv_niah_hard:13692 original
+completed mv_niah_medium:96 original
+completed qa_basic:8 original
+completed qa_easy:0 original
+completed qa_hard:1 original
+completed qa_medium:0 original
+completed mk_niah_basic:3 original
+completed mk_niah_easy:12471 original
+completed mk_niah_hard:3266 original
+completed mk_niah_medium:12616 original
+completed mv_niah_basic:7 original
+completed mv_niah_easy:96 original
+completed mv_niah_hard:12344 original
+completed mv_niah_medium:4892 original
+completed qa_basic:6 original
+completed qa_easy:9 original
+completed qa_hard:5 original
+completed qa_medium:1 original
+completed mk_niah_basic:2 original
+completed mk_niah_easy:4558 original
+completed mk_niah_hard:10179 original
+completed mk_niah_medium:1746 original
+completed mv_niah_basic:2 original
+completed mv_niah_easy:9432 original
+completed mv_niah_hard:4892 original
+completed mv_niah_medium:9432 original
+completed qa_basic:0 original
+completed qa_easy:5 original
+completed qa_hard:9 original
+completed qa_medium:6 original
+completed mk_niah_basic:8 original
+completed mk_niah_easy:5355 original
+completed mk_niah_hard:12357 original
+completed mk_niah_medium:90 original
+completed mv_niah_basic:5 original
+completed mv_niah_easy:13982 original
+completed mv_niah_hard:7814 original
+completed mv_niah_medium:7814 original
+completed qa_basic:2 original
+completed qa_easy:7 original
+completed qa_hard:8 original
+completed qa_medium:2 original
+completed mk_niah_basic:5 original
+completed mk_niah_easy:6906 original
+original baseline accuracy: 74.0% (minimum 50.0%)
+completed mk_niah_basic:7 keep50
+completed mk_niah_basic:7 keep60
+completed mk_niah_basic:7 keep70
+completed mk_niah_basic:7 keep80
+completed mk_niah_basic:7 keep90
+completed mk_niah_easy:6211 keep50
+completed mk_niah_easy:6211 keep60
+completed mk_niah_easy:6211 keep70
+completed mk_niah_easy:6211 keep80
+completed mk_niah_easy:6211 keep90
+completed mk_niah_hard:13749 keep50
+completed mk_niah_hard:13749 keep60
+completed mk_niah_hard:13749 keep70
+completed mk_niah_hard:13749 keep80
+completed mk_niah_hard:13749 keep90
+completed mk_niah_medium:11266 keep50
+completed mk_niah_medium:11266 keep60
+completed mk_niah_medium:11266 keep70
+completed mk_niah_medium:11266 keep80
+completed mk_niah_medium:11266 keep90
+completed mv_niah_basic:3 keep50
+completed mv_niah_basic:3 keep60
+completed mv_niah_basic:3 keep70
+completed mv_niah_basic:3 keep80
+completed mv_niah_basic:3 keep90
+completed mv_niah_easy:12344 keep50
+completed mv_niah_easy:12344 keep60
+completed mv_niah_easy:12344 keep70
+completed mv_niah_easy:12344 keep80
+completed mv_niah_easy:12344 keep90
+completed mv_niah_hard:13692 keep50
+completed mv_niah_hard:13692 keep60
+completed mv_niah_hard:13692 keep70
+completed mv_niah_hard:13692 keep80
+completed mv_niah_hard:13692 keep90
+completed mv_niah_medium:96 keep50
+completed mv_niah_medium:96 keep60
+completed mv_niah_medium:96 keep70
+completed mv_niah_medium:96 keep80
+completed mv_niah_medium:96 keep90
+completed qa_basic:8 keep50
+completed qa_basic:8 keep60
+completed qa_basic:8 keep70
+completed qa_basic:8 keep80
+completed qa_basic:8 keep90
+completed qa_easy:0 keep50
+completed qa_easy:0 keep60
+completed qa_easy:0 keep70
+completed qa_easy:0 keep80
+completed qa_easy:0 keep90
+completed qa_hard:1 keep50
+completed qa_hard:1 keep60
+completed qa_hard:1 keep70
+completed qa_hard:1 keep80
+completed qa_hard:1 keep90
+completed qa_medium:0 keep50
+completed qa_medium:0 keep60
+completed qa_medium:0 keep70
+completed qa_medium:0 keep80
+completed qa_medium:0 keep90
+completed mk_niah_basic:3 keep50
+completed mk_niah_basic:3 keep60
+completed mk_niah_basic:3 keep70
+completed mk_niah_basic:3 keep80
+completed mk_niah_basic:3 keep90
+completed mk_niah_easy:12471 keep50
+completed mk_niah_easy:12471 keep60
+completed mk_niah_easy:12471 keep70
+completed mk_niah_easy:12471 keep80
+completed mk_niah_easy:12471 keep90
+completed mk_niah_hard:3266 keep50
+completed mk_niah_hard:3266 keep60
+completed mk_niah_hard:3266 keep70
+completed mk_niah_hard:3266 keep80
+completed mk_niah_hard:3266 keep90
+completed mk_niah_medium:12616 keep50
+completed mk_niah_medium:12616 keep60
+completed mk_niah_medium:12616 keep70
+completed mk_niah_medium:12616 keep80
+completed mk_niah_medium:12616 keep90
+completed mv_niah_basic:7 keep50
+completed mv_niah_basic:7 keep60
+completed mv_niah_basic:7 keep70
+completed mv_niah_basic:7 keep80
+completed mv_niah_basic:7 keep90
+completed mv_niah_easy:96 keep50
+completed mv_niah_easy:96 keep60
+completed mv_niah_easy:96 keep70
+completed mv_niah_easy:96 keep80
+completed mv_niah_easy:96 keep90
+completed mv_niah_hard:12344 keep50
+completed mv_niah_hard:12344 keep60
+completed mv_niah_hard:12344 keep70
+completed mv_niah_hard:12344 keep80
+completed mv_niah_hard:12344 keep90
+completed mv_niah_medium:4892 keep50
+completed mv_niah_medium:4892 keep60
+completed mv_niah_medium:4892 keep70
+completed mv_niah_medium:4892 keep80
+completed mv_niah_medium:4892 keep90
+completed qa_basic:6 keep50
+completed qa_basic:6 keep60
+completed qa_basic:6 keep70
+completed qa_basic:6 keep80
+completed qa_basic:6 keep90
+completed qa_easy:9 keep50
+completed qa_easy:9 keep60
+completed qa_easy:9 keep70
+completed qa_easy:9 keep80
+completed qa_easy:9 keep90
+completed qa_hard:5 keep50
+completed qa_hard:5 keep60
+completed qa_hard:5 keep70
+completed qa_hard:5 keep80
+completed qa_hard:5 keep90
+completed qa_medium:1 keep50
+completed qa_medium:1 keep60
+completed qa_medium:1 keep70
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+    yield
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+        pool_request.request
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
+    raise exc
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
+    stream = self._connect(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 156, in _connect
+    stream = stream.start_tls(**kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
+    with map_exceptions(exc_map):
+         ~~~~~~~~~~~~~~^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+    raise to_exc(exc) from exc
+httpcore.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1037, in request
+    response = self._send_request(
+        request,
+        stream=stream or self._should_stream_response_body(request=request),
+        **kwargs,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_client.py", line 478, in _send_request
+    response = self._send_with_auth_retry(request, stream=stream, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_client.py", line 456, in _send_with_auth_retry
+    response = super()._send_request(request, stream=stream, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 964, in _send_request
+    return self._client.send(request, stream=stream, **kwargs)
+           ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+        request,
+    ...<2 lines>...
+        history=[],
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+        request,
+        follow_redirects=follow_redirects,
+        history=history,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 249, in handle_request
+    with map_httpcore_exceptions():
+         ~~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
+    self.gen.throw(value)
+    ~~~~~~~~~~~~~~^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+    raise mapped_exc(message) from exc
+httpx.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 112, in _generate
+    response = self._client.responses.create(
+        model=self._model,
+    ...<3 lines>...
+        input=source,
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/benchmarks/prompt_compression/metering.py", line 71, in response_create
+    response = original_create(resource, *args, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/resources/responses/responses.py", line 954, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/responses",
+        ^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ResponseStreamEvent],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1332, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1055, in request
+    raise APITimeoutError(request=request) from err
+openai.APITimeoutError: Request timed out.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "<frozen runpy>", line 203, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 340, in <module>
+    main()
+    ~~~~^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 302, in main
+    ) = compress_parts(case.prompt_parts, reduction, merge_model=args.merge_model)
+        ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 64, in compress_parts
+    result = reduce(
+        parts.context,
+    ...<2 lines>...
+        params=Params(max_tokens=context_budget, require_target=True),
+    )
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ops/pipe.py", line 88, in reduce
+    outcome = merge_to_target(document, embedder, tracked_merger, params, reporter)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ops/features/target.py", line 180, in merge_to_target
+    generated = merger.merge_candidates_to_target(source_segment, group_max_tokens)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ir/contracts.py", line 150, in merge_candidates_to_target
+    candidates = self._merger.merge_candidates_to_target(prompt, max_tokens)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 103, in merge_candidates_to_target
+    return tuple(future.result() for future in futures)
+           ^^^^^
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 103, in <genexpr>
+    return tuple(future.result() for future in futures)
+                 ~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 454, in result
+    return self.__get_result()
+           ~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 396, in __get_result
+    raise self._exception
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 120, in _generate
+    raise ValueError(f"OpenAI target merge request failed: {error}") from error
+ValueError: OpenAI target merge request failed: Request timed out.
+original baseline accuracy: 74.0% (minimum 50.0%)
+completed qa_medium:1 keep80
+completed qa_medium:1 keep90
+completed mk_niah_basic:2 keep50
+completed mk_niah_basic:2 keep60
+completed mk_niah_basic:2 keep70
+completed mk_niah_basic:2 keep80
+completed mk_niah_basic:2 keep90
+completed mk_niah_easy:4558 keep50
+completed mk_niah_easy:4558 keep60
+completed mk_niah_easy:4558 keep70
+completed mk_niah_easy:4558 keep80
+completed mk_niah_easy:4558 keep90
+completed mk_niah_hard:10179 keep50
+completed mk_niah_hard:10179 keep60
+completed mk_niah_hard:10179 keep70
+completed mk_niah_hard:10179 keep80
+completed mk_niah_hard:10179 keep90
+completed mk_niah_medium:1746 keep50
+completed mk_niah_medium:1746 keep60
+completed mk_niah_medium:1746 keep70
+completed mk_niah_medium:1746 keep80
+completed mk_niah_medium:1746 keep90
+completed mv_niah_basic:2 keep50
+completed mv_niah_basic:2 keep60
+completed mv_niah_basic:2 keep70
+completed mv_niah_basic:2 keep80
+completed mv_niah_basic:2 keep90
+completed mv_niah_easy:9432 keep50
+completed mv_niah_easy:9432 keep60
+completed mv_niah_easy:9432 keep70
+completed mv_niah_easy:9432 keep80
+completed mv_niah_easy:9432 keep90
+completed mv_niah_hard:4892 keep50
+completed mv_niah_hard:4892 keep60
+completed mv_niah_hard:4892 keep70
+completed mv_niah_hard:4892 keep80
+completed mv_niah_hard:4892 keep90
+completed mv_niah_medium:9432 keep50
+completed mv_niah_medium:9432 keep60
+completed mv_niah_medium:9432 keep70
+completed mv_niah_medium:9432 keep80
+completed mv_niah_medium:9432 keep90
+completed qa_basic:0 keep50
+completed qa_basic:0 keep60
+completed qa_basic:0 keep70
+completed qa_basic:0 keep80
+completed qa_basic:0 keep90
+completed qa_easy:5 keep50
+completed qa_easy:5 keep60
+completed qa_easy:5 keep70
+completed qa_easy:5 keep80
+completed qa_easy:5 keep90
+completed qa_hard:9 keep50
+completed qa_hard:9 keep60
+completed qa_hard:9 keep70
+completed qa_hard:9 keep80
+completed qa_hard:9 keep90
+completed qa_medium:6 keep50
+completed qa_medium:6 keep60
+completed qa_medium:6 keep70
+completed qa_medium:6 keep80
+completed qa_medium:6 keep90
+completed mk_niah_basic:8 keep50
+completed mk_niah_basic:8 keep60
+completed mk_niah_basic:8 keep70
+completed mk_niah_basic:8 keep80
+completed mk_niah_basic:8 keep90
+completed mk_niah_easy:5355 keep50
+completed mk_niah_easy:5355 keep60
+completed mk_niah_easy:5355 keep70
+completed mk_niah_easy:5355 keep80
+completed mk_niah_easy:5355 keep90
+completed mk_niah_hard:12357 keep50
+completed mk_niah_hard:12357 keep60
+completed mk_niah_hard:12357 keep70
+completed mk_niah_hard:12357 keep80
+completed mk_niah_hard:12357 keep90
+completed mk_niah_medium:90 keep50
+completed mk_niah_medium:90 keep60
+completed mk_niah_medium:90 keep70
+completed mk_niah_medium:90 keep80
+completed mk_niah_medium:90 keep90
+completed mv_niah_basic:5 keep50
+completed mv_niah_basic:5 keep60
+completed mv_niah_basic:5 keep70
+completed mv_niah_basic:5 keep80
+completed mv_niah_basic:5 keep90
+completed mv_niah_easy:13982 keep50
+completed mv_niah_easy:13982 keep60
+completed mv_niah_easy:13982 keep70
+completed mv_niah_easy:13982 keep80
+completed mv_niah_easy:13982 keep90
+completed mv_niah_hard:7814 keep50
+completed mv_niah_hard:7814 keep60
+completed mv_niah_hard:7814 keep70
+completed mv_niah_hard:7814 keep80
+completed mv_niah_hard:7814 keep90
+completed mv_niah_medium:7814 keep50
+completed mv_niah_medium:7814 keep60
+completed mv_niah_medium:7814 keep70
+completed mv_niah_medium:7814 keep80
+completed mv_niah_medium:7814 keep90
+completed qa_basic:2 keep50
+completed qa_basic:2 keep60
+completed qa_basic:2 keep70
+completed qa_basic:2 keep80
+completed qa_basic:2 keep90
+completed qa_easy:7 keep50
+completed qa_easy:7 keep60
+completed qa_easy:7 keep70
+completed qa_easy:7 keep80
+completed qa_easy:7 keep90
+completed qa_hard:8 keep50
+completed qa_hard:8 keep60
+completed qa_hard:8 keep70
+completed qa_hard:8 keep80
+completed qa_hard:8 keep90
+completed qa_medium:2 keep50
+completed qa_medium:2 keep60
+completed qa_medium:2 keep70
+completed qa_medium:2 keep80
+completed qa_medium:2 keep90
+completed mk_niah_basic:5 keep50
+completed mk_niah_basic:5 keep60
+completed mk_niah_basic:5 keep70
+completed mk_niah_basic:5 keep80
+completed mk_niah_basic:5 keep90
+completed mk_niah_easy:6906 keep50
+completed mk_niah_easy:6906 keep60
+completed mk_niah_easy:6906 keep70
+completed mk_niah_easy:6906 keep80
+completed mk_niah_easy:6906 keep90
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 6,508.7 | 0.0% | 0.0000 | 74.0% (37/50) | 69.1s | $0.3675 | 0.0s | $0.0000 |
+| keep50 | 2,474.9 | 62.0% | 0.1085 | 30.0% (15/50) | 61.4s | $0.1456 | 660.5s | $2.4918 |
+| keep60 | 3,475.8 | 46.6% | 0.0638 | 38.0% (19/50) | 63.5s | $0.2059 | 673.7s | $2.5177 |
+| keep70 | 4,236.6 | 34.9% | 0.0480 | 46.0% (23/50) | 68.3s | $0.2512 | 568.8s | $1.9577 |
+| keep80 | 4,932.8 | 24.2% | 0.0356 | 48.0% (24/50) | 69.3s | $0.2863 | 449.6s | $1.3373 |
+| keep90 | 5,613.6 | 13.8% | 0.0255 | 50.0% (25/50) | 70.8s | $0.3218 | 338.2s | $0.7667 |
+
+## Baseline qualification
+
+- **Original:** PASS: original accuracy clears the minimum baseline (74.0% accuracy; minimum 50.0%)
+
+## Release decisions
+
+- **keep50:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep60:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep70:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep80:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep90:** FAIL: accuracy-retention confidence interval does not clear the release threshold

@@ -66,3 +66,39 @@ def test_aggregate_summaries_rejects_mismatched_conditions() -> None:
 
     with pytest.raises(ValueError, match="same conditions"):
         aggregate_summaries(summaries)
+
+
+def test_aggregate_summaries_excludes_failed_baseline_from_curves() -> None:
+    summaries: dict[str, dict[str, Any]] = {
+        "babilong_8k": {
+            "baseline_qualification": {"qualifies": True},
+            "conditions": {
+                "original": _condition(0.8, 0.0, 0.1),
+                "keep50": _condition(0.4, 0.2, 0.2),
+            },
+        },
+        "ruler_v2": {
+            "baseline_qualification": {"qualifies": True},
+            "conditions": {
+                "original": _condition(0.6, 0.0, 0.1),
+                "keep50": _condition(0.3, 0.1, 0.2),
+            },
+        },
+        "longbench_v2": {
+            "baseline_qualification": {
+                "qualifies": False,
+                "decision": "FAIL: original accuracy does not clear the minimum baseline",
+            },
+            "conditions": {"original": _condition(0.48, 0.0, 1.8)},
+        },
+    }
+
+    aggregate = aggregate_summaries(summaries)
+
+    assert aggregate["qualified_benchmarks"] == ["babilong_8k", "ruler_v2"]
+    assert aggregate["excluded_benchmarks"] == {
+        "longbench_v2": "FAIL: original accuracy does not clear the minimum baseline"
+    }
+    assert aggregate["baseline_only"]["longbench_v2"]["accuracy"] == 0.48
+    assert aggregate["points"][0]["macro_average"]["accuracy"] == pytest.approx(0.35)
+    assert set(aggregate["points"][0]["benchmarks"]) == {"babilong_8k", "ruler_v2"}

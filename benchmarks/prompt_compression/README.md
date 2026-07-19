@@ -35,7 +35,89 @@ answered by the same answer model.
 
 Sampling is deterministic for a fixed eligible dataset, `n`, and seed. It round-robins across task labels before taking additional cases from a task, avoiding a small sample that accidentally contains only one task family.
 
-## Five-case multi-retention smoke
+## 50-case multi-retention evidence run
+
+The current run uses seed 42, `gpt-5.6-luna` with reasoning `none` for both answers and merge rewrites, and
+`text-embedding-3-small` for compression and whole-prompt comparison. It samples 50 cases per benchmark and
+requests full-prompt retained targets of 50%, 60%, 70%, 80%, and 90%. BABILong and RULERv2 use their complete
+prepared datasets. LongBench uses the pinned official `length=short` subset and a 128,000-token complete-prompt
+ceiling. Exact selected case IDs and prompt-length distributions are in each manifest.
+
+The original-first gate produced an important qualification result: BABILong scored 68% and RULERv2 scored 74%,
+so both proceeded through all 250 compressed cases. LongBench scored 48% (24/50), below the predeclared 50%
+minimum, so the runner stopped before spending on compression. LongBench is retained as original-only evidence
+and is excluded from compressed curves and their Average.
+
+| Benchmark | Original | keep50 | keep60 | keep70 | keep80 | keep90 | Baseline gate |
+|---|---:|---:|---:|---:|---:|---:|---|
+| BABILong 8k | 68% | 14% | 34% | 30% | 42% | 72% | PASS |
+| RULERv2 | 74% | 30% | 38% | 46% | 48% | 50% | PASS |
+| LongBench v2 | 48% | — | — | — | — | — | FAIL; compression not run |
+
+At keep90, BABILong retained 105.9% of original accuracy with a paired 95% bootstrap interval of
+84.6%–133.3%; RULERv2 retained 67.6% with an interval of 50.0%–85.7%. Both decisions are **FAIL** because the
+lower interval endpoint is below the 90% release threshold. Every other compressed condition also failed on both
+qualified benchmarks.
+
+Across BABILong and RULERv2, keep90 averaged 61.0% task accuracy versus 71.0% original accuracy, 86.7% accuracy
+retention, 13.5% achieved token reduction, and `cos_sim_diff` 0.016461. The complete attempt, including
+LongBench's original-only gate, contains 650 records and 4,996 metered usage events. It cost an estimated $27.2084
+and accumulated 7,631.6 seconds of measured reduction-plus-answer time. Costs use the manifest's standard
+short-context prices per million tokens: $1.00 Luna input, $0.10 cached input, $6.00 output, and $0.02 embedding
+input. These are metered estimates, not invoice totals.
+
+The cross-benchmark graphs treat `Average` as the equal-weight mean of the two qualified benchmarks. LongBench's
+48% original is shown as a baseline-only marker in the task-accuracy graph and is never silently mixed into an
+average that lacks corresponding compressed observations.
+
+![Accuracy by retained prompt percentage](results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
+
+![Semantic change by retained prompt percentage](results/2026-07-19-luna-keep50-90-n50-v1/cos_sim_diff_vs_retained.png)
+
+Reproduce the exact run after preparing the pinned datasets:
+
+```bash
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.download_longbench_v2_data
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 50 --seed 42 --reductions 50 40 30 20 10 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/babilong_8k/results/2026-07-19-luna-keep50-90-n50-v1
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark ruler_v2 --n 50 --seed 42 --reductions 50 40 30 20 10 \
+  --data-dir data/ruler_v2 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/ruler_v2/results/2026-07-19-luna-keep50-90-n50-v1
+
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark longbench_v2 --n 50 --seed 42 --reductions 50 40 30 20 10 \
+  --data-dir data/longbench_v2/short.json --max-source-tokens 128000 \
+  --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 \
+  --out benchmarks/longbench_v2/results/2026-07-19-luna-keep50-90-short-n50-v1
+
+uv run python -m scripts.plot_prompt_compression_benchmarks \
+  benchmarks/babilong_8k/results/2026-07-19-luna-keep50-90-n50-v1 \
+  benchmarks/ruler_v2/results/2026-07-19-luna-keep50-90-n50-v1 \
+  benchmarks/longbench_v2/results/2026-07-19-luna-keep50-90-short-n50-v1 \
+  --out-dir benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1
+```
+
+The LongBench command intentionally exits non-zero after writing its original-only summary because its baseline
+does not qualify. Two transient TLS timeouts interrupted the longer qualified runs; rerunning the identical
+commands skipped completed case/condition keys and finished without duplicate records. The concatenated console
+logs preserve both the timeout traces and successful resumes.
+
+Raw evidence:
+
+- [BABILong 8k run](../babilong_8k/results/2026-07-19-luna-keep50-90-n50-v1/)
+- [RULERv2 run](../ruler_v2/results/2026-07-19-luna-keep50-90-n50-v1/)
+- [LongBench v2 original-only run](../longbench_v2/results/2026-07-19-luna-keep50-90-short-n50-v1/)
+- [Cross-benchmark aggregates and figures](results/2026-07-19-luna-keep50-90-n50-v1/), including machine-readable
+  [`aggregate_summary.json`](results/2026-07-19-luna-keep50-90-n50-v1/aggregate_summary.json)
+
+## Archived five-case multi-retention smoke
 
 The committed smoke uses seed 42, Luna for compression and answers, reasoning `none`, five cases per benchmark,
 and full-prompt retained targets of 50%, 60%, 70%, 80%, and 90%. BABILong and RULERv2 use their complete prepared
@@ -135,7 +217,9 @@ The output directory is resumable and contains:
 - `records.jsonl`: append-only per-case and per-condition responses, parsed verdicts, prompt hashes, source/target/sent tokens, whole-prompt embedding cosine difference, reduction and execution latency, merge metrics, API usage, and estimated cost;
 - `prompts.jsonl.gz`: the exact model-visible original and compressed prompts, keyed by case and condition;
 - `summary.json`: aggregate and per-task accuracy, benchmark score, token reduction, separately reported execution and reduction time/cost, paired transitions, bootstrap intervals, and the release decision; and
-- `report.md`: a compact original-versus-compressed evidence table and a plain PASS or FAIL statement.
+- `report.md`: a compact original-versus-compressed evidence table and a plain PASS or FAIL statement; and
+- `run.log` for committed evidence runs: console progress, baseline-gate output, interruption traces, resume output,
+  and the final rendered report.
 
 A completed `(case ID, condition)` pair is skipped on rerun, so interruption does not require repeating paid calls. The prompt SHA-256 in `records.jsonl` is checked against the exact prompt before it is appended.
 
