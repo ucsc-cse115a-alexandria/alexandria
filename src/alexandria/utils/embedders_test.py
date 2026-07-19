@@ -39,6 +39,12 @@ def test_request_batches_preserve_order_and_budget() -> None:
     assert batches == ((chunks[0], chunks[1]), (chunks[2],))
 
 
+def test_request_batches_enforce_api_item_limit() -> None:
+    chunks = [(str(index), 1) for index in range(2_049)]
+    batches = _request_batches(chunks, max_tokens=10_000, max_items=2_048)
+    assert tuple(len(batch) for batch in batches) == (2_048, 1)
+
+
 def test_pool_preserves_one_vector_and_normalizes_multiple() -> None:
     first = np.asarray([1.0, 0.0], dtype=np.float32)
     second = np.asarray([0.0, 1.0], dtype=np.float32)

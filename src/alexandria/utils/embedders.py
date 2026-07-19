@@ -21,6 +21,7 @@ _DIM = 64
 OPENAI_EMBEDDING_MODEL = "text-embedding-3-small"
 _EMBEDDING_INPUT_TOKENS = 8_000
 _EMBEDDING_REQUEST_TOKENS = 250_000
+_EMBEDDING_REQUEST_ITEMS = 2_048
 _ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
@@ -35,13 +36,15 @@ def _token_chunks(text: str, max_tokens: int = _EMBEDDING_INPUT_TOKENS) -> tuple
 
 
 def _request_batches(
-    chunks: list[tuple[str, int]], max_tokens: int = _EMBEDDING_REQUEST_TOKENS
+    chunks: list[tuple[str, int]],
+    max_tokens: int = _EMBEDDING_REQUEST_TOKENS,
+    max_items: int = _EMBEDDING_REQUEST_ITEMS,
 ) -> tuple[tuple[tuple[str, int], ...], ...]:
     batches: list[list[tuple[str, int]]] = []
     current: list[tuple[str, int]] = []
     current_tokens = 0
     for chunk in chunks:
-        if current and current_tokens + chunk[1] > max_tokens:
+        if current and (current_tokens + chunk[1] > max_tokens or len(current) >= max_items):
             batches.append(current)
             current = []
             current_tokens = 0
