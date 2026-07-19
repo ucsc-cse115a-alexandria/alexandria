@@ -1,0 +1,20 @@
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 39,710.4 | 0.0% | 0.0000 | 80.0% (4/5) | 6.6s | $0.1990 | 0.0s | $0.0000 |
+| keep50 | 19,114.8 | 51.9% | 0.0265 | 40.0% (2/5) | 5.7s | $0.0963 | 224.4s | $0.7929 |
+| keep60 | 23,166.6 | 41.7% | 0.0156 | 20.0% (1/5) | 5.5s | $0.1166 | 182.5s | $0.5773 |
+| keep70 | 27,394.6 | 31.0% | 0.0090 | 80.0% (4/5) | 5.9s | $0.1378 | 142.6s | $0.3810 |
+| keep80 | 31,501.6 | 20.7% | 0.0054 | 40.0% (2/5) | 5.6s | $0.1583 | 95.3s | $0.2223 |
+| keep90 | 35,544.0 | 10.5% | 0.0024 | 80.0% (4/5) | 5.6s | $0.1783 | 61.8s | $0.0986 |
+
+## Baseline qualification
+
+- **Original:** PASS: original accuracy clears the minimum baseline (80.0% accuracy; minimum 50.0%)
+
+## Release decisions
+
+- **keep50:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep60:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep70:** PASS: accuracy-retention confidence interval clears the release threshold
+- **keep80:** FAIL: accuracy-retention confidence interval does not clear the release threshold
+- **keep90:** PASS: accuracy-retention confidence interval clears the release threshold

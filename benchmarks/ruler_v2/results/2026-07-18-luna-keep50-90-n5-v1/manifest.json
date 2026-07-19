@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "implementation_commit": "8bf81efbd970152524c316d6a9cd779edd27c8e1",
+  "implementation_dirty": false,
+  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-results/scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1",
+  "benchmark": "ruler_v2",
+  "provenance": {
+    "entrypoint": "NVIDIA/RULER@4809570a2a40e803bfe341773e561524224c2e7c",
+    "dataset_and_metric": "NVIDIA-NeMo/Skills@74b8649734a6ecc2d3beca89311e1a5e02da48fa"
+  },
+  "data_dir": "data/ruler_v2",
+  "n_cases": 5,
+  "case_keys": [
+    "mk_niah_basic:7",
+    "mk_niah_easy:6211",
+    "mk_niah_hard:13749",
+    "mk_niah_medium:11266",
+    "mv_niah_basic:3"
+  ],
+  "seed": 42,
+  "reductions_percent": [
+    50.0,
+    40.0,
+    30.0,
+    20.0,
+    10.0
+  ],
+  "model": "gpt-5.6-luna",
+  "reasoning": "none",
+  "minimum_original_accuracy": 0.5,
+  "tokenizer": "cl100k_base",
+  "eligibility": {
+    "min_source_tokens": 0,
+    "max_source_tokens": null
+  },
+  "compression": {
+    "compressible_prompt_part": "context",
+    "embedding_model": "text-embedding-3-small",
+    "merge_model": "gpt-5.6-luna",
+    "require_target": true
+  },
+  "source_token_distribution": {
+    "min": 4724,
+    "mean": 6391.0,
+    "p50": 5531.0,
+    "p95": 8129.6,
+    "max": 8139
+  },
+  "pricing_usd_per_million": {
+    "answer_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "merge_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "embedding_input": 0.02,
+    "context_tier": "standard short context"
+  },
+  "pricing_source": "https://developers.openai.com/api/docs/pricing"
+}
