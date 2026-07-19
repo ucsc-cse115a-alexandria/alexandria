@@ -33,24 +33,24 @@ Sampling is deterministic for a fixed eligible dataset, `n`, and seed. It round-
 
 The following runs compare `original` with a full-prompt target of at most 90% of the original `cl100k_base` token count. They use seed 42, `gpt-5.6-luna` with reasoning `none` for answers and merge rewrites, and `text-embedding-3-small` for compression and whole-prompt comparison. The achieved reductions can exceed 10% because Alexandria applies complete rewrites or deletions and does not pad a shorter valid result.
 
-`Cosine diff` is `1 - cosine_similarity` between chunk-pooled embeddings of the complete model-visible original and compressed prompts. Original is zero by definition. Time is the sum of measured per-case wall time: answer time for `original`, and compression, cosine measurement, and answer time for `keep90`. Estimated cost includes every metered answer, merge, and embedding request at the pricing recorded in each manifest.
+`Cosine diff` is `1 - cosine_similarity` between chunk-pooled embeddings of the complete model-visible original and compressed prompts. Original is zero by definition. Execution measures only the answer-model call after the prompt is ready, making original and keep90 directly comparable. Reduction is reported separately and covers compression plus the whole-prompt cosine measurement. Costs use every metered call in the corresponding phase at the pricing recorded in each manifest.
 
-| Benchmark | Original input range | Mean tokens, original → keep90 | Reduction | Mean cosine diff | Accuracy, original → keep90 | Time, original / keep90 | Cost, original / keep90 |
-|---|---:|---:|---:|---:|---:|---:|---:|
-| BABILong 8k | 7,251–7,883 | 7,668.5 → 6,634.2 | 13.49% | 0.006987 | 60% → 60% | 11.5s / 104.0s | $0.0768 / $0.2832 |
-| RULERv2 | 4,149–8,139 | 6,092.4 → 5,214.5 | 14.41% | 0.023584 | 70% → 50% | 14.6s / 83.5s | $0.0715 / $0.2105 |
-| LongBench v2 | 22,676–123,954 | 68,824.7 → 61,042.0 | 11.31% | 0.009065 | 60% → 60% | 14.8s / 302.6s | $0.6371 / $0.8946 |
+| Benchmark | Original input range | Mean tokens, original → keep90 | Reduction | Mean cosine diff | Accuracy, original → keep90 | Execution time, original → keep90 | Execution cost, original → keep90 | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| BABILong 8k | 7,251–7,883 | 7,668.5 → 6,634.2 | 13.49% | 0.006987 | 60% → 60% | 11.5s → 9.2s | $0.0768 → $0.0665 | 94.8s | $0.2166 |
+| RULERv2 | 4,149–8,139 | 6,092.4 → 5,214.5 | 14.41% | 0.023584 | 70% → 50% | 14.6s → 14.9s | $0.0715 → $0.0624 | 68.6s | $0.1482 |
+| LongBench v2 | 22,676–123,954 | 68,824.7 → 61,042.0 | 11.31% | 0.009065 | 60% → 60% | 14.8s → 12.6s | $0.6371 → $0.6021 | 290.0s | $0.2925 |
 
-Across the three pilots, the measured sequential time was 530.9 seconds and estimated API cost was $2.1737. These are pipeline-validation pilots, not release-strength estimates: each benchmark has only ten paired cases. Detailed assumptions, commands, caveats, and evidence links are in the benchmark-specific READMEs.
+Across the three pilots, reduction took 453.5 seconds and cost an estimated $0.6573. The original and compressed executions together took 77.5 seconds and cost $1.5164. These are pipeline-validation pilots, not release-strength estimates: each benchmark has only ten paired cases. Detailed assumptions, commands, caveats, and evidence links are in the benchmark-specific READMEs.
 
 ## Evidence written for every run
 
 The output directory is resumable and contains:
 
 - `manifest.json`: implementation commit, pinned dataset/prompt provenance, selected case IDs, model settings, eligibility filters, reductions, complete-prompt token distribution, and cost assumptions;
-- `records.jsonl`: append-only per-case and per-condition responses, parsed verdicts, prompt hashes, source/target/sent tokens, whole-prompt embedding cosine difference, compression and answer latency, merge metrics, API usage, and estimated cost;
+- `records.jsonl`: append-only per-case and per-condition responses, parsed verdicts, prompt hashes, source/target/sent tokens, whole-prompt embedding cosine difference, reduction and execution latency, merge metrics, API usage, and estimated cost;
 - `prompts.jsonl.gz`: the exact model-visible original and compressed prompts, keyed by case and condition;
-- `summary.json`: aggregate and per-task accuracy, benchmark score, token reduction, time, cost, paired transitions, bootstrap intervals, and the release decision; and
+- `summary.json`: aggregate and per-task accuracy, benchmark score, token reduction, separately reported execution and reduction time/cost, paired transitions, bootstrap intervals, and the release decision; and
 - `report.md`: a compact original-versus-compressed evidence table and a plain PASS or FAIL statement.
 
 A completed `(case ID, condition)` pair is skipped on rerun, so interruption does not require repeating paid calls. The prompt SHA-256 in `records.jsonl` is checked against the exact prompt before it is appended.

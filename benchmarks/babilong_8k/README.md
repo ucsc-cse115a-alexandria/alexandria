@@ -68,7 +68,7 @@ uv run python -m scripts.prompt_compression_benchmark \
   --out trial_results/babilong_8k/smoke --dry-run
 ```
 
-Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, wall-clock time, merge work, API usage, estimated cost, paired confidence intervals, and plain release decisions.
+Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, separate execution and reduction time/cost, merge work, API usage, paired confidence intervals, and plain release decisions.
 
 Recompute the summary from the saved raw records without new API calls:
 
@@ -81,14 +81,14 @@ The legacy phase-one commands below remain available for reproducing the previou
 
 ## Shared-run 10-case keep90 pilot
 
-This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 42, `gpt-5.6-luna`, answer reasoning `none`, and a full-prompt target of at most 90% of each original prompt. The complete original prompts ranged from 7,251 to 7,883 `cl100k_base` tokens. Whole-prompt cosine difference was measured after compression with `text-embedding-3-small` and is included in keep90 time and cost.
+This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 42, `gpt-5.6-luna`, answer reasoning `none`, and a full-prompt target of at most 90% of each original prompt. The complete original prompts ranged from 7,251 to 7,883 `cl100k_base` tokens. Execution measures only the answer-model call after its prompt is ready. Reduction is separate and includes compression plus the whole-prompt cosine measurement with `text-embedding-3-small`.
 
-| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Measured time | Estimated API cost |
-|---|---:|---:|---:|---:|---:|---:|
-| original | 7,668.5 (76,685) | 0.00% | 0.000000 | 60.0% (6/10) | 11.5s | $0.0768 |
-| keep90 | 6,634.2 (66,342) | 13.49% | 0.006987 | 60.0% (6/10) | 104.0s | $0.2832 |
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 7,668.5 (76,685) | 0.00% | 0.000000 | 60.0% (6/10) | 11.5s | $0.0768 | 0.0s | $0.0000 |
+| keep90 | 6,634.2 (66,342) | 13.49% | 0.006987 | 60.0% (6/10) | 9.2s | $0.0665 | 94.8s | $0.2166 |
 
-The combined sequential time was 115.4 seconds and estimated cost was $0.3600. Keep90 compression itself took 94.8 seconds; its answers took 9.2 seconds. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, but its paired 95% percentile-bootstrap interval was 60.0%–175.0%. The lower bound did not clear the 90% release threshold, so this small pilot's decision is **FAIL**.
+Original-to-keep90 reduction and whole-prompt comparison took 94.8 seconds and cost $0.2166. Once each prompt was ready, execution changed from 11.5 to 9.2 seconds and from $0.0768 to $0.0665. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, but its paired 95% percentile-bootstrap interval was 60.0%–175.0%. The lower bound did not clear the 90% release threshold, so this small pilot's decision is **FAIL**.
 
 Reproduce the run:
 

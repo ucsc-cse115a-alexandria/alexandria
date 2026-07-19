@@ -1,7 +1,7 @@
-| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Estimated API cost | Wall-clock time |
-|---|---:|---:|---:|---:|---:|---:|
-| original | 6,092.4 | 0.0% | 0.0000 | 70.0% (7/10) | $0.0715 | 14.6s |
-| keep90 | 5,214.5 | 14.4% | 0.0236 | 50.0% (5/10) | $0.2105 | 83.5s |
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 6,092.4 | 0.0% | 0.0000 | 70.0% (7/10) | 14.6s | $0.0715 | 0.0s | $0.0000 |
+| keep90 | 5,214.5 | 14.4% | 0.0236 | 50.0% (5/10) | 14.9s | $0.0624 | 68.6s | $0.1482 |
 
 ## Release decisions
 

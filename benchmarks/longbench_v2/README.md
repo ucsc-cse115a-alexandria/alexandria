@@ -71,12 +71,12 @@ Remove `--dry-run` to run original, keep50, keep75, keep90, and keep95. Change `
 
 This pilot filtered the pinned dataset to complete prompts between 16,000 and 128,000 `cl100k_base` tokens, then selected ten cases deterministically across the six top-level domains with seed 42. The selected original prompts ranged from 22,676 to 123,954 tokens, with a mean of 68,824.7 tokens.
 
-| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Measured time | Estimated API cost |
-|---|---:|---:|---:|---:|---:|---:|
-| original | 68,824.7 (688,247) | 0.00% | 0.000000 | 60.0% (6/10) | 14.8s | $0.6371 |
-| keep90 | 61,042.0 (610,420) | 11.31% | 0.009065 | 60.0% (6/10) | 302.6s | $0.8946 |
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 68,824.7 (688,247) | 0.00% | 0.000000 | 60.0% (6/10) | 14.8s | $0.6371 | 0.0s | $0.0000 |
+| keep90 | 61,042.0 (610,420) | 11.31% | 0.009065 | 60.0% (6/10) | 12.6s | $0.6021 | 290.0s | $0.2925 |
 
-The combined sequential time was 317.4 seconds and estimated cost was $1.5317. Keep90 compression and whole-prompt comparison took 290.0 seconds; keep90 answers took 12.6 seconds. All six original successes remained correct, and all four original failures remained wrong, so the paired retention estimate and every defined bootstrap resample were 100%. The pilot therefore records **PASS** against the 90% retention threshold. With only ten cases, this does not establish that the same retention will hold across LongBench v2.
+Original-to-keep90 reduction and whole-prompt comparison took 290.0 seconds and cost $0.2925. Once each prompt was ready, execution changed from 14.8 to 12.6 seconds and from $0.6371 to $0.6021. All six original successes remained correct, and all four original failures remained wrong, so the paired retention estimate and every defined bootstrap resample were 100%. The pilot therefore records **PASS** against the 90% retention threshold. With only ten cases, this does not establish that the same retention will hold across LongBench v2.
 
 Reproduce the run:
 
@@ -100,7 +100,7 @@ The run directory contains:
 - `manifest.json`: revisions, exact case IDs, model settings, token distribution, reductions, and pricing assumptions;
 - `records.jsonl`: append-only case/condition outcomes and usage;
 - `prompts.jsonl.gz`: exact original and compressed prompts;
-- `summary.json`: aggregate and paired-bootstrap calculations; and
+- `summary.json`: aggregate and paired-bootstrap calculations, including separately derived execution and reduction time/cost; and
 - `report.md`: the publishable accuracy/token/time/cost table and plain PASS/FAIL decisions.
 
 Recalculate the evidence from raw outputs:

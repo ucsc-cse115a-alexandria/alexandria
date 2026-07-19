@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, TypedDict, cast
 
 import numpy as np
 
+from benchmarks.prompt_compression.metering import estimate_cost
 from benchmarks.prompt_compression.statistics import paired_score_bootstrap
 
 if TYPE_CHECKING:
@@ -22,6 +23,11 @@ class _ConditionSummary(TypedDict):
     mean_prompt_embedding_cosine_difference: float
     compression_seconds: float
     answer_seconds: float
+    reduction_seconds: float
+    execution_seconds: float
+    estimated_reduction_cost_usd: float
+    estimated_answer_cost_usd: float
+    estimated_execution_cost_usd: float
     estimated_cost_usd: float
 
 
@@ -33,6 +39,12 @@ def _condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
     source_tokens = sum(record.source_tokens for record in records)
     sent_tokens = sum(record.sent_tokens for record in records)
     correct = sum(record.verdict.correct for record in records)
+    reduction_usage = tuple(usage for record in records for usage in record.usage if usage.category != "answer")
+    answer_usage = tuple(usage for record in records for usage in record.usage if usage.category == "answer")
+    reduction_seconds = sum(record.compression_elapsed_seconds for record in records)
+    execution_seconds = sum(record.answer_elapsed_seconds for record in records)
+    reduction_cost = estimate_cost(reduction_usage)
+    execution_cost = estimate_cost(answer_usage)
     return {
         "n_cases": len(records),
         "accuracy": correct / len(records),
@@ -47,8 +59,14 @@ def _condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
         "p95_prompt_embedding_cosine_difference": float(
             np.quantile([record.prompt_embedding_cosine_difference for record in records], 0.95)
         ),
-        "compression_seconds": sum(record.compression_elapsed_seconds for record in records),
-        "answer_seconds": sum(record.answer_elapsed_seconds for record in records),
+        # Keep the original field names so older consumers remain compatible.
+        "compression_seconds": reduction_seconds,
+        "answer_seconds": execution_seconds,
+        "reduction_seconds": reduction_seconds,
+        "execution_seconds": execution_seconds,
+        "estimated_reduction_cost_usd": reduction_cost,
+        "estimated_answer_cost_usd": execution_cost,
+        "estimated_execution_cost_usd": execution_cost,
         "estimated_cost_usd": sum(record.estimated_cost_usd for record in records),
         "merge_calls": sum(record.merge_metrics.calls for record in records),
         "merge_retries": sum(record.merge_metrics.retries for record in records),
@@ -159,18 +177,20 @@ def benchmark_report(summary: dict[str, object]) -> str:
     comparisons = cast("dict[str, _ComparisonSummary]", raw_comparisons)
     lines = [
         "| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | "
-        "Estimated API cost | Wall-clock time |",
-        "|---|---:|---:|---:|---:|---:|---:|",
+        "Execution time | Execution cost | Reduction time | Reduction cost |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|---:|",
     ]
     for condition, raw in conditions.items():
-        wall_clock = float(raw["compression_seconds"]) + float(raw["answer_seconds"])
         lines.append(
             f"| {condition} | {float(raw['mean_sent_tokens']):,.1f} | "
             f"{float(raw['token_reduction']) * 100:.1f}% | "
             f"{float(raw['mean_prompt_embedding_cosine_difference']):.4f} | "
             f"{float(raw['accuracy']) * 100:.1f}% "
-            f"({int(raw['correct'])}/{int(raw['n_cases'])}) | ${float(raw['estimated_cost_usd']):.4f} | "
-            f"{wall_clock:.1f}s |"
+            f"({int(raw['correct'])}/{int(raw['n_cases'])}) | "
+            f"{float(raw['execution_seconds']):.1f}s | "
+            f"${float(raw['estimated_execution_cost_usd']):.4f} | "
+            f"{float(raw['reduction_seconds']):.1f}s | "
+            f"${float(raw['estimated_reduction_cost_usd']):.4f} |"
         )
     lines.extend(["", "## Release decisions", ""])
     for condition, raw in comparisons.items():
