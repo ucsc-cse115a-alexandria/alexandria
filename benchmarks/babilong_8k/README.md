@@ -56,6 +56,29 @@ The harness deliberately reports this as `Task accuracy`, not strict format comp
 
 ## Reproducible experiment
 
+### Common benchmark interface
+
+The shared runner exposes BABILong, RULERv2, and LongBench v2 through the same options and raw-log schema. It keeps BABILong's instruction, examples, required answer format, `<context>` tags, and final question fixed, and compresses only the PG-19-plus-bAbI context inside the tags.
+
+Preview a small paired sample without API calls:
+
+```bash
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 5 --seed 42 --reductions 50 25 10 5 \
+  --out trial_results/babilong_8k/smoke --dry-run
+```
+
+Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, wall-clock time, merge work, API usage, estimated cost, paired confidence intervals, and plain release decisions.
+
+Recompute the summary from the saved raw records without new API calls:
+
+```bash
+uv run python -m scripts.summarize_prompt_compression_benchmark \
+  trial_results/babilong_8k/smoke --release-threshold 0.90
+```
+
+The legacy phase-one commands below remain available for reproducing the previously published keep90 run.
+
 The default phase-one run uses 50 cases selected with seed 42, balanced as 10 cases from each of `qa1`-`qa5`.
 It compares the original prompt with a 90%-retained target (at least a 10% token reduction):
 
