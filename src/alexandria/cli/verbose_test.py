@@ -34,7 +34,7 @@ def test_pair_merged_delete_mentions_keeping_the_first() -> None:
     assert any("kept the first" in line for line in lines)
 
 
-def test_pair_merged_skipped_mentions_the_drift_budget() -> None:
+def test_pair_merged_skipped_mentions_the_cos_sim_diff_budget() -> None:
     lines: list[str] = []
     reporter = VerboseReporter(lines.append)
 
@@ -59,8 +59,8 @@ def test_target_round_reports_candidates_and_selection() -> None:
     lines: list[str] = []
     reporter = VerboseReporter(lines.append)
     candidates = (
-        ReportedCandidate(text="candidate one", token_count=10, drift=0.05, structure_valid=True),
-        ReportedCandidate(text="candidate two", token_count=8, drift=0.9, structure_valid=False),
+        ReportedCandidate(text="candidate one", token_count=10, cos_sim_diff=0.05, structure_valid=True),
+        ReportedCandidate(text="candidate two", token_count=8, cos_sim_diff=0.9, structure_valid=False),
     )
     selected = candidates[0]
 
@@ -79,7 +79,7 @@ def test_target_round_reports_candidates_and_selection() -> None:
 def test_target_round_with_no_base_omits_the_search_base_line() -> None:
     lines: list[str] = []
     reporter = VerboseReporter(lines.append)
-    selected = ReportedCandidate(text="only candidate", token_count=5, drift=0.1, structure_valid=True)
+    selected = ReportedCandidate(text="only candidate", token_count=5, cos_sim_diff=0.1, structure_valid=True)
 
     reporter.target_round(1, None, (selected,), selected, False)
 

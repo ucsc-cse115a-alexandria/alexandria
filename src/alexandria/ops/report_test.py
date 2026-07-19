@@ -18,7 +18,7 @@ def test_optimization_report_includes_compression_and_quality_metrics() -> None:
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert report.tokens.reduced < report.tokens.source
@@ -32,7 +32,7 @@ def test_compare_reports_flags_token_and_quality_regressions() -> None:
         "repeat me\nrepeat me\nunique line\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
     current = baseline.model_copy(
         update={

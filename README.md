@@ -42,8 +42,8 @@ Run the full optimization pipeline with one command:
 uv run alexandria reduce prompt.txt > reduced.txt
 ```
 
-Use `--save-tokens N` to stop once N tokens are saved and `--drift-budget` to cap the cumulative
-whole-document embedding drift the reduction may accept (default: `0.5` = 50%):
+Use `--save-tokens N` to stop once N tokens are saved and `--cos-sim-diff-budget` to cap the cumulative
+whole-document `cos_sim_diff` (`1 - cosine_similarity`) the reduction may accept (default: `0.5`):
 
 ```bash
 uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
@@ -61,9 +61,9 @@ Strict targets keep Markdown/XML boundaries fixed and, for each content group, f
 parallel with different rewrite strategies (plain compression, extractive deletion, and dense paraphrase), each
 capped so a completed response fits the token budget. Alexandria checks every candidate with `cl100k_base` and
 deterministically repairs any overshoot. Among the structure-valid candidates within the token ceiling it selects
-the one with the lowest whole-prompt drift, breaking ties by coverage. Undershooting the target is acceptable: the
-guarantee is at most the requested token count. When no candidate meets the drift budget, the best target-safe
-result is returned and `merge_metrics.drift_budget_met` is `false`. `--json` also reports final drift, repaired tokens, calls, and retries.
+the one with the lowest whole-prompt `cos_sim_diff`, breaking ties by coverage. Undershooting the target is acceptable: the
+guarantee is at most the requested token count. When no candidate meets the `cos_sim_diff` budget, the best target-safe
+result is returned and `merge_metrics.cos_sim_diff_budget_met` is `false`. `--json` also reports final `cos_sim_diff`, repaired tokens, calls, and retries.
 Exact duplicate text in best-effort reduction is still removed without a merge-model call. Text mode prints call
 and retry counts to stderr. Add `-v`/`--verbose` to stream automatic-reduction progress live to stderr instead of
 waiting for the final summary.
@@ -72,7 +72,7 @@ waiting for the final summary.
 quality scores:
 
 ```bash
-uv run alexandria report prompt.txt --drift-budget 2.0
+uv run alexandria report prompt.txt --cos-sim-diff-budget 2.0
 ```
 
 The `tokens` object reports source, reduced, and saved tokens. The `quality` object reports the
@@ -81,7 +81,7 @@ when a report is worse than a committed baseline, pass the baseline file:
 
 ```bash
 uv run alexandria report benchmarks/optimization_prompt.txt \
-  --drift-budget 2.0 \
+  --cos-sim-diff-budget 2.0 \
   --baseline benchmarks/optimization_baseline.json
 ```
 
@@ -131,11 +131,11 @@ Four pure phases over one intermediate representation (`Document` → `Section` 
 2. **Score** — rate each instruction's redundancy (its cosine similarity to the most similar other).
 3. **Optimize** — for each near-duplicate pair the LLM rewrites both sentences as one minimal-token
    sentence, kept at the first occurrence (the second is removed). Every rewrite is checked by
-   applying it and measuring the whole-document embedding drift; if it exceeds the drift budget the
+   applying it and measuring the whole-document `cos_sim_diff`; if it exceeds the `cos_sim_diff` budget the
    LLM is re-asked with feedback, up to 3 attempts, then the pair is skipped.
-4. **Select** — apply the accepted edits least-drift-first under the cumulative drift budget, stopping
+4. **Select** — apply accepted edits in ascending `cos_sim_diff` order under the cumulative budget, stopping
    at the requested token budget. `--target-reduction` uses a hard-target path that repairs model overshoot
-   deterministically and reports whether the resulting prompt also met the drift budget.
+   deterministically and reports whether the resulting prompt also met the `cos_sim_diff` budget.
 
 ## Tech stack
 

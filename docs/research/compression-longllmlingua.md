@@ -33,11 +33,10 @@ This paper addresses three core problems with LLMs in long-context settings: hig
 - LongLLMLingua's contrastive perplexity is a query-aware scoring signal, whereas our redundancy scorer is query-agnostic, highlighting a design tradeoff worth knowing
 - Their coarse-to-fine compression pipeline mirrors our Represent -> Score -> Optimize -> Select flow, validating the general architecture
 - Their finding that removing redundant/irrelevant content can actually improve LLM performance (not just reduce cost) supports our core premise
-- The drift_budget in our Select phase serves the same role as their compression ratio constraint, both acting as a meaning-preservation stop condition
+- The `cos_sim_diff_budget` in our Select phase serves the same role as their compression ratio constraint, both acting as a meaning-preservation stop condition
 
 ## Related papers
 - [Pan et al. - LLMLingua-2 (2024)](https://arxiv.org/abs/2403.12968) - task-agnostic compression via token classification trained on GPT-4 distilled data
 
 - [Liu et al. - Lost in the Middle (2023)](https://arxiv.org/abs/2307.03172) - the position bias finding that motivates LongLLMLingua's document reordering strategy
-
 

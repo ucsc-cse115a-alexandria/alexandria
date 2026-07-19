@@ -22,7 +22,7 @@ def cosine_similarity_matrix(embeddings: NDArray[np.float32]) -> NDArray[np.floa
     return (normalized @ normalized.T).astype(np.float32)
 
 
-def cosine_distance(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
+def compute_cos_sim_diff(a: NDArray[np.float32], b: NDArray[np.float32]) -> float:
     return 1.0 - float(normalize(a) @ normalize(b))
 
 

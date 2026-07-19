@@ -61,7 +61,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Define the sweep matrix for the available controls (`--min-similarity`, drift budget, thresholds, or
+- Define the sweep matrix for the available controls (`--min-similarity`, `cos_sim_diff` budget, thresholds, or
   token targets) and write the exact commands in a runbook (2h)
 - Run the sweep on the selected benchmark subset and save raw outputs for every point (4h)
 - Make at most one narrow default/parameter change if the sweep shows a better benchmark-backed

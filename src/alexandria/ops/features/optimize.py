@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 from alexandria.ir.contracts import SILENT_REPORTER, Candidate, Delete, Params, Replace
 from alexandria.ir.document import Encoded
 from alexandria.ir.registry import get_optimizer, register_optimizer, required_scorers
-from alexandria.ir.similarity import cosine_distance, similarity_matrix_for
+from alexandria.ir.similarity import compute_cos_sim_diff, similarity_matrix_for
 from alexandria.utils.tokens import count_tokens
 
 if TYPE_CHECKING:
@@ -33,7 +33,7 @@ def merge_rewrite(
     first occurrence; ranked by pair similarity.
 
     Each pair runs a generate -> measure -> feedback loop (at most MAX_MERGE_ATTEMPTS): a rewrite
-    whose edit would drift the whole-document embedding beyond params.drift_budget is fed back to
+    whose whole-document cos_sim_diff would exceed params.cos_sim_diff_budget is fed back to
     the merger for another try, and a pair that never fits is skipped. Emits Delete when the
     merged sentence is effectively the first one (it already covers both). A sentence is
     rewritten at most once; after a Delete the unchanged first sentence stays pairable, so a
@@ -108,8 +108,8 @@ def _merge_pair(
         trial = document.apply(candidate)
         if trial is None:
             return None
-        drift = cosine_distance(embedder.embed([trial.text])[0], document.embedding)
-        return candidate if drift <= params.drift_budget else None
+        cos_sim_diff = compute_cos_sim_diff(embedder.embed([trial.text])[0], document.embedding)
+        return candidate if cos_sim_diff <= params.cos_sim_diff_budget else None
 
     feedback: str | None = None
     for _ in range(MAX_MERGE_ATTEMPTS):
@@ -124,12 +124,12 @@ def _merge_pair(
         trial = document.apply(candidate)
         if trial is None:
             return None  # the edit would empty a section; no rewrite can fix that
-        drift = cosine_distance(embedder.embed([trial.text])[0], document.embedding)
-        if drift <= params.drift_budget:
+        cos_sim_diff = compute_cos_sim_diff(embedder.embed([trial.text])[0], document.embedding)
+        if cos_sim_diff <= params.cos_sim_diff_budget:
             return candidate
         feedback = (
             f'Your rewrite "{merged.strip()}" changed the whole document\'s embedding by '
-            f"{drift:.3f} against a budget of {params.drift_budget:.3f}. Preserve more of the "
+            f"{cos_sim_diff:.3f} against a budget of {params.cos_sim_diff_budget:.3f}. Preserve more of the "
             "original meaning, even at the cost of a few more tokens."
         )
     return None
@@ -140,7 +140,7 @@ def _candidate_for(
 ) -> Candidate | None:
     """The edit one merge attempt proposes: Delete when the first sentence already covers both,
     Replace when the merge saves tokens, None otherwise."""
-    if 1.0 - cosine_distance(embedding, first.embedding) >= _KEEP_FIRST_SIMILARITY:
+    if 1.0 - compute_cos_sim_diff(embedding, first.embedding) >= _KEEP_FIRST_SIMILARITY:
         return Candidate(
             edit=Delete(targets=(second.id,)),
             confidence=sim,

@@ -15,7 +15,9 @@ def test_reduce_removes_an_exact_duplicate_without_calling_the_merger() -> None:
     embedder = HashEmbedder()
     # HashEmbedder only scores exact duplicates as redundant. The deterministic fast path keeps
     # the first verbatim and removes the second without spending a generation call.
-    result = reduce("repeat me\nrepeat me\nunique line\n", embedder, _CannedMerger(), params=Params(drift_budget=2.0))
+    result = reduce(
+        "repeat me\nrepeat me\nunique line\n", embedder, _CannedMerger(), params=Params(cos_sim_diff_budget=2.0)
+    )
 
     assert result.text == "repeat me\nunique line\n"
     assert result.reduced_tokens < result.source_tokens

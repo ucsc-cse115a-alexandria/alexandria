@@ -14,7 +14,7 @@ from alexandria.ir.contracts import (
     TargetMergeRoundMetrics,
 )
 from alexandria.ir.document import Document, Encoded, Section, Sentence
-from alexandria.ir.similarity import cosine_distance, normalize, similarity_matrix_for
+from alexandria.ir.similarity import compute_cos_sim_diff, normalize, similarity_matrix_for
 from alexandria.utils.tokens import count_tokens, truncate_tokens
 
 if TYPE_CHECKING:
@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, MergeMetrics, Params, ReductionReporter, TrackedMerger
     from alexandria.ir.document import SentenceId
 
-PRUNE_VERIFY_MAX_STEPS = 12  # drift-search probe cap
+PRUNE_VERIFY_MAX_STEPS = 12  # cos_sim_diff search probe cap
 MAX_REPAIR_VARIANTS = 6
 _GENERATED_MARKUP = re.compile(r"(?m)^\s*(?:#{1,6}\s+\S|</?[A-Za-z][\w.-]*>)\s*$")
 _REPAIR_BOUNDARY = re.compile(r"(?<=[.!?])(?:[ \t]+|\n+)|\n+")
@@ -89,7 +89,7 @@ class _PendingCandidate:
 class _TargetCandidate:
     text: str
     document: Document
-    drift: float
+    cos_sim_diff: float
     minimum_coverage: float
     target_distance: int
     structure_valid: bool
@@ -106,8 +106,8 @@ class TargetMergeOutcome:
     pruned_sentences: int
     pruned_tokens: int
     repaired_tokens: int
-    final_drift: float
-    drift_budget_met: bool
+    final_cos_sim_diff: float
+    cos_sim_diff_budget_met: bool
 
 
 class InfeasibleTargetError(ValueError):
@@ -117,17 +117,17 @@ class InfeasibleTargetError(ValueError):
 class TargetMergeError(ValueError):
     """A strict target failure with machine-readable merge usage and best observed quality."""
 
-    def __init__(self, message: str, metrics: MergeMetrics, *, best_tokens: int, best_drift: float) -> None:
+    def __init__(self, message: str, metrics: MergeMetrics, *, best_tokens: int, best_cos_sim_diff: float) -> None:
         super().__init__(message)
         self.metrics = metrics
         self.best_tokens = best_tokens
-        self.best_drift = best_drift
+        self.best_cos_sim_diff = best_cos_sim_diff
 
 
 def merge_to_target(
     document: Document, embedder: Embedder, merger: TrackedMerger, params: Params, reporter: ReductionReporter
 ) -> TargetMergeOutcome:
-    """Meet the hard token ceiling first, then minimize drift among feasible candidates."""
+    """Meet the hard token ceiling first, then minimize cos_sim_diff among feasible candidates."""
     if params.max_tokens is None:
         raise ValueError("target merge requires max_tokens")
     protected_tokens = sum(sentence.token_count for sentence in document.sentences if not sentence.optimizable)
@@ -141,14 +141,16 @@ def merge_to_target(
     pruned_tokens = document.token_count - current.token_count
     repaired_tokens = 0
 
-    def merge_metrics(applied_groups: int, *, final_drift: float | None = None) -> MergeMetrics:
+    def merge_metrics(applied_groups: int, *, final_cos_sim_diff: float | None = None) -> MergeMetrics:
         return merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups).model_copy(
             update={
                 "pruned_sentences": pruned_sentences,
                 "pruned_tokens": pruned_tokens,
                 "repaired_tokens": repaired_tokens,
-                "final_drift": final_drift,
-                "drift_budget_met": final_drift <= params.drift_budget if final_drift is not None else None,
+                "final_cos_sim_diff": final_cos_sim_diff,
+                "cos_sim_diff_budget_met": (
+                    final_cos_sim_diff <= params.cos_sim_diff_budget if final_cos_sim_diff is not None else None
+                ),
             }
         )
 
@@ -173,7 +175,7 @@ def merge_to_target(
         source_segment = "".join(sentence.text for sentence in group)
         reporter.target_group(source_segment, group_tokens, required_savings)
         base_tokens = current.token_count
-        base_drift = max(0.0, cosine_distance(current.embedding, document.embedding))
+        base_cos_sim_diff = max(0.0, compute_cos_sim_diff(current.embedding, document.embedding))
 
         generated = merger.merge_candidates_to_target(source_segment, group_max_tokens)
         evaluated = _evaluate_target_candidates(
@@ -184,7 +186,7 @@ def merge_to_target(
             embedder=embedder,
             max_document_tokens=params.max_tokens,
             group_max_tokens=group_max_tokens,
-            drift_budget=params.drift_budget,
+            cos_sim_diff_budget=params.cos_sim_diff_budget,
             expected_structure=expected_structure,
         )
         generated_selectable = [
@@ -205,7 +207,7 @@ def merge_to_target(
                 embedder=embedder,
                 max_document_tokens=params.max_tokens,
                 group_max_tokens=group_max_tokens,
-                drift_budget=params.drift_budget,
+                cos_sim_diff_budget=params.cos_sim_diff_budget,
                 expected_structure=expected_structure,
             )
             pool = [
@@ -216,27 +218,29 @@ def merge_to_target(
         if not pool:
             reporter.target_group_done(applied=False, document_tokens=current.token_count)
             details = "; ".join(dict.fromkeys(issue for c in evaluated for issue in c.issues))
-            metrics = merge_metrics(applied_groups, final_drift=base_drift)
+            metrics = merge_metrics(applied_groups, final_cos_sim_diff=base_cos_sim_diff)
             raise TargetMergeError(
                 f"target merge made no progress after {merger.calls} calls: "
                 f"{details or 'no shorter structure-valid candidate'}",
                 metrics,
                 best_tokens=current.token_count,
-                best_drift=base_drift,
+                best_cos_sim_diff=base_cos_sim_diff,
             )
         chosen = min(pool, key=_target_candidate_rank)
-        improved = chosen.document.token_count < base_tokens and chosen.drift < base_drift
+        improved = chosen.document.token_count < base_tokens and chosen.cos_sim_diff < base_cos_sim_diff
         merger.record_target_round(
             TargetMergeRoundMetrics(
                 round=1,
                 base_tokens=base_tokens,
                 selected_tokens=chosen.document.token_count,
-                base_drift=base_drift,
-                selected_drift=chosen.drift,
+                base_cos_sim_diff=base_cos_sim_diff,
+                selected_cos_sim_diff=chosen.cos_sim_diff,
                 generated_best_tokens=(
                     generated_best.document.token_count if generated_best is not None else chosen.document.token_count
                 ),
-                generated_best_drift=generated_best.drift if generated_best is not None else chosen.drift,
+                generated_best_cos_sim_diff=(
+                    generated_best.cos_sim_diff if generated_best is not None else chosen.cos_sim_diff
+                ),
                 improved=improved,
             )
         )
@@ -244,7 +248,7 @@ def merge_to_target(
             ReportedCandidate(
                 text=candidate.text,
                 token_count=candidate.document.token_count,
-                drift=candidate.drift,
+                cos_sim_diff=candidate.cos_sim_diff,
                 structure_valid=candidate.structure_valid,
             )
             for candidate in evaluated
@@ -252,7 +256,7 @@ def merge_to_target(
         selected = ReportedCandidate(
             text=chosen.text,
             token_count=chosen.document.token_count,
-            drift=chosen.drift,
+            cos_sim_diff=chosen.cos_sim_diff,
             structure_valid=chosen.structure_valid,
         )
         reporter.target_round(1, None, candidate_list, selected, generated_best is not None)
@@ -260,24 +264,24 @@ def merge_to_target(
         repaired_tokens += chosen.repaired_tokens
         reporter.target_group_done(applied=True, document_tokens=current.token_count)
         applied_groups += 1
-    final_drift = cosine_distance(current.embedding, document.embedding)
+    final_cos_sim_diff = compute_cos_sim_diff(current.embedding, document.embedding)
     return TargetMergeOutcome(
         document=current,
         applied_groups=applied_groups,
         pruned_sentences=pruned_sentences,
         pruned_tokens=pruned_tokens,
         repaired_tokens=repaired_tokens,
-        final_drift=final_drift,
-        drift_budget_met=final_drift <= params.drift_budget,
+        final_cos_sim_diff=final_cos_sim_diff,
+        cos_sim_diff_budget_met=final_cos_sim_diff <= params.cos_sim_diff_budget,
     )
 
 
 def _prune_to_target(document: Document, embedder: Embedder, params: Params, max_tokens: int) -> Document:
     """Delete redundant sentences toward the token target without any merge-model call.
 
-    The plan orders deletions by descending redundancy; the whole plan is then drift-verified
-    with one embedding call. When the full plan drifts over budget, bisect on the deletion count
-    (a heuristic, since drift is not monotone in prefix length; every returned prefix is
+    The plan orders deletions by descending redundancy; the whole plan's cos_sim_diff is then verified
+    with one embedding call. When the full plan exceeds the budget, bisect on the deletion count
+    (a heuristic, since cos_sim_diff is not monotone in prefix length; every returned prefix is
     verified) and keep the longest passing prefix, falling back to no pruning at all.
     """
     deletions = _prune_plan(document, params.threshold, max_tokens)
@@ -285,8 +289,8 @@ def _prune_to_target(document: Document, embedder: Embedder, params: Params, max
         return document
     pruned = _apply_prune_prefix(document, deletions, len(deletions))
     pruned_embedding = embedder.embed([pruned.text])[0]
-    drift = cosine_distance(pruned_embedding, document.embedding)
-    if drift <= params.drift_budget:
+    cos_sim_diff = compute_cos_sim_diff(pruned_embedding, document.embedding)
+    if cos_sim_diff <= params.cos_sim_diff_budget:
         return pruned.model_copy(update={"embedding": pruned_embedding})
     passing, failing = 0, len(deletions)
     passing_document = document
@@ -296,8 +300,8 @@ def _prune_to_target(document: Document, embedder: Embedder, params: Params, max
             break
         trial = _apply_prune_prefix(document, deletions, middle)
         trial_embedding = embedder.embed([trial.text])[0]
-        drift = cosine_distance(trial_embedding, document.embedding)
-        if drift <= params.drift_budget:
+        cos_sim_diff = compute_cos_sim_diff(trial_embedding, document.embedding)
+        if cos_sim_diff <= params.cos_sim_diff_budget:
             passing = middle
             passing_document = trial.model_copy(update={"embedding": trial_embedding})
         else:
@@ -443,7 +447,7 @@ def _evaluate_target_candidates(
     embedder: Embedder,
     max_document_tokens: int,
     group_max_tokens: int,
-    drift_budget: float,
+    cos_sim_diff_budget: float,
     expected_structure: tuple[str, ...],
 ) -> tuple[_TargetCandidate, ...]:
     """Repair one generation round, then embed all segments, documents, and local chunks in one batch."""
@@ -525,7 +529,7 @@ def _evaluate_target_candidates(
         if applied is None:  # pragma: no cover - the placeholder application already proved feasibility
             continue
         candidate = applied.model_copy(update={"embedding": whole_embedding})
-        drift = max(0.0, 1.0 - float(np.dot(normalize(whole_embedding), normalize(source.embedding))))
+        cos_sim_diff = max(0.0, 1.0 - float(np.dot(normalize(whole_embedding), normalize(source.embedding))))
         output_chunk_embeddings = np.stack([normalize(vector) for vector in candidate_chunks])
         source_coverage = np.max(source_group_embeddings @ output_chunk_embeddings.T, axis=1)
         coverage = float(np.min(source_coverage))
@@ -540,13 +544,13 @@ def _evaluate_target_candidates(
         if actual_structure != expected_structure:
             structure_valid = False
             issues.append("XML/Markdown boundary lines changed")
-        if drift > drift_budget:
-            issues.append(f"whole-prompt embedding drift was {drift:.4f}; maximum is {drift_budget:.4f}")
+        if cos_sim_diff > cos_sim_diff_budget:
+            issues.append(f"whole-prompt cos_sim_diff was {cos_sim_diff:.4f}; maximum is {cos_sim_diff_budget:.4f}")
         evaluated.append(
             _TargetCandidate(
                 text=variant.text,
                 document=candidate,
-                drift=drift,
+                cos_sim_diff=cos_sim_diff,
                 minimum_coverage=coverage,
                 target_distance=target_distance,
                 structure_valid=structure_valid,
@@ -562,7 +566,7 @@ def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int
         not candidate.structure_valid,
         candidate.target_distance > 0,
         candidate.target_distance,
-        candidate.drift,
+        candidate.cos_sim_diff,
         -candidate.minimum_coverage,
     )
 

@@ -26,14 +26,14 @@ prompt ─────────▶│  Represent   ──▶   Score   ──
 | **1. Represent** | Turn the prompt into the IR: split into instructions, count tokens, embed each one. | `represent(prompt: str, embedder: Embedder \| None = None) -> Document` |
 | **2. Score** | Rate every instruction. The first scorer rates **redundancy**. | `Scorer = (Document) -> list[float]` |
 | **3. Optimize** | Propose and rank the edits the scores justify. | `Optimizer = (Document, Scores, Embedder, SentenceMerger, Params, ReductionReporter) -> Plan` |
-| **4. Select** | Apply candidates in ascending drift order while the prompt stays within the drift budget. | `Selector = (Document, Plan, Embedder, Params) -> Selection` |
+| **4. Select** | Apply candidates in ascending `cos_sim_diff` order while the prompt stays within the `cos_sim_diff` budget. | `Selector = (Document, Plan, Embedder, Params) -> Selection` |
 
 Each phase is a pure function over the IR (Represent, Optimize, and Select take the impure `Embedder`
 — and Optimize also the `SentenceMerger` — as injected dependencies), so each is tested on its own and
 the four compose in order. The split between **Optimize** and **Select** is deliberate: Optimize
-*proposes and ranks* candidates — probing each edit's whole-document drift only to feed the merge model
+*proposes and ranks* candidates — probing each edit's whole-document `cos_sim_diff` only to feed the merge model
 back a retry (a per-edit quality mechanism, not the stop condition) — and Select is the controller that
-*chooses and applies* under the cumulative drift budget, keeping the "which edits, in what order, and
+*chooses and applies* under the cumulative `cos_sim_diff` budget, keeping the "which edits, in what order, and
 when to stop" decision in one place.
 
 **Score** and **Optimize** are *open sets*, not single steps: many scorers and many optimizers coexist
@@ -44,9 +44,9 @@ several scorers at once. An optimizer does not return a `Document`; it returns a
 at once and their stacks **concatenate** into one series.
 
 **Select** is an open set too: a *selector* reads the `Plan` and folds it into a `Selection` (the smaller
-`Document` plus the candidates it applied). The default `least_drift` selector applies candidates in
-ascending whole-document drift order and keeps each only while the reduced prompt stays within
-`drift_budget` cosine distance of the original prompt embedding — so an unattended `reduce` compresses as
+`Document` plus the candidates it applied). The default `least_cos_sim_diff` selector applies candidates in
+ascending whole-document `cos_sim_diff` order and keeps each only while the reduced prompt's
+`cos_sim_diff` from the original stays within `cos_sim_diff_budget` — so unattended `reduce` compresses as
 far as the meaning budget allows. A future interactive selector (the `review` verb) walks the same stack
 and asks a human to accept or reject each edit. Both call one
 pure primitive, `Document.apply`, folding the stack candidate by candidate into the smaller `Document` —
@@ -133,7 +133,7 @@ src/
         represent.py    #     phase 1 — prompt → Document (split + tiktoken + injected Embedder)
         score.py        #     phase 2 — @register_scorer("redundancy"); score(...) -> Scores, score_rows
         optimize.py     #     phase 3 — @register_optimizer("merge_rewrite", requires=("redundancy",))
-        select.py       #     phase 4 — @register_selector("least_drift"); fold a Plan → Selection
+        select.py       #     phase 4 — @register_selector("least_cos_sim_diff"); fold a Plan → Selection
         target.py       #     hard-target merge search: merge_to_target (used by reduce when a max-tokens target is required)
         compare.py      #     compare(original, edited) → CompareResult (similarity + token reduction)
         diff.py         #     diffs(document, plan) → displayable Diffs, one per candidate, confidence order
@@ -156,7 +156,7 @@ exposes the same trio — `text`, `token_count`, `embedding` — so the same uni
 granularity, and all three are **stored** because each `embedding` is a real model embedding (see
 below). A sentence's group is self-evident from where it sits in the tree. We parse, don't construct
 (validate on build) and make impossible states unrepresentable: nesting replaces parallel lists, so
-columns cannot drift out of sync.
+columns cannot fall out of sync.
 
 ```python
 type Embedding = Annotated[NDArray[np.float32], PlainValidator(_as_vector)]   # a 1-D vector
@@ -215,7 +215,7 @@ representation of that span. Because re-embedding needs a model call, the trio i
 Represent and stored at every level.
 
 **Validated on build.** Constructing the tree checks that each node's `text` equals the concatenation
-of its children and its `token_count` equals their sum (so stored values can never drift from the
+of its children and its `token_count` equals their sum (so stored values can never diverge from the
 children), that every embedding shares one dimension, that token counts are non-negative
 (`TokenCount`), that no `Section` or `Document` is empty (`min_length=1`), and that every `Sentence`
 `id` is unique within the `Document` (an `Edit` must name exactly one row, never two).
@@ -311,8 +311,8 @@ rest of the project.
 An optimizer reads a scored `Document` and **proposes and ranks edits**:
 `(Document, Scores, Embedder, SentenceMerger, Params, ReductionReporter) -> Plan`, never mutating the
 input and never reconstructing the surviving `Document`. It may re-embed — but only to *probe* a
-candidate's whole-document drift so it can feed the merge model a retry (a per-edit quality check); the
-cumulative drift budget that decides how many edits survive is still Select's job. Each proposal is a
+candidate's whole-document `cos_sim_diff` so it can feed the merge model a retry (a per-edit quality check); the
+cumulative `cos_sim_diff` budget that decides how many edits survive is still Select's job. Each proposal is a
 pure, serializable **`Edit`** wrapped with the `confidence` that ranked it and a short reason:
 
 ```python
@@ -334,7 +334,7 @@ type Edit = Annotated[Delete | Replace, Field(discriminator="op")]   # no nullab
 class Candidate(BaseModel):
     """A proposed Edit plus the ranking metadata Select orders by and review shows."""
     edit: Edit
-    confidence: float   # pair similarity that ranked it; review shows it, Select orders by measured drift
+    confidence: float   # pair similarity that ranked it; review shows it, Select orders by measured cos_sim_diff
     source: str         # the optimizer that proposed it
     reason: str         # human-readable rationale, shown during review
 
@@ -369,14 +369,14 @@ for (a, b) in pairs with similarity ≥ threshold, sorted by similarity desc, bo
         if merged ≈ a (cosine ≥ 0.99): candidate = Delete(b)     # a already covers both
         elif tokens(merged) < tokens(a)+tokens(b): candidate = Replace((a,b), merged)
         else: feedback = "make it shorter"; continue
-        drift = cosine_distance(embed(apply(candidate).text), document.embedding)  # probe whole-doc drift
-        if drift ≤ drift_budget: emit candidate; break
-        feedback = "you drifted too far; preserve more meaning"  # retry with feedback
+        cos_sim_diff = compute_cos_sim_diff(embed(apply(candidate).text), document.embedding)  # probe whole-doc cos_sim_diff
+        if cos_sim_diff ≤ cos_sim_diff_budget: emit candidate; break
+        feedback = "cos_sim_diff exceeded the budget; preserve more meaning"  # retry with feedback
 ```
 
 An exact-duplicate pair is deleted without a model call. A `present` set keeps the proposals coherent —
 after a `Delete` the unchanged first sentence stays pairable (so a triple duplicate collapses fully),
-while a rewritten pair consumes both ids. The per-edit `drift ≤ drift_budget` probe is a **quality
+while a rewritten pair consumes both ids. The per-edit `cos_sim_diff ≤ cos_sim_diff_budget` probe is a **quality
 gate on each rewrite** (it feeds the merger a retry), *not* the compression stop condition — Select
 still decides, cumulatively, how much of the ranked stack survives.
 
@@ -386,7 +386,7 @@ merge a home without a second mutation path: it is still an edit that stacks and
 
 **Running several at once.** Every optimizer reads the same original `Document` and returns a stack, so
 `reduce --optimizer A,B` **concatenates** both stacks into one series; **Select** then orders the whole by
-each candidate's **measured whole-document drift** and folds it. No dedup step is needed: two candidates
+each candidate's **measured whole-document `cos_sim_diff`** and folds it. No dedup step is needed: two candidates
 that target the same cluster apply in that order, and the second — finding its targets already removed —
 is skipped. Concatenating once and folding in order stays sound because edits address stable ids and
 `apply` re-checks each edit against the *current* document as it folds, so the ranking only *orders* the
@@ -394,10 +394,10 @@ stack while correctness is enforced step by step.
 
 **Meaning preservation — the hard constraint.** It is enforced at two levels. (1) Only sentences marked
 `optimizable` and paired above the similarity `threshold` are ever proposed; a unique, load-bearing
-instruction never reaches the stack. (2) **Optimize** probes each rewrite's whole-document drift and
-retries the merge model when it drifts past `drift_budget` (a per-edit quality gate), and **Select**
-re-embeds the reduced prompt after each accepted edit and keeps it only while the prompt stays within
-`drift_budget` cosine distance of the original — the cumulative stop condition (see
+instruction never reaches the stack. (2) **Optimize** probes each rewrite's whole-document `cos_sim_diff` and
+retries the merge model when `cos_sim_diff` exceeds `cos_sim_diff_budget` (a per-edit quality gate), and **Select**
+re-embeds the reduced prompt after each accepted edit and keeps it only while its `cos_sim_diff` from
+the original prompt stays within `cos_sim_diff_budget` — the cumulative stop condition (see
 [Phase 4 — Select](#phase-4--select)). As it folds, `apply` additionally rejects any edit that would empty a
 `Section` or the `Document` — the structural half of the guarantee, re-checked at each step against the
 current document rather than a stale snapshot.
@@ -407,43 +407,44 @@ current document rather than a stale snapshot.
 A *selector* turns a ranked `Plan` into a `Selection` (the reduced `Document` plus the candidates it
 applied): `(Document, Plan, Embedder, Params) -> Selection`.
 Optimize decides *what could change*; Select decides *which changes
-actually happen* and *when to stop*. Keeping that controller in one phase is why the cumulative drift
+actually happen* and *when to stop*. Keeping that controller in one phase is why the cumulative `cos_sim_diff`
 budget lives in one place instead of being threaded through every optimizer.
 
-**The default selector — `least_drift`.** It ranks the candidates by the whole-document drift each one
-would cause on its own, then applies them in **ascending drift order**, accepting each only while the
-reduced prompt stays within the cumulative drift budget:
+**The default selector — `least_cos_sim_diff`.** It ranks candidates by the whole-document `cos_sim_diff`
+each would cause on its own, then applies them in **ascending `cos_sim_diff` order**, accepting each only
+while the reduced prompt stays within the cumulative `cos_sim_diff` budget:
 
 ```
 base = Document.embedding                       # the real embedding of the original prompt
 trials = [(c, t) for c in plan if (t := document.apply(c)) is not None and t is not document]
-ranked = sort trials by cosine_distance(embed(t.text), base)   # one batched embed call
+ranked = sort trials by compute_cos_sim_diff(embed(t.text), base)   # one batched embed call
 current = Document
-for candidate in ranked:                        # lowest-drift first
+for candidate in ranked:                        # ascending cos_sim_diff
     trial = current.apply(candidate)            # None/unchanged if targets already gone → skip
     if trial is None or trial is current: continue
-    if cosine_distance(embed(trial.text), base) > params.drift_budget: continue   # cumulative
+    if compute_cos_sim_diff(embed(trial.text), base) > params.cos_sim_diff_budget: continue   # cumulative
     current = trial
     if params.max_tokens is not None and current.token_count ≤ params.max_tokens: break
 return Selection(document=current, applied=…)
 ```
 
-The drift is measured against `base` after *every* accepted edit, so the budget is **cumulative**: the
-loop compresses as far as `drift_budget` allows and then stops. Applying lowest-drift-first is
-self-regulating — once one half of a redundant pair is dropped, removing its peer would delete genuinely
-unique content, drift past the budget, and be skipped — so `least_drift` keeps one copy of a cluster
+The `cos_sim_diff` is measured against `base` after *every* accepted edit, so the budget is **cumulative**:
+the loop compresses as far as `cos_sim_diff_budget` allows and then stops. Applying candidates in ascending
+`cos_sim_diff` order is self-regulating — once one half of a redundant pair is dropped, removing its peer would
+delete genuinely
+unique content, exceed the `cos_sim_diff` budget, and be skipped — so `least_cos_sim_diff` keeps one copy of a cluster
 without any explicit "don't delete both" rule. `Params` carries both phases' knobs (`threshold` for
-Optimize's eligibility, `drift_budget` for both the per-edit probe and the cumulative stop, and an
-optional `max_tokens` target); the defaults live in one frozen model (`drift_budget` defaults to `0.5`).
+Optimize's eligibility, `cos_sim_diff_budget` for both the per-edit probe and the cumulative stop, and an
+optional `max_tokens` target); the defaults live in one frozen model (`cos_sim_diff_budget` defaults to `0.5`).
 
-Because `least_drift` re-embeds the reduced prompt, the budget reflects the embedding model's real
+Because `least_cos_sim_diff` re-embeds the reduced prompt, the budget reflects the embedding model's real
 representation of the shortened text. With a non-semantic embedder (the deterministic `HashEmbedder`
 test backend, which hashes the whole string) any edit re-embeds to an unrelated vector, so a faithful
 test sets a generous budget to exercise deletion and a tight one to exercise the stop condition.
 
 **A future selector — `review`.** The same ranked stack, folded interactively: `review` walks candidates
 and asks a human to accept or reject each, then returns the reduced
-`Document`. `least_drift` and `review` are the same phase with different stop logic — automatic budget
+`Document`. `least_cos_sim_diff` and `review` are the same phase with different stop logic — automatic budget
 versus a person — which is exactly why Select is its own pluggable phase rather than a branch inside `reduce`.
 
 **The fold primitive — `Document.apply` (a method on the IR).** `document.apply(candidate)` returns a
@@ -495,9 +496,9 @@ every addition looks the same:
        ...   # return a tuple of Candidate, never a Document
 
    # ops/features/select.py
-   @register_selector("least_drift")
-   def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
-       ...   # fold the plan within params.drift_budget; return the Selection
+   @register_selector("least_cos_sim_diff")
+   def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
+       ...   # fold the plan within params.cos_sim_diff_budget; return the Selection
    ```
 
 4. **Done.** The CLI resolves `--scorer NAME` / `--optimizer NAME` against the registry; for an
@@ -612,11 +613,11 @@ phases is its own verb, and they **compose over a Unix pipe**: every phase emits
   Document it is handed.
 - `alexandria optimize [FILE] [--optimizer NAME[,NAME...]] [--threshold T] [--out PATH]` — `ScoredEnvelope` in, a
   **`PlanEnvelope`** out. Pass several optimizers and their stacks concatenate into one series.
-- `alexandria select [FILE] [--drift-budget D] [--json]` — `PlanEnvelope` in, the
-  **reduced prompt** out (or a JSON reduction summary with `--json`). The `least_drift` selector folds the
-  `Plan` in ascending whole-document drift order while the prompt stays within `--drift-budget` (default
+- `alexandria select [FILE] [--cos-sim-diff-budget D] [--json]` — `PlanEnvelope` in, the
+  **reduced prompt** out (or a JSON reduction summary with `--json`). The `least_cos_sim_diff` selector folds the
+  `Plan` in ascending whole-document `cos_sim_diff` order while the prompt stays within `--cos-sim-diff-budget` (default
   `0.5`) of the original.
-- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--drift-budget D] [--model MODEL] [--json]`
+- `alexandria reduce [FILE] [--optimizer NAME[,NAME...]] [--selector NAME] [--threshold T] [--cos-sim-diff-budget D] [--model MODEL] [--json]`
   — prompt in, **reduced prompt out**, running all four phases in one process. This is the headline
   path and the fast in-process route; `--json` emits the same reduction summary as `select --json`
   (`text`, `applied`, `source_tokens`, `reduced_tokens`). There is no `--scorer` flag because each
@@ -635,7 +636,7 @@ the same `Plan` and asks a human to accept or reject each drop.
 in-memory `Document` — and the envelopes make it a *process* property too. The envelope is
 self-contained: it always carries the `Document` a downstream phase needs, so no phase re-derives it,
 and `score` needs no model at all (`optimize` and `select` build the default embedder — and `optimize`
-the merger — since they measure drift and rewrite). Envelopes are JSON today (`schema_version=1`, pydantic
+the merger — since they measure `cos_sim_diff` and rewrite). Envelopes are JSON today (`schema_version=1`, pydantic
 native, zero extra dependencies); a Parquet path is added later when data volume asks for it (see
 [Persistence](#persistence--parquet)). The `reduce` verb stays the fast route that skips serialization
 between phases.

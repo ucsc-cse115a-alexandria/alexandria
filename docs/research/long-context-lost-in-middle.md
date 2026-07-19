@@ -25,7 +25,7 @@ This paper investigates how LLMs use information across long input contexts. It 
 
 ## Relevance to our project
 - The lost-in-the-middle effect directly motivates why we compress prompts rather than just appending instructions, long instruction-heavy prompts suffer the same positional degradation
-- Our drift_budget in Select ensures we don't compress so aggressively that load-bearing instructions get pushed into vulnerable middle positions
+- Our `cos_sim_diff_budget` in Select ensures we don't compress so aggressively that load-bearing instructions get pushed into vulnerable middle positions
 - The U-shaped attention pattern suggests that our redundancy scorer should prioritize removing instructions from the middle of a prompt over the edges, a future enhancement worth exploring
 - This paper's findings have been confirmed in newer models by Du et al. (2025), so the effect is still relevant despite the older model baselines
 

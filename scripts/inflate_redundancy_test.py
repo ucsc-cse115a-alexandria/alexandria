@@ -79,18 +79,18 @@ class KeywordEmbedder:
         return vectors
 
 
-def test_retry_feedback_names_drifted_section() -> None:
+def test_retry_feedback_names_changed_section() -> None:
     original = "# alpha\nalways cite the listed sources carefully.\n"
-    drifted = "# alpha\nquack quack quack quack quack quack quack.\n"
+    changed = "# alpha\nquack quack quack quack quack quack quack.\n"
     prompts: list[str] = []
 
     def generate(prompt: str) -> str:
         prompts.append(prompt)
-        # attempt 2's inflate prompt carries the drift feedback; the first attempt (and expands) drift
-        return original if "drifted in meaning" in prompt else drifted
+        # Attempt 2's prompt carries meaning-change feedback; the first attempt and expansions change it.
+        return original if "changed the meaning" in prompt else changed
 
     assert inflate(original, 1.0, generate, KeywordEmbedder(), _ENCODING) == original
-    assert 'section "alpha" drifted' in prompts[-1]
+    assert 'section "alpha" changed meaning' in prompts[-1]
 
 
 def test_inflate_raises_after_max_attempts_below_gate() -> None:

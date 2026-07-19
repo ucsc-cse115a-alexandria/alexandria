@@ -32,7 +32,7 @@ from alexandria.ir.registry import (
     required_scorers,
     scorer_peers,
 )
-from alexandria.ir.similarity import cosine_distance, cosine_similarity_matrix, normalize
+from alexandria.ir.similarity import compute_cos_sim_diff, cosine_similarity_matrix, normalize
 
 __all__ = [
     "Candidate",
@@ -55,7 +55,7 @@ __all__ = [
     "Sentence",
     "SentenceId",
     "TokenCount",
-    "cosine_distance",
+    "compute_cos_sim_diff",
     "cosine_similarity_matrix",
     "get_optimizer",
     "get_scorer",

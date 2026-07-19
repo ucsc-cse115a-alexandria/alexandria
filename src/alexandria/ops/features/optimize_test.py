@@ -19,9 +19,9 @@ if TYPE_CHECKING:
     from alexandria.ir.document import Document
 
 _PROMPT = "repeat me and me\nrepeat me and me\nunique line\n"
-# HashEmbedder re-embeds edited text to an unrelated vector, so the optimizer's drift gate needs
+# HashEmbedder re-embeds edited text to an unrelated vector, so the optimizer's cos_sim_diff gate needs
 # a generous budget everywhere the merge should be accepted.
-_GENEROUS = Params(drift_budget=2.0)
+_GENEROUS = Params(cos_sim_diff_budget=2.0)
 
 
 class _CannedMerger:
@@ -51,7 +51,7 @@ class _ScriptedMerger:
 
 
 class _CountingEmbedder:
-    """Deterministic Embedder: text embeds to its (a, b, c) letter counts, so every drift is predictable."""
+    """Deterministic Embedder: text embeds to its (a, b, c) letter counts, so every cos_sim_diff is predictable."""
 
     @property
     def model_id(self) -> str:
@@ -211,7 +211,7 @@ def test_token_target_stops_merge_generation_once_the_plan_can_reach_it() -> Non
         score(document, names=("redundancy",)),
         embedder,
         merger,
-        params=Params(drift_budget=2.0, max_tokens=one_deletion_target),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=one_deletion_target),
     )
 
     assert len(plan) == 1
@@ -228,16 +228,16 @@ def test_token_target_stops_merge_generation_once_the_plan_can_reach_it() -> Non
     assert unconstrained_merger.calls > merger.calls
 
 
-def test_an_over_budget_rewrite_is_retried_with_drift_feedback() -> None:
+def test_an_over_budget_rewrite_is_retried_with_cos_sim_diff_feedback() -> None:
     embedder = _CountingEmbedder()
     # The near-duplicate pair is not text-identical, so it exercises the merger retry path.
-    # Attempt 1 ("zz") leaves only the c-vector and exceeds the drift budget. Attempt 2
+    # Attempt 1 ("zz") leaves only the c-vector and exceeds the cos_sim_diff budget. Attempt 2
     # equals the first sentence, so it lands as a Delete and fits the budget.
     document = represent("aa bb\naaa bb\ncc\n", embedder)
     scores = score(document, names=("redundancy",))
     merger = _ScriptedMerger("zz", "aa bb")
 
-    plan = optimize(document, scores, embedder, merger, params=Params(drift_budget=0.5))
+    plan = optimize(document, scores, embedder, merger, params=Params(cos_sim_diff_budget=0.5))
 
     (candidate,) = plan
     assert candidate.edit.op == "delete"
@@ -251,7 +251,7 @@ def test_a_pair_still_over_budget_after_all_attempts_is_skipped() -> None:
     scores = score(document, names=("redundancy",))
     merger = _ScriptedMerger("zz", "zz", "zz")
 
-    plan = optimize(document, scores, embedder, merger, params=Params(drift_budget=0.5))
+    plan = optimize(document, scores, embedder, merger, params=Params(cos_sim_diff_budget=0.5))
 
     assert plan == ()
     assert len(merger.feedback) == MAX_MERGE_ATTEMPTS

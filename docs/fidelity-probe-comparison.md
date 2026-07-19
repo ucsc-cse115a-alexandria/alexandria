@@ -1,4 +1,4 @@
-# Fidelity signal comparison — sentence-embedding cosine vs spec-v2 behavioral drift
+# Fidelity signal comparison — sentence-embedding cosine vs spec-v2 `behavioral_jsd`
 
 Both signals scored on the **same** `literature` minimal-pair catalog (`scripts/fidelity_pairs.json`). 
 This report is generated from a live run; regenerate it by rerunning the two probes.
@@ -11,7 +11,7 @@ This report is generated from a live run; regenerate it by rerunning the two pro
 
 ## Headline — does the signal separate meaning-changing (MC) from meaning-preserving (MP)?
 
-| metric | cosine (v1) | behavioral drift (spec-v2) |
+| metric | cosine (v1) | `behavioral_jsd` (spec-v2) |
 |---|---|---|
 | **AUROC** (MC vs MP, higher = better separation) | 0.260 | 0.552 |
 | MC flips leaking under the keep-all-paraphrases cutoff | 14/16 | 12/16 |
@@ -23,9 +23,9 @@ AUROC 0.5 = no separation, 1.0 = perfect. Cosine **0.260** vs behavioral **0.552
 
 ## Per-pair — both signals side by side
 
-`cos` = cosine (↑ keep). `drift` = JSD bits (↓ keep). Rows are sorted by drift ascending (behaviorally closest first), so an ideal behavioral signal would put every MP row at the top and every MC row at the bottom.
+`cos` = cosine (↑ keep). `behavioral_jsd` = JSD bits (↓ keep). Rows are sorted by behavioral_jsd ascending (behaviorally closest first), so an ideal behavioral signal would put every MP row at the top and every MC row at the bottom.
 
-| label | kind | cos | drift | original → edited |
+| label | kind | cos | behavioral_jsd | original → edited |
 |---|---|---:|---:|---|
 | MC | version-swap | 0.945 | 0.004 | `Use the v1 API endpoint.` → `Use the v2 API endpoint.` |
 | MC | unit-swap | 0.986 | 0.023 | `Set the request timeout to 30 seconds.` → `Set the request timeout to 30 minutes.` |
@@ -53,27 +53,27 @@ AUROC 0.5 = no separation, 1.0 = perfect. Cosine **0.260** vs behavioral **0.552
 
 ## Where they disagree most — the diagnostic cases
 
-MC flips that **cosine misses but drift catches** (cosine high, drift high):
+MC flips that **cosine misses but behavioral_jsd catches** (cosine high, behavioral_jsd high):
 
-- **role-swap** — cos 0.998 (looks safe) / drift 0.156 — `Forward the summary from the agent to the user.` → `Forward the summary from the user to the agent.`
-- **comparator-flip** — cos 0.993 (looks safe) / drift 0.618 — `Flag any response above 0.8 confidence.` → `Flag any response below 0.8 confidence.`
-- **boilerplate-inflation** — cos 0.990 (looks safe) / drift 0.584 — `Please make sure that you carefully follow every formatting rule below and respond in valid JSON.` → `Please make sure that you carefully follow every formatting rule below and do not respond in valid JSON.`
-- **quantifier-scope** — cos 0.928 (looks safe) / drift 0.651 — `Translate all comments into French.` → `Translate some comments into French.`
-- **antonym** — cos 0.919 (looks safe) / drift 0.533 — `Keep the response short.` → `Keep the response long.`
-- **negation-verbal** — cos 0.890 (looks safe) / drift 0.406 — `Include code examples in the answer.` → `Do not include code examples in the answer.`
+- **role-swap** — cos 0.998 (looks safe) / behavioral_jsd 0.156 — `Forward the summary from the agent to the user.` → `Forward the summary from the user to the agent.`
+- **comparator-flip** — cos 0.993 (looks safe) / behavioral_jsd 0.618 — `Flag any response above 0.8 confidence.` → `Flag any response below 0.8 confidence.`
+- **boilerplate-inflation** — cos 0.990 (looks safe) / behavioral_jsd 0.584 — `Please make sure that you carefully follow every formatting rule below and respond in valid JSON.` → `Please make sure that you carefully follow every formatting rule below and do not respond in valid JSON.`
+- **quantifier-scope** — cos 0.928 (looks safe) / behavioral_jsd 0.651 — `Translate all comments into French.` → `Translate some comments into French.`
+- **antonym** — cos 0.919 (looks safe) / behavioral_jsd 0.533 — `Keep the response short.` → `Keep the response long.`
+- **negation-verbal** — cos 0.890 (looks safe) / behavioral_jsd 0.406 — `Include code examples in the answer.` → `Do not include code examples in the answer.`
 
-MC flips that **both still miss** (cosine high, drift low — the hard residual):
+MC flips that **both still miss** (cosine high, behavioral_jsd low — the hard residual):
 
-- **version-swap** — cos 0.945 / drift 0.004 — `Use the v1 API endpoint.` → `Use the v2 API endpoint.`
-- **unit-swap** — cos 0.986 / drift 0.023 — `Set the request timeout to 30 seconds.` → `Set the request timeout to 30 minutes.`
-- **attribute-binding** — cos 0.990 / drift 0.044 — `Make the title bold and the body italic.` → `Make the title italic and the body bold.`
-- **role-swap** — cos 0.994 / drift 0.048 — `The reviewer must approve the author's changes.` → `The author must approve the reviewer's changes.`
+- **version-swap** — cos 0.945 / behavioral_jsd 0.004 — `Use the v1 API endpoint.` → `Use the v2 API endpoint.`
+- **unit-swap** — cos 0.986 / behavioral_jsd 0.023 — `Set the request timeout to 30 seconds.` → `Set the request timeout to 30 minutes.`
+- **attribute-binding** — cos 0.990 / behavioral_jsd 0.044 — `Make the title bold and the body italic.` → `Make the title italic and the body bold.`
+- **role-swap** — cos 0.994 / behavioral_jsd 0.048 — `The reviewer must approve the author's changes.` → `The author must approve the reviewer's changes.`
 
 ## Context dilution — one negation, growing shared context
 
 Same meaning flip (`respond` → `do not respond`) buried under more shared context. A good fidelity signal should stay decisive as the prompt grows.
 
-| shared tokens | cosine (→1 = hides flip) | drift (stays high = keeps flip visible) |
+| shared tokens | cosine (→1 = hides flip) | behavioral_jsd (stays high = keeps flip visible) |
 |---:|---:|---:|
 | 7 | 0.891 | 0.875 |
 | 10 | 0.896 | 0.842 |

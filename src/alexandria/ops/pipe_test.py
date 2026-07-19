@@ -37,8 +37,8 @@ class _CountingEmbedder:
         return [np.array([text.count("a"), text.count("b"), text.count("c")], dtype=np.float32) for text in texts]
 
 
-def test_default_whole_prompt_drift_budget_is_fifty_percent() -> None:
-    assert Params().drift_budget == 0.5
+def test_default_whole_prompt_cos_sim_diff_budget_is_fifty_percent() -> None:
+    assert Params().cos_sim_diff_budget == 0.5
 
 
 def test_score_report_adds_the_redundant_peer() -> None:
@@ -61,7 +61,7 @@ def test_reduce_records_merge_calls_and_retries() -> None:
         "aa bb\naaa bb\ncc\n",
         _CountingEmbedder(),
         _RetryOnceMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert result.merge_metrics.calls == 2
@@ -76,7 +76,7 @@ def test_reduce_stamps_embedding_and_wall_clock_metrics() -> None:
         "aa bb\naaa bb\ncc\n",
         _CountingEmbedder(),
         _RetryOnceMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     metrics = result.merge_metrics
@@ -90,7 +90,7 @@ def test_propose_returns_the_document_and_one_diff_per_candidate() -> None:
         "# A\nrepeat me\nrepeat me\n# B\necho twice\necho twice\n",
         HashEmbedder(),
         _FirstWinsMerger(),
-        params=Params(drift_budget=2.0),
+        params=Params(cos_sim_diff_budget=2.0),
     )
 
     assert len(proposal.diffs) == 2

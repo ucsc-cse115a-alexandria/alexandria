@@ -10,9 +10,9 @@ Scoped to what the team can learn in a five-week course and to what the pipeline
 | Area | Choice | Why |
 |---|---|---|
 | Language / packaging | Python 3.14, `uv` | Established in the repo; fast, reproducible envs. |
-| IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't drift from their children. |
+| IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't diverge from their children. |
 | Embeddings | `openai` (`text-embedding-3-small` embeddings; `gpt-5.6-luna` merge rewrites) | Hosted embeddings and LLM merge rewrites, isolated inside the utils shell. Requires an API key. |
-| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the drift distances behind `merge_rewrite`. |
+| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the `cos_sim_diff` values behind `merge_rewrite`. |
 | Persistence | Parquet via Polars | One row per node; stores embeddings as compact `float32` lists. JSON/JSONL bloat them ~3–5× and round lossily. |
 | Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
 | Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |

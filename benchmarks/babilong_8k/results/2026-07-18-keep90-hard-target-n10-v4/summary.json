@@ -1,5 +1,5 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "method": {
     "benchmark": "BABILong 8k qa1-qa5 task-balanced sample",
     "n_cases": 10,
@@ -41,9 +41,9 @@
     "bootstrap_seed": 42,
     "release_threshold": 0.9,
     "clears_release_threshold": false,
-    "drift_budget_met": 10,
-    "mean_embedding_drift": 0.007799869775772095,
-    "p95_embedding_drift": 0.02007601857185363,
+    "cos_sim_diff_budget_met": 10,
+    "mean_cos_sim_diff": 0.007799869775772095,
+    "p95_cos_sim_diff": 0.02007601857185363,
     "release_decision": "FAIL: retention confidence interval does not clear the release threshold"
   },
   "performance": {

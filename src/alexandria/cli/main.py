@@ -40,7 +40,9 @@ if TYPE_CHECKING:
 
 _DEFAULTS = Params()
 
-_DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (default: 0.5 = 50%)"
+_COS_SIM_DIFF_HELP = (
+    "max cumulative cos_sim_diff from the original prompt the reduction may accept (default: 0.5 = 50%)"
+)
 
 
 class _ReduceMode(StrEnum):
@@ -172,9 +174,9 @@ def score_cmd(file: IO[str], as_table: bool, out_path: Path | None) -> None:
 
 @cli.command(name="optimize")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
+@click.option("--cos-sim-diff-budget", type=float, default=_DEFAULTS.cos_sim_diff_budget, help=_COS_SIM_DIFF_HELP)
 @_out_option
-def optimize_cmd(file: IO[str], drift_budget: float, out_path: Path | None) -> None:
+def optimize_cmd(file: IO[str], cos_sim_diff_budget: float, out_path: Path | None) -> None:
     """ScoredEnvelope in, a PlanEnvelope (JSON) out."""
     with _clean_errors():
         embedder = default_embedder()
@@ -186,7 +188,7 @@ def optimize_cmd(file: IO[str], drift_budget: float, out_path: Path | None) -> N
             scored.scores,
             embedder,
             tracked_merger,
-            params=Params(drift_budget=drift_budget),
+            params=Params(cos_sim_diff_budget=cos_sim_diff_budget),
         )
         payload = PlanEnvelope(
             document=scored.document,
@@ -198,14 +200,16 @@ def optimize_cmd(file: IO[str], drift_budget: float, out_path: Path | None) -> N
 
 @cli.command(name="select")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
+@click.option("--cos-sim-diff-budget", type=float, default=_DEFAULTS.cos_sim_diff_budget, help=_COS_SIM_DIFF_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
-def select_cmd(file: IO[str], drift_budget: float, as_json: bool) -> None:
+def select_cmd(file: IO[str], cos_sim_diff_budget: float, as_json: bool) -> None:
     """PlanEnvelope in, the reduced prompt out (or a JSON reduction summary with --json)."""
     with _clean_errors():
         embedder = default_embedder()
         envelope = PlanEnvelope.model_validate_json(file.read())
-        selection = select(envelope.document, envelope.plan, embedder, params=Params(drift_budget=drift_budget))
+        selection = select(
+            envelope.document, envelope.plan, embedder, params=Params(cos_sim_diff_budget=cos_sim_diff_budget)
+        )
     if as_json:
         click.echo(
             _reduction_json(
@@ -233,7 +237,7 @@ def select_cmd(file: IO[str], drift_budget: float, as_json: bool) -> None:
 def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_similarity: float | None) -> None:
     """Compare two prompts: cosine similarity and token reduction as JSON (at most one FILE may be '-').
 
-    This command talks in similarity where reduce talks in --drift-budget; the JSON carries both.
+    This command talks in similarity where reduce talks in --cos-sim-diff-budget; the JSON carries both.
     """
     with _clean_errors():
         embedder = default_embedder()
@@ -249,7 +253,7 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     "--save-tokens",
     type=int,
     default=None,
-    help="reduce the prompt by N tokens (applied least-drift-first)",
+    help="reduce the prompt by N tokens (applied in ascending cos_sim_diff order)",
 )
 @click.option(
     "--keep",
@@ -263,7 +267,7 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     default=None,
     help="require reducing the prompt by P percent; exit with an error if the target is not met",
 )
-@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
+@click.option("--cos-sim-diff-budget", type=float, default=_DEFAULTS.cos_sim_diff_budget, help=_COS_SIM_DIFF_HELP)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
     "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the checked ones"
@@ -284,7 +288,7 @@ def reduce_cmd(
     save_tokens: int | None,
     keep: float | None,
     target_reduction: float | None,
-    drift_budget: float,
+    cos_sim_diff_budget: float,
     as_json: bool,
     interactive: bool,
     browser: bool,
@@ -295,9 +299,9 @@ def reduce_cmd(
 
     \b
     Examples:
-      alexandria reduce prompt.md                    # automatic: apply every edit within --drift-budget
+      alexandria reduce prompt.md                    # automatic: apply every edit within --cos-sim-diff-budget
       alexandria reduce --keep 95 prompt.md          # aim to keep 95% of the source tokens
-      alexandria reduce prompt.md --save-tokens 200  # stop once 200 tokens are saved (least-drift-first)
+      alexandria reduce prompt.md --save-tokens 200  # stop once 200 tokens are saved (lowest cos_sim_diff first)
       alexandria reduce prompt.md --json             # machine-readable summary of what was applied
       alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
       alexandria reduce --browser prompt.md          # review each proposed edit in a browser (FILE required)
@@ -341,7 +345,7 @@ def reduce_cmd(
                 prompt,
                 embedder,
                 merger,
-                Params(drift_budget=drift_budget),
+                Params(cos_sim_diff_budget=cos_sim_diff_budget),
                 lambda proposal: review(proposal.document, proposal.diffs),
             )
         elif mode is _ReduceMode.BROWSER:
@@ -349,7 +353,7 @@ def reduce_cmd(
                 prompt,
                 embedder,
                 merger,
-                Params(drift_budget=drift_budget),
+                Params(cos_sim_diff_budget=cos_sim_diff_budget),
                 lambda proposal: run_browser_review(proposal, open_browser=not no_open),
             )
         else:
@@ -363,7 +367,7 @@ def reduce_cmd(
             else:
                 max_tokens = max(source_tokens - save_tokens, 1) if save_tokens is not None else None
             params = Params(
-                drift_budget=drift_budget,
+                cos_sim_diff_budget=cos_sim_diff_budget,
                 max_tokens=max_tokens,
                 require_target=target_reduction is not None,
             )
@@ -407,7 +411,7 @@ def reduce_cmd(
 
 @cli.command(name="report")
 @click.argument("file", type=click.File("r"), default="-")
-@click.option("--drift-budget", type=float, default=_DEFAULTS.drift_budget, help=_DRIFT_HELP)
+@click.option("--cos-sim-diff-budget", type=float, default=_DEFAULTS.cos_sim_diff_budget, help=_COS_SIM_DIFF_HELP)
 @click.option(
     "--baseline",
     type=click.File("r"),
@@ -429,13 +433,13 @@ def reduce_cmd(
 )
 def report_cmd(
     file: IO[str],
-    drift_budget: float,
+    cos_sim_diff_budget: float,
     baseline: IO[str] | None,
     quality_tolerance: float,
     token_tolerance: int,
 ) -> None:
     """Run optimization and emit token metrics plus quality scores as JSON."""
-    params = Params(drift_budget=drift_budget)
+    params = Params(cos_sim_diff_budget=cos_sim_diff_budget)
     comparison = None
     with _clean_errors():
         embedder = default_embedder()

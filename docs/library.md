@@ -35,15 +35,15 @@ applied. `examples/reduce_prompt.py` is a runnable version that loads the key fr
 
 For a hard ceiling, pass `Params(max_tokens=..., require_target=True)`. Successful results always satisfy
 `result.reduced_tokens <= max_tokens`; model overshoot is repaired with the same tokenizer used for reporting.
-`result.merge_metrics.final_drift` records the selected prompt's whole-document drift and
-`drift_budget_met` states whether it also cleared the requested quality budget. If protected Markdown/XML
+`result.merge_metrics.final_cos_sim_diff` records the selected prompt's whole-document `cos_sim_diff` and
+`cos_sim_diff_budget_met` states whether it also cleared the requested quality budget. If protected Markdown/XML
 structure itself exceeds the ceiling, `reduce` raises `InfeasibleTargetError` before calling the merger.
 
 ## Run offline by injecting an embedder and merger
 
 For tests or CI that must run without network access, pass your own `Embedder` and `SentenceMerger`
 instead of the OpenAI defaults. `HashEmbedder` is reproducible but not semantic (it only scores exact
-duplicates as redundant and re-embeds edited text to an unrelated vector), so use a generous drift
+duplicates as redundant and re-embeds edited text to an unrelated vector), so use a generous `cos_sim_diff`
 budget. A minimal first-wins merger returns the first sentence unchanged:
 
 ```python
@@ -62,7 +62,7 @@ result = alexandria.reduce(
     "repeat me\nrepeat me\nunique line\n",
     HashEmbedder(),
     FirstWinsMerger(),
-    params=Params(drift_budget=2.0),
+    params=Params(cos_sim_diff_budget=2.0),
 )
 print(result.text)
 ```
@@ -90,6 +90,6 @@ print(selection.document.text)
 ```
 
 `represent` converts raw text into a `Document`; `score` returns redundancy scores; `optimize` merges
-near-duplicate pairs into LLM-rewritten candidate edits; and `select` applies acceptable edits
-least-drift-first. For their contracts, extension points, and internal data model, see
+near-duplicate pairs into LLM-rewritten candidate edits; and `select` applies acceptable edits in
+ascending `cos_sim_diff` order. For their contracts, extension points, and internal data model, see
 [the design specification](spec.md).

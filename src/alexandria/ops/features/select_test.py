@@ -15,12 +15,12 @@ from alexandria.utils.embedders import HashEmbedder
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-_GENEROUS = Params(drift_budget=2.0)
+_GENEROUS = Params(cos_sim_diff_budget=2.0)
 
 
 class _CountingEmbedder:
     """Deterministic Embedder: a text embeds to its (a, b, c) letter counts, so each deletion
-    drifts the prompt by a predictable, monotonic amount."""
+    changes the prompt's cos_sim_diff by a predictable, monotonic amount."""
 
     @property
     def model_id(self) -> str:
@@ -55,7 +55,7 @@ def test_tight_budget_keeps_everything() -> None:
     document = represent("repeat me\nrepeat me\nunique line\n", embedder)
     plan = optimize(document, score(document, names=("redundancy",)), embedder, _FirstWinsMerger(), params=_GENEROUS)
 
-    reduced = select(document, plan, embedder, params=Params(drift_budget=0.01))
+    reduced = select(document, plan, embedder, params=Params(cos_sim_diff_budget=0.01))
 
     assert reduced.document.text == document.text
     assert reduced.applied == ()
@@ -70,17 +70,17 @@ def test_empty_plan_returns_document_unchanged() -> None:
     assert reduced.document.text == document.text
 
 
-def test_applies_least_drift_first_regardless_of_confidence() -> None:
+def test_applies_least_cos_sim_diff_first_regardless_of_confidence() -> None:
     embedder = _CountingEmbedder()
     document = represent("a\naa\nb\n", embedder)
     ids = [s.id for s in document.sentences]
-    # Base count-vector is (3, 1, 0). Deleting "a\n" leaves (2, 1, 0) — drift ~0.010;
-    # deleting "b\n" leaves (3, 0, 0) — drift ~0.051. The bigger-drift candidate gets the
-    # higher confidence to prove ordering is by drift, not confidence.
+    # Base count-vector is (3, 1, 0). Deleting "a\n" leaves (2, 1, 0) — cos_sim_diff ~0.010;
+    # deleting "b\n" leaves (3, 0, 0) — cos_sim_diff ~0.051. The larger-cos_sim_diff candidate gets the
+    # higher confidence to prove ordering is by cos_sim_diff, not confidence.
     drop_a = Candidate(edit=Delete(targets=(ids[0],)), confidence=0.5, source="t", reason="r")
     drop_b = Candidate(edit=Delete(targets=(ids[2],)), confidence=0.9, source="t", reason="r")
 
-    reduced = select(document, (drop_b, drop_a), embedder, params=Params(drift_budget=0.06))
+    reduced = select(document, (drop_b, drop_a), embedder, params=Params(cos_sim_diff_budget=0.06))
 
     assert reduced.applied[0] == drop_a
 
@@ -93,7 +93,7 @@ def test_stops_once_the_token_target_is_met() -> None:
     second = Candidate(edit=Delete(targets=(ids[2],)), confidence=0.9, source="t", reason="r")
     target = document.token_count - document.sentences[1].token_count  # one deletion is enough
 
-    reduced = select(document, (first, second), embedder, params=Params(drift_budget=2.0, max_tokens=target))
+    reduced = select(document, (first, second), embedder, params=Params(cos_sim_diff_budget=2.0, max_tokens=target))
 
     assert len(reduced.applied) == 1
     assert reduced.document.token_count <= target

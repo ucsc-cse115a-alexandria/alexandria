@@ -27,7 +27,7 @@ class ReportConfig(BaseModel):
     optimizers: tuple[str, ...]
     selector: str
     threshold: float
-    drift_budget: float
+    cos_sim_diff_budget: float
 
 
 class TokenMetrics(BaseModel):
@@ -52,7 +52,7 @@ class OptimizationReport(BaseModel):
     """Stable, machine-readable summary of one end-to-end optimization run."""
 
     model_config = ConfigDict(frozen=True)
-    schema_version: Literal[1] = 1
+    schema_version: Literal[2] = 2
     config: ReportConfig
     tokens: TokenMetrics
     quality: QualityScores
@@ -109,7 +109,7 @@ def optimization_report(
             optimizers=optimizers,
             selector=selector,
             threshold=params.threshold,
-            drift_budget=params.drift_budget,
+            cos_sim_diff_budget=params.cos_sim_diff_budget,
         ),
         tokens=TokenMetrics(
             source=result.source_tokens,

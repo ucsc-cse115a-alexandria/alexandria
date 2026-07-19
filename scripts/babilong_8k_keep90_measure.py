@@ -12,7 +12,7 @@ import time
 from collections import defaultdict
 from contextlib import ExitStack
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 from unittest.mock import patch
 
 import numpy as np
@@ -72,6 +72,7 @@ class MeasuredCase(BaseModel):
 
 class RawRun(BaseModel):
     model_config = ConfigDict(frozen=True)
+    schema_version: Literal[2] = 2
     implementation_commit: str
     model: str = MODEL
     answer_reasoning: str = "none"
@@ -291,7 +292,7 @@ def _write_summary(
     reduced_tokens = sum(record.reduced_tokens for record in run.records)
     compression_times = [record.compression_elapsed_seconds for record in run.records]
     answer_times = [record.answer_elapsed_seconds for record in run.records]
-    drifts = [record.merge_metrics.final_drift or 0.0 for record in run.records]
+    cos_sim_diffs = [record.merge_metrics.final_cos_sim_diff or 0.0 for record in run.records]
     run_cost = _estimated_cost(run.usage)
     original_cost = (
         float(baseline_measurement["api_usage_and_cost"]["total_estimated_usd"])
@@ -302,7 +303,7 @@ def _write_summary(
         float(baseline_measurement["timing_seconds"]["total_wall_clock"]) if baseline_measurement is not None else None
     )
     payload = {
-        "schema_version": 1,
+        "schema_version": 2,
         "method": {
             "benchmark": "BABILong 8k qa1-qa5 task-balanced sample",
             "n_cases": len(run.records),
@@ -333,9 +334,11 @@ def _write_summary(
         },
         "quality": {
             **retention.model_dump(),
-            "drift_budget_met": sum(record.merge_metrics.drift_budget_met is True for record in run.records),
-            "mean_embedding_drift": float(np.mean(drifts)),
-            "p95_embedding_drift": float(np.quantile(drifts, 0.95)),
+            "cos_sim_diff_budget_met": sum(
+                record.merge_metrics.cos_sim_diff_budget_met is True for record in run.records
+            ),
+            "mean_cos_sim_diff": float(np.mean(cos_sim_diffs)),
+            "p95_cos_sim_diff": float(np.quantile(cos_sim_diffs, 0.95)),
             "release_decision": (
                 "PASS: retention confidence interval clears the release threshold"
                 if retention.clears_release_threshold

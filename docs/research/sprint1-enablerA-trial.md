@@ -39,7 +39,7 @@ prompt sets, two consistent null results.
 - Short prompts: every one of 5 prompts failed scripts/inflate_redundancy.py's
   similarity check within its built-in retry limit. There is little room to
   redundantly restate a single short instruction ten times over without either
-  repeating verbatim or drifting off the original meaning.
+  repeating verbatim or diverging from the original meaning.
 - Longer prompts: after starting the first prompt of the 10x pass, the script
   produced no further output for over 8 minutes, at which point it was killed
   manually. The cause was not confirmed; the run simply did not complete or

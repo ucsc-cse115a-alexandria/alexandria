@@ -14,13 +14,13 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, Plan
     from alexandria.ir.document import Document
 
-DEFAULT_SELECTOR = "least_drift"
+DEFAULT_SELECTOR = "least_cos_sim_diff"
 
 
 @register_selector(DEFAULT_SELECTOR)
-def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
-    """Apply candidates in ascending whole-document drift order, under the cumulative drift
-    budget, stopping once params.max_tokens is met.
+def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, params: Params) -> Selection:
+    """Apply candidates in ascending whole-document cos_sim_diff order, under the cumulative
+    cos_sim_diff budget, stopping once params.max_tokens is met.
 
     Ranking embeds every candidate's trial text in one batched call; the cumulative re-check
     then embeds once per applied candidate.
@@ -28,9 +28,9 @@ def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Para
     if params.max_tokens is not None and document.token_count <= params.max_tokens:
         return Selection(document=document, applied=())
 
-    base = normalize(document.embedding)  # normalize the fixed base once, not per drift measurement
+    base = normalize(document.embedding)  # normalize the fixed base once, not per cos_sim_diff measurement
 
-    def drift_from_base(vector: NDArray[np.float32]) -> float:
+    def cos_sim_diff_from_base(vector: NDArray[np.float32]) -> float:
         return 1.0 - float(normalize(vector) @ base)
 
     trials = [
@@ -39,7 +39,7 @@ def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Para
         if (trial := document.apply(candidate)) is not None and trial is not document
     ]
     vectors = embedder.embed([trial.text for _, trial in trials]) if trials else []
-    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: drift_from_base(pair[1]))
+    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: cos_sim_diff_from_base(pair[1]))
 
     current = document
     applied: list[Candidate] = []
@@ -47,7 +47,7 @@ def least_drift(document: Document, plan: Plan, embedder: Embedder, params: Para
         trial = current.apply(candidate)
         if trial is None or trial is current:
             continue
-        if drift_from_base(embedder.embed([trial.text])[0]) > params.drift_budget:
+        if cos_sim_diff_from_base(embedder.embed([trial.text])[0]) > params.cos_sim_diff_budget:
             continue
         current = trial
         applied.append(candidate)
@@ -79,7 +79,7 @@ def select(
 
 
 def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
-    """Fold Document.apply over the candidates; accept means accept — no drift-budget re-filtering.
+    """Fold Document.apply over the candidates; accept means accept — no cos_sim_diff budget re-filtering.
 
     A candidate whose edit would empty the document or a section (apply returns None) is skipped.
     """
@@ -91,4 +91,4 @@ def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> D
     return current
 
 
-__all__ = ["DEFAULT_SELECTOR", "apply_candidates", "least_drift", "select"]
+__all__ = ["DEFAULT_SELECTOR", "apply_candidates", "least_cos_sim_diff", "select"]

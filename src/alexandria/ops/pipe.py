@@ -120,7 +120,7 @@ def _retry_exhaustively(
     reporter: ReductionReporter,
 ) -> tuple[Plan, Selection]:
     """Re-run optimize + select without a ceiling when a target-sized proposal overshoots after
-    cumulative drift checks, reusing every cached merger response instead of paying for a call twice."""
+    cumulative cos_sim_diff checks, reusing every cached merger response instead of paying for a call twice."""
     exhaustive = params.model_copy(update={"max_tokens": None, "require_target": False})
     plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=exhaustive, reporter=reporter)
     selection = select(document, plan, embedder, selector, params=params)
@@ -128,7 +128,7 @@ def _retry_exhaustively(
 
 
 def _target_merge_metrics(tracked_merger: TrackedMerger, outcome: TargetMergeOutcome) -> MergeMetrics:
-    """Merger counters plus the prune, repair, and drift figures a target run produced."""
+    """Merger counters plus the prune, repair, and cos_sim_diff figures a target run produced."""
     return tracked_merger.metrics(
         proposed_edits=outcome.applied_groups, applied_edits=outcome.applied_groups
     ).model_copy(
@@ -136,8 +136,8 @@ def _target_merge_metrics(tracked_merger: TrackedMerger, outcome: TargetMergeOut
             "pruned_sentences": outcome.pruned_sentences,
             "pruned_tokens": outcome.pruned_tokens,
             "repaired_tokens": outcome.repaired_tokens,
-            "final_drift": outcome.final_drift,
-            "drift_budget_met": outcome.drift_budget_met,
+            "final_cos_sim_diff": outcome.final_cos_sim_diff,
+            "cos_sim_diff_budget_met": outcome.cos_sim_diff_budget_met,
         }
     )
 
