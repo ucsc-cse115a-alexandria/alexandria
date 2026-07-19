@@ -21,11 +21,8 @@ def most_similar(document: Document) -> list[tuple[SentenceId | None, float]]:
         return [(None, 0.0) for _ in sentences]
     similarity = similarity_matrix_for(document).copy()  # copy: the shared matrix is read-only
     np.fill_diagonal(similarity, -np.inf)
-    peers: list[tuple[SentenceId | None, float]] = []
-    for row in similarity:
-        peer_index = int(row.argmax())
-        peers.append((sentences[peer_index].id, float(row[peer_index])))
-    return peers
+    peer_indices = similarity.argmax(axis=1)  # first-max tie-break matches the per-row argmax it replaces
+    return [(sentences[int(index)].id, float(row[index])) for row, index in zip(similarity, peer_indices, strict=True)]
 
 
 @register_scorer(DEFAULT_SCORER, peers=most_similar)

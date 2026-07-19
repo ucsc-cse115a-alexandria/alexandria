@@ -625,6 +625,7 @@ def _target_merge_window(
     if desired_tokens >= group_tokens or len(group) <= 2:
         return group
     normalized_document = normalize(document_embedding)
+    group_similarities = [float(np.dot(normalize(sentence.embedding), normalized_document)) for sentence in group]
     best: tuple[Sentence, ...] | None = None
     best_similarity = (False, float("-inf"), float("-inf"))
     end = 0
@@ -635,9 +636,7 @@ def _target_merge_window(
             end += 1
         if end - start >= 2 and window_tokens >= desired_tokens:
             window = group[start:end]
-            sentence_similarities = [
-                float(np.dot(normalize(sentence.embedding), normalized_document)) for sentence in window
-            ]
+            sentence_similarities = group_similarities[start:end]
             similarity = (
                 not any(_content_terms(sentence.text) & protected_terms for sentence in window),
                 min(sentence_similarities),
