@@ -65,9 +65,9 @@ def aggregate_summaries(summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
         raise ValueError("no benchmark clears the original-accuracy baseline")
     excluded_benchmarks = {
         benchmark: str(
-            summaries[benchmark].get("baseline_qualification", {}).get(
-                "decision", "FAIL: original accuracy does not clear the minimum baseline"
-            )
+            summaries[benchmark]
+            .get("baseline_qualification", {})
+            .get("decision", "FAIL: original accuracy does not clear the minimum baseline")
         )
         for benchmark in BENCHMARK_LABELS
         if benchmark not in qualified_benchmarks
