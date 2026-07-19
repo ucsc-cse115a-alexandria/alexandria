@@ -121,7 +121,7 @@ condition ran. LongBench v2 uses the pinned official `length=short` subset and e
 128,000 `cl100k_base` tokens. Every point is based on only five paired cases, so one answer moves accuracy by 20
 percentage points and the curves are intentionally reported as exploratory.
 
-| Prompt retained | Macro accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Total wall time | Estimated API cost |
+| Prompt retained | Average accuracy | Average accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Total wall time | Estimated API cost |
 |---:|---:|---:|---:|---:|---:|---:|
 | 50% | 20.0% | 27.8% | 56.9% | 0.083987 | 395.5s | $1.4291 |
 | 60% | 40.0% | 50.6% | 45.8% | 0.042149 | 351.5s | $1.2022 |
@@ -149,6 +149,10 @@ distributions by this smoke's measured per-token cost gives a planning estimate 
 Original accuracy was 60% on BABILong 8k, 100% on RULERv2, and 80% on LongBench v2. All BABILong and RULERv2
 compression conditions failed the predeclared 90% accuracy-retention confidence rule. LongBench keep70 and keep90
 passed in this five-case sample; the other LongBench conditions failed. No n=5 PASS is a release claim.
+
+`Average` is the equal-weight mean of the three benchmark-level values. `Task accuracy` is the fraction of cases
+answered correctly under a condition. `Accuracy retention` divides each benchmark's compressed accuracy by its
+original accuracy before averaging, so it measures preservation relative to that benchmark's solvable baseline.
 
 Exact commands, assumptions, and links to the append-only records and exact prompts are in the
 [shared benchmark documentation](benchmarks/prompt_compression/README.md). Machine-readable aggregate data is in

@@ -110,22 +110,45 @@ def _style_axis(axis: Any, *, ylabel: str) -> None:
     axis.spines[["top", "right"]].set_visible(False)
 
 
+def _legend_average_first(axis: Any, *, ncols: int = 2) -> None:
+    handles, labels = axis.get_legend_handles_labels()
+    order = sorted(range(len(labels)), key=lambda index: labels[index] != "Average")
+    axis.legend(
+        [handles[index] for index in order],
+        [labels[index] for index in order],
+        frameon=False,
+        ncols=ncols,
+        loc="best",
+    )
+
+
 def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str, path: Path) -> None:
     points = aggregate["points"]
     x = [point["retained_percent"] for point in points]
     figure, axis = plt.subplots(figsize=(10, 6), constrained_layout=True)
     for benchmark, label in BENCHMARK_LABELS.items():
         y = [point["benchmarks"][benchmark][metric] for point in points]
-        axis.plot(x, y, marker="o", linewidth=2.2, markersize=6, color=COLORS[benchmark], label=label)
-    macro = [point["macro_average"][metric] for point in points]
+        axis.plot(
+            x,
+            y,
+            marker="o",
+            linewidth=1.6,
+            markersize=5,
+            color=COLORS[benchmark],
+            alpha=0.58,
+            label=label,
+            zorder=2,
+        )
+    average = [point["macro_average"][metric] for point in points]
     axis.plot(
         x,
-        macro,
+        average,
         marker="o",
-        linewidth=3,
-        markersize=7,
+        linewidth=4.5,
+        markersize=9,
         color=COLORS["macro_average"],
-        label="Macro average",
+        label="Average",
+        zorder=5,
     )
     _style_axis(axis, ylabel=ylabel)
     axis.set_title(title, loc="left", fontsize=16, fontweight="bold", pad=14)
@@ -133,7 +156,7 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
         if metric != "accuracy_retention":
             axis.set_ylim(-0.03, 1.03)
         axis.yaxis.set_major_formatter(lambda value, _position: f"{value * 100:.0f}%")
-    axis.legend(frameon=False, ncols=2, loc="best")
+    _legend_average_first(axis)
     figure.savefig(path, dpi=180)
     plt.close(figure)
 
@@ -168,7 +191,7 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
     """Plot downstream quality directly against whole-prompt semantic change."""
     points = aggregate["points"]
     figure, (accuracy_axis, retention_axis) = plt.subplots(1, 2, figsize=(14, 6), constrained_layout=True)
-    series = (*BENCHMARK_LABELS.items(), ("macro_average", "Macro average"))
+    series = (*BENCHMARK_LABELS.items(), ("macro_average", "Average"))
     for key, label in series:
         x = [
             point["macro_average"]["cos_sim_diff"]
@@ -187,10 +210,12 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
                 x,
                 y,
                 marker="o",
-                linewidth=3 if key == "macro_average" else 2,
-                markersize=7 if key == "macro_average" else 5,
+                linewidth=4.5 if key == "macro_average" else 1.5,
+                markersize=9 if key == "macro_average" else 4.5,
                 color=COLORS[key],
+                alpha=1.0 if key == "macro_average" else 0.55,
                 label=label,
+                zorder=5 if key == "macro_average" else 2,
             )
             if key == "macro_average":
                 for semantic_change, quality, point in zip(x, y, points, strict=True):
@@ -212,7 +237,7 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
     accuracy_axis.set_title("Absolute accuracy", loc="left", fontsize=14, fontweight="bold")
     retention_axis.set_ylabel("Accuracy retention (original = 100%)")
     retention_axis.set_title("Original-relative retention", loc="left", fontsize=14, fontweight="bold")
-    retention_axis.legend(frameon=False, loc="best")
+    _legend_average_first(retention_axis, ncols=1)
     figure.suptitle("Downstream quality vs. semantic change", x=0.01, ha="left", fontsize=17, fontweight="bold")
     figure.savefig(path, dpi=180)
     plt.close(figure)

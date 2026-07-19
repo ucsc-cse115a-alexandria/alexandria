@@ -43,10 +43,14 @@ datasets. LongBench uses the pinned official `length=short` rows and an addition
 ceiling. The selected original prompts averaged 7,686, 6,391, and 39,710 tokens respectively.
 
 Original accuracy was 60% for BABILong, 100% for RULERv2, and 80% for LongBench, so all three passed the 50%
-baseline gate. Across benchmarks, macro accuracy rose from 20.0% at keep50 to 73.3% at keep90, versus 80.0% on
-original prompts. Macro accuracy retention at keep90 was 93.3%, with a mean whole-prompt `cos_sim_diff` of
+baseline gate. Across benchmarks, average accuracy rose from 20.0% at keep50 to 73.3% at keep90, versus 80.0% on
+original prompts. Average accuracy retention at keep90 was 93.3%, with a mean whole-prompt `cos_sim_diff` of
 0.007288 and an achieved 12.4% token reduction. The entire 90-condition run cost an estimated $5.0288 and took
 1,431.7 seconds of measured sequential wall time.
+
+`Average` is the equal-weight mean of the three benchmark-level values. Accuracy retention is computed per
+benchmark as compressed accuracy divided by original accuracy and then averaged; it is not another name for task
+accuracy.
 
 In addition to retained-percentage curves, the generated `semantic_change_vs_accuracy.png` directly plots task
 accuracy and original-relative accuracy retention against mean whole-prompt `cos_sim_diff`. This makes the quality
