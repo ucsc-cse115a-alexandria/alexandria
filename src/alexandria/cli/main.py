@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import math
 from contextlib import contextmanager
+from enum import StrEnum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -40,6 +41,14 @@ if TYPE_CHECKING:
 _DEFAULTS = Params()
 
 _DRIFT_HELP = "max cumulative cosine drift from the original prompt the reduction may accept (default: 0.5 = 50%)"
+
+
+class _ReduceMode(StrEnum):
+    """How `reduce` selects edits: automatically, or by handing review to a terminal or browser UI."""
+
+    AUTO = "auto"
+    INTERACTIVE = "interactive"
+    BROWSER = "browser"
 
 
 @contextmanager
@@ -304,27 +313,30 @@ def reduce_cmd(
         raise click.UsageError("--no-open requires --browser.")
     if interactive and browser:
         raise click.UsageError("--interactive and --browser are mutually exclusive.")
-    budget_options = (keep, save_tokens, target_reduction)
-    if sum(option is not None for option in budget_options) > 1:
+    mode = _ReduceMode.INTERACTIVE if interactive else _ReduceMode.BROWSER if browser else _ReduceMode.AUTO
+
+    budgets = {"--keep": keep, "--save-tokens": save_tokens, "--target-reduction": target_reduction}
+    set_budgets = {flag for flag, value in budgets.items() if value is not None}
+    if len(set_budgets) > 1:
         raise click.UsageError("--keep, --save-tokens, and --target-reduction are mutually exclusive.")
 
-    manual_review = interactive or browser
-    review_flag = "--interactive" if interactive else "--browser"
-    if manual_review and getattr(file, "name", None) == "<stdin>":
-        raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
-    if manual_review and any(option is not None for option in budget_options):
-        raise click.UsageError(
-            f"{review_flag} replaces the selector with your choices; "
-            "drop --save-tokens, --keep, and --target-reduction."
-        )
-    if verbose and manual_review:
-        raise click.UsageError("--verbose applies to the automatic reduction; drop --interactive/--browser.")
+    if mode is not _ReduceMode.AUTO:
+        review_flag = f"--{mode}"
+        if getattr(file, "name", None) == "<stdin>":
+            raise click.UsageError(f"{review_flag} needs a review UI, so FILE cannot be stdin; pass a file path.")
+        if set_budgets:
+            raise click.UsageError(
+                f"{review_flag} replaces the selector with your choices; "
+                "drop --save-tokens, --keep, and --target-reduction."
+            )
+        if verbose:
+            raise click.UsageError("--verbose applies to the automatic reduction; drop --interactive/--browser.")
 
     with _clean_errors():
         embedder = default_embedder()
         merger = default_merger()
         prompt = file.read()
-        if interactive:
+        if mode is _ReduceMode.INTERACTIVE:
             result = _reduce_with_review(
                 prompt,
                 embedder,
@@ -332,7 +344,7 @@ def reduce_cmd(
                 Params(drift_budget=drift_budget),
                 lambda proposal: review(proposal.document, proposal.diffs),
             )
-        elif browser:
+        elif mode is _ReduceMode.BROWSER:
             result = _reduce_with_review(
                 prompt,
                 embedder,

@@ -18,6 +18,8 @@ from alexandria.ir.similarity import cosine_distance, normalize, similarity_matr
 from alexandria.utils.tokens import count_tokens, truncate_tokens
 
 if TYPE_CHECKING:
+    from numpy.typing import NDArray
+
     from alexandria.ir.contracts import Embedder, MergeMetrics, Params, ReductionReporter, TrackedMerger
     from alexandria.ir.document import SentenceId
 
@@ -73,6 +75,17 @@ class _RepairVariant:
 
 
 @dataclass(frozen=True)
+class _PendingCandidate:
+    """A repaired variant whose Replace already proved feasible, awaiting its batched embeddings."""
+
+    variant: _RepairVariant
+    trial: Document
+    merged_tokens: int
+    structure_valid: bool
+    coverage_chunks: tuple[str, ...]
+
+
+@dataclass(frozen=True)
 class _TargetCandidate:
     text: str
     document: Document
@@ -85,7 +98,7 @@ class _TargetCandidate:
 
 
 @dataclass(frozen=True)
-class _TargetMergeOutcome:
+class TargetMergeOutcome:
     """A finished target merge: the reduced document plus the work both phases performed."""
 
     document: Document
@@ -113,7 +126,7 @@ class TargetMergeError(ValueError):
 
 def merge_to_target(
     document: Document, embedder: Embedder, merger: TrackedMerger, params: Params, reporter: ReductionReporter
-) -> _TargetMergeOutcome:
+) -> TargetMergeOutcome:
     """Meet the hard token ceiling first, then minimize drift among feasible candidates."""
     if params.max_tokens is None:
         raise ValueError("target merge requires max_tokens")
@@ -248,7 +261,7 @@ def merge_to_target(
         reporter.target_group_done(applied=True, document_tokens=current.token_count)
         applied_groups += 1
     final_drift = cosine_distance(current.embedding, document.embedding)
-    return _TargetMergeOutcome(
+    return TargetMergeOutcome(
         document=current,
         applied_groups=applied_groups,
         pruned_sentences=pruned_sentences,
@@ -447,7 +460,7 @@ def _evaluate_target_candidates(
     if not variants:
         return ()
 
-    pending: list[tuple[_RepairVariant, Document, int, bool, tuple[str, ...]]] = []
+    pending: list[_PendingCandidate] = []
     targets = tuple(sentence.id for sentence in group)
     placeholder_embedding = group[0].embedding
     for variant in variants.values():
@@ -463,30 +476,42 @@ def _evaluate_target_candidates(
         if trial is None:
             continue
         structure_valid = not _GENERATED_MARKUP.search(variant.text)
-        pending.append((variant, trial, merged_tokens, structure_valid, _coverage_chunks(variant.text)))
+        pending.append(
+            _PendingCandidate(
+                variant=variant,
+                trial=trial,
+                merged_tokens=merged_tokens,
+                structure_valid=structure_valid,
+                coverage_chunks=_coverage_chunks(variant.text),
+            )
+        )
     if not pending:
         return ()
 
-    chunk_counts = [len(chunks) for _, _, _, _, chunks in pending]
-    embedding_inputs = [variant.text for variant, _, _, _, _ in pending]
-    embedding_inputs.extend(trial.text for _, trial, _, _, _ in pending)
-    embedding_inputs.extend(chunk for _, _, _, _, chunks in pending for chunk in chunks)
+    embedding_inputs = [candidate.variant.text for candidate in pending]
+    embedding_inputs.extend(candidate.trial.text for candidate in pending)
+    embedding_inputs.extend(chunk for candidate in pending for chunk in candidate.coverage_chunks)
     embeddings = embedder.embed(embedding_inputs)
-    candidate_count = len(pending)
-    replacement_embeddings = embeddings[:candidate_count]
-    whole_embeddings = embeddings[candidate_count : candidate_count * 2]
-    chunk_embeddings = embeddings[candidate_count * 2 :]
+    count = len(pending)
+    replacement_embeddings = embeddings[:count]
+    whole_embeddings = embeddings[count : count * 2]
+    chunk_embeddings = embeddings[count * 2 :]
+    chunk_slices: list[list[NDArray[np.float32]]] = []
+    offset = 0
+    for candidate in pending:
+        chunk_slices.append(chunk_embeddings[offset : offset + len(candidate.coverage_chunks)])
+        offset += len(candidate.coverage_chunks)
 
     source_group_embeddings = np.stack([normalize(sentence.embedding) for sentence in group])
     evaluated: list[_TargetCandidate] = []
-    chunk_offset = 0
-    for index, ((variant, _, merged_tokens, structure_valid, _), whole_embedding) in enumerate(
-        zip(pending, whole_embeddings, strict=True)
+    for pending_candidate, replacement_embedding, whole_embedding, candidate_chunks in zip(
+        pending, replacement_embeddings, whole_embeddings, chunk_slices, strict=True
     ):
+        variant = pending_candidate.variant
         replacement = Encoded(
             text=variant.text,
-            token_count=merged_tokens,
-            embedding=replacement_embeddings[index],
+            token_count=pending_candidate.merged_tokens,
+            embedding=replacement_embedding,
         )
         edit = Candidate(
             edit=Replace(targets=targets, replacement=replacement),
@@ -494,19 +519,19 @@ def _evaluate_target_candidates(
             source="target_merge",
             reason=f"merged a content group to meet the {max_document_tokens}-token target",
         )
+        # Re-apply with the real replacement embedding: later rounds read this merged sentence's
+        # embedding (target-window selection and coverage), so the placeholder must not survive.
         applied = current.apply(edit)
         if applied is None:  # pragma: no cover - the placeholder application already proved feasibility
             continue
         candidate = applied.model_copy(update={"embedding": whole_embedding})
         drift = max(0.0, 1.0 - float(np.dot(normalize(whole_embedding), normalize(source.embedding))))
-        output_chunk_embeddings = np.stack(
-            [normalize(vector) for vector in chunk_embeddings[chunk_offset : chunk_offset + chunk_counts[index]]]
-        )
-        chunk_offset += chunk_counts[index]
+        output_chunk_embeddings = np.stack([normalize(vector) for vector in candidate_chunks])
         source_coverage = np.max(source_group_embeddings @ output_chunk_embeddings.T, axis=1)
         coverage = float(np.min(source_coverage))
         target_distance = max(0, candidate.token_count - max_document_tokens)
         issues: list[str] = []
+        structure_valid = pending_candidate.structure_valid
         if variant.repaired_tokens:
             issues.append(f"deterministic repair removed {variant.repaired_tokens} tokens to enforce the hard limit")
         if not structure_valid:
