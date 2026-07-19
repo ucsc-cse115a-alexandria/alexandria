@@ -5,13 +5,14 @@
 | Name                                     |    Stmts |     Miss |   Branch |   BrPart |     Cover |   Missing |
 |----------------------------------------- | -------: | -------: | -------: | -------: | --------: | --------: |
 | src/alexandria/\_\_main\_\_.py           |        1 |        1 |        0 |        0 |      0.0% |         1 |
-| src/alexandria/cli/browser\_review.py    |      151 |       23 |       36 |        8 |     82.4% |41, 51, 69, 73, 147, 177-184, 188-189, 194-196, 215-216, 230-231, 233 |
+| src/alexandria/cli/browser\_review.py    |      144 |       22 |       34 |        7 |     82.6% |37, 55, 59, 133, 163-170, 174-175, 180-182, 201-202, 216-217, 219 |
 | src/alexandria/cli/envelope.py           |       22 |        0 |        0 |        0 |    100.0% |           |
-| src/alexandria/cli/interactive.py        |      143 |        6 |       50 |        7 |     93.3% |36, 38, 110, 169-170, 199, 210-\>194, 224-\>222 |
-| src/alexandria/cli/main.py               |      226 |        3 |       60 |        3 |     97.9% |96, 114, 368 |
-| src/alexandria/cli/review\_html.py       |       79 |        5 |       26 |        3 |     90.5% |321, 326, 345-348 |
+| src/alexandria/cli/hunks.py              |       25 |        0 |       12 |        0 |    100.0% |           |
+| src/alexandria/cli/interactive.py        |      127 |        6 |       38 |        6 |     92.7% |37, 39, 111, 156-157, 186, 197-\>181 |
+| src/alexandria/cli/main.py               |      222 |        2 |       58 |        2 |     98.6% |  112, 379 |
+| src/alexandria/cli/review\_html.py       |       70 |        4 |       14 |        2 |     90.5% |332, 335-338 |
 | src/alexandria/cli/verbose.py            |       34 |        0 |       10 |        0 |    100.0% |           |
-| src/alexandria/ir/contracts.py           |      162 |        1 |       32 |       18 |     90.2% |70-\>72, 70-\>exit, 72-\>exit, 82-\>exit, 89-\>exit, 125, 218-\>exit, 235-\>237, 235-\>exit, 237-\>239, 237-\>exit, 239-\>241, 239-\>exit, 241-\>250, 241-\>exit, 250-\>exit, 283-\>exit, 303-\>exit |
+| src/alexandria/ir/contracts.py           |      167 |        1 |       36 |       18 |     90.6% |70-\>72, 70-\>exit, 72-\>exit, 82-\>exit, 89-\>exit, 135, 228-\>exit, 245-\>247, 245-\>exit, 247-\>249, 247-\>exit, 249-\>251, 249-\>exit, 251-\>260, 251-\>exit, 260-\>exit, 293-\>exit, 313-\>exit |
 | src/alexandria/ir/document.py            |      119 |        5 |       36 |        5 |     93.5% |24, 53, 55, 116, 155 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
 | src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
@@ -19,14 +20,16 @@
 | src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        45 |
 | src/alexandria/ops/features/optimize.py  |       92 |        2 |       42 |        3 |     96.3% |84-\>63, 110, 126 |
 | src/alexandria/ops/features/represent.py |      198 |        0 |       54 |        0 |    100.0% |           |
-| src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
-| src/alexandria/ops/features/select.py    |       35 |        2 |       12 |        2 |     91.5% |    27, 42 |
-| src/alexandria/ops/pipe.py               |      473 |       52 |      136 |       27 |     84.7% |147-150, 237-238, 295, 308, 322, 363-374, 380-383, 456-\>468, 467, 485-\>495, 492, 517, 533, 545-546, 550, 551-\>553, 567-582, 593-597, 617, 624, 640, 644, 689, 692-693, 731-\>733, 735, 897, 899, 901, 903 |
+| src/alexandria/ops/features/score.py     |       44 |        0 |       12 |        1 |     98.2% |   58-\>62 |
+| src/alexandria/ops/features/select.py    |       44 |        2 |       16 |        3 |     91.7% |29, 49, 89-\>87 |
+| src/alexandria/ops/features/target.py    |      344 |       46 |      122 |       23 |     82.2% |121-124, 132, 145, 159, 200-211, 217-220, 293-\>305, 304, 322-\>332, 329, 354, 370, 382-383, 387, 388-\>390, 404-419, 430-434, 454, 461, 477, 489, 538, 541-542, 580-\>582, 584 |
+| src/alexandria/ops/pipe.py               |       77 |        2 |        4 |        0 |     97.5% |     90-91 |
+| src/alexandria/ops/report.py             |       87 |        4 |       12 |        4 |     91.9% |137, 139, 141, 143 |
 | src/alexandria/utils/config.py           |       35 |        0 |        6 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       25 |        1 |        0 |        0 |     96.0% |        49 |
 | src/alexandria/utils/merger.py           |       30 |        5 |       10 |        0 |     82.5% |     56-67 |
 | src/alexandria/utils/tokens.py           |       20 |        2 |       10 |        3 |     83.3% |    18, 32 |
-| **TOTAL**                                | **2020** |  **109** |  **548** |   **81** | **91.8%** |           |
+| **TOTAL**                                | **2055** |  **106** |  **540** |   **78** | **92.1%** |           |
 
 
 ## Setup coverage badge
