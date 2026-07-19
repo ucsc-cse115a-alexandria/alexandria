@@ -25,7 +25,7 @@ _ENCODING = tiktoken.get_encoding("cl100k_base")
 
 
 def _token_chunks(text: str, max_tokens: int = _EMBEDDING_INPUT_TOKENS) -> tuple[tuple[str, int], ...]:
-    tokens = _ENCODING.encode(text)
+    tokens = _ENCODING.encode(text, disallowed_special=())
     if not tokens:
         return (("", 1),)
     return tuple(

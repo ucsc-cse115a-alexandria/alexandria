@@ -42,8 +42,8 @@ def compare(original: str, edited: str, embedder: Embedder | None = None) -> Com
     When ``embedder`` is omitted, the default OpenAI embedder is built on first use (requires an API key).
     """
     model = embedder if embedder is not None else default_embedder()
-    original_ids = _ENCODING.encode(original)
-    edited_ids = _ENCODING.encode(edited)
+    original_ids = _ENCODING.encode(original, disallowed_special=())
+    edited_ids = _ENCODING.encode(edited, disallowed_special=())
     if not original_ids or not edited_ids:
         raise ValueError("cannot compare an empty text")
     similarity = 1.0 - cosine_distance(_pooled_embedding(original_ids, model), _pooled_embedding(edited_ids, model))
