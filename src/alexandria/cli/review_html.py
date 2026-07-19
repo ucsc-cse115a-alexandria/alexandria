@@ -8,6 +8,8 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict
 
+from alexandria.cli.hunks import hunk_lines
+
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Diff
     from alexandria.ir.document import Document, SentenceId
@@ -139,7 +141,7 @@ __EDIT_BLOCKS__
   const accepted = new Set(DATA.initial_selection);
 
   function targetsFor(index) {
-    return DATA.diffs[index].candidate.edit.targets;
+    return DATA.diffs[index].targets;
   }
 
   function removedIds() {
@@ -156,7 +158,11 @@ __EDIT_BLOCKS__
     for (const sentence of DATA.document.sentences) {
       if (removed.has(sentence.id)) saved += sentence.token_count;
     }
-    return DATA.document.token_count - saved;
+    let added = 0;
+    for (const index of accepted) {
+      added += DATA.diffs[index].replacement_token_count;
+    }
+    return DATA.document.token_count - saved + added;
   }
 
   function renderHunk(removed, limitTo) {
@@ -294,11 +300,20 @@ class DocumentPreview(BaseModel):
     sentences: tuple[SentencePreview, ...]
 
 
+class DiffPreview(BaseModel):
+    """The per-diff data the page's JS needs: which sentences the edit removes and, for a
+    Replace, how many tokens its replacement text adds back (0 for a Delete)."""
+
+    model_config = ConfigDict(frozen=True)
+    targets: tuple[str, ...]
+    replacement_token_count: int
+
+
 class ReviewPayload(BaseModel):
     model_config = ConfigDict(frozen=True)
     schema_version: Literal[1] = SCHEMA_VERSION
     document: DocumentPreview
-    diffs: tuple[dict[str, object], ...]
+    diffs: tuple[DiffPreview, ...]
     initial_selection: tuple[int, ...] = ()
 
 
@@ -307,39 +322,14 @@ def _location(diff: Diff) -> str:
     return " > ".join(part for part in path if part) or "(top level)"
 
 
-def _hunk_lines(document: Document, removed: frozenset[SentenceId]) -> list[tuple[str, str]]:
-    """Build hunk lines from known removals with one sentence of context.
-
-    Mirrors interactive.py::_preview_lines — avoids difflib junk heuristics on large documents.
-    """
-    sentences = document.sentences
-    shown: set[int] = set()
-    for position, sentence in enumerate(sentences):
-        if sentence.id in removed:
-            shown.update(index for index in (position - 1, position, position + 1) if 0 <= index < len(sentences))
-    if not shown:
-        return [("empty", "(no edits accepted — output equals the original)")]
-    body: list[tuple[str, str]] = []
-    previous: int | None = None
-    for index in sorted(shown):
-        if previous is not None and index > previous + 1:
-            body.append(("gap", "···"))
-        sentence = sentences[index]
-        for line in sentence.text.splitlines() or [""]:
-            if sentence.id in removed:
-                body.append(("removed", line))
-            else:
-                body.append(("context", line))
-        previous = index
-    return body
-
-
 def _hunk_html(document: Document, removed: frozenset[SentenceId]) -> str:
     parts: list[str] = []
-    for kind, text in _hunk_lines(document, removed):
+    for kind, text in hunk_lines(document, removed):
         escaped = html.escape(text)
         if kind == "removed":
             parts.append(f'<div class="line removed">-{escaped}</div>')
+        elif kind == "added":
+            parts.append(f'<div class="line added">+{escaped}</div>')
         elif kind == "context":
             parts.append(f'<div class="line context"> {escaped}</div>')
         elif kind == "gap":
@@ -354,6 +344,8 @@ def _edit_block_html(document: Document, index: int, diff: Diff) -> str:
     targets = frozenset(candidate.edit.targets)
     hunk = _hunk_html(document, targets)
     if diff.replacement:
+        # Appended after the whole hunk (not interleaved via hunk_lines' `added`) to keep the
+        # replacement line at the block's end, where this per-edit view has always shown it.
         hunk += f'\n<div class="line added">+{html.escape(diff.replacement)}</div>'
     confidence = f"{candidate.confidence:.3f}"
     return f"""<article class="edit-block rejected" data-index="{index}">
@@ -368,6 +360,12 @@ def _edit_block_html(document: Document, index: int, diff: Diff) -> str:
     <button type="button" class="reject active">Reject</button>
   </div>
 </article>"""
+
+
+def _diff_preview(diff: Diff) -> DiffPreview:
+    edit = diff.candidate.edit
+    replacement_token_count = edit.replacement.token_count if edit.op == "replace" else 0
+    return DiffPreview(targets=edit.targets, replacement_token_count=replacement_token_count)
 
 
 def _document_preview(document: Document) -> DocumentPreview:
@@ -393,7 +391,7 @@ def render_review_page(proposal: Proposal) -> str:
     """Render a self-contained HTML page for reviewing proposed edits."""
     payload = ReviewPayload(
         document=_document_preview(proposal.document),
-        diffs=tuple(diff.model_dump(mode="json") for diff in proposal.diffs),
+        diffs=tuple(_diff_preview(diff) for diff in proposal.diffs),
     )
     payload_json = json.dumps(payload.model_dump(mode="json"))
     selection_json = json.dumps(_initial_selection(len(proposal.diffs)))

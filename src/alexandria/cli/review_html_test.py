@@ -149,3 +149,22 @@ def test_render_shows_the_replacement_line_for_a_replace_diff() -> None:
     page = render_review_page(proposal)
 
     assert '<div class="line added">+merged line' in page
+
+
+def test_payload_diff_carries_targets_and_replacement_token_count() -> None:
+    document = represent(_REDUNDANT, HashEmbedder())
+    ids = [s.id for s in document.sentences]
+    replacement = Encoded(text="merged line\n", token_count=2, embedding=document.sentences[0].embedding)
+    replace = Candidate(
+        edit=Replace(targets=(ids[1], ids[2]), replacement=replacement), confidence=0.9, source="t", reason="r"
+    )
+    delete = Candidate(edit=Delete(targets=(ids[4],)), confidence=0.8, source="t", reason="r")
+    proposal = Proposal(document=document, diffs=diffs(document, (replace, delete)))
+
+    payload = _parse_payload(render_review_page(proposal))
+
+    replace_entry, delete_entry = payload["diffs"]
+    assert replace_entry["targets"] == [ids[1], ids[2]]
+    assert replace_entry["replacement_token_count"] == 2
+    assert delete_entry["targets"] == [ids[4]]
+    assert delete_entry["replacement_token_count"] == 0

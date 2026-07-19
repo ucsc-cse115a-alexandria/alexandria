@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import re
 
-from alexandria.cli.interactive import ReviewState, apply_candidates, render, review
+from alexandria.cli.interactive import ReviewState, render, review
 from alexandria.ir.contracts import Candidate, Delete, Diff, DiffSpan, Params, Replace
 from alexandria.ir.document import Document, Encoded, SentenceId
-from alexandria.ops import HashEmbedder, diffs, optimize, represent, score
+from alexandria.ops import HashEmbedder, apply_candidates, diffs, optimize, represent, score
 
 _REDUNDANT = "# Alpha\nrepeat me\nrepeat me\n# Beta\necho twice\necho twice\n"
 

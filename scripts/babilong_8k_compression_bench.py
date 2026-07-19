@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING, Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field
 
 from alexandria.ir.contracts import MergeMetrics, Params
-from alexandria.ops.pipe import InfeasibleTargetError, TargetMergeError, reduce
+from alexandria.ops import InfeasibleTargetError, TargetMergeError, reduce
 from alexandria.utils.tokens import count_tokens
 from benchmarks.babilong_8k import load_cases
 

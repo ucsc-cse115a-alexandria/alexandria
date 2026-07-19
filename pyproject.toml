@@ -178,6 +178,9 @@ name = "Pipe composes features"
 type = "layers"
 containers = ["alexandria.ops"]
 layers = ["pipe", "features"]
+# target_test drives the full pipe (reduce) to exercise target merges end to end, so the co-located
+# feature test legitimately imports pipe; the feature module itself never does.
+ignore_imports = ["alexandria.ops.features.target_test -> alexandria.ops.pipe"]
 
 # Test modules are co-located as *_test.py, so the "Features are independent"
 # wildcard sweeps them in as sibling modules. A feature test legitimately imports
@@ -199,6 +202,7 @@ ignore_imports = [
     "alexandria.ops.features.represent_test -> alexandria.**",
     "alexandria.ops.features.score_test -> alexandria.**",
     "alexandria.ops.features.select_test -> alexandria.**",
+    "alexandria.ops.features.target_test -> alexandria.**",
 ]
 
 # Functional core, imperative shell: only the utils shell may construct OpenAI clients.

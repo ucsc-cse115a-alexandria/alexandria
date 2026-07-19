@@ -6,19 +6,20 @@ from alexandria.ops.features.diff import diffs
 from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score, score_rows
-from alexandria.ops.features.select import select
+from alexandria.ops.features.select import apply_candidates, select
+from alexandria.ops.features.target import InfeasibleTargetError, TargetMergeError
 from alexandria.ops.pipe import (
-    InfeasibleTargetError,
-    OptimizationReport,
     Proposal,
     ReduceResult,
-    ReportComparison,
-    TargetMergeError,
-    compare_reports,
-    optimization_report,
     propose,
     reduce,
     score_report,
+)
+from alexandria.ops.report import (
+    OptimizationReport,
+    ReportComparison,
+    compare_reports,
+    optimization_report,
 )
 
 # ops re-exports embedder/merger construction, token counting, and config writes so the CLI never
@@ -39,6 +40,7 @@ __all__ = [
     "ReduceResult",
     "ReportComparison",
     "TargetMergeError",
+    "apply_candidates",
     "compare",
     "compare_reports",
     "count_tokens",

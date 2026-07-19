@@ -4,10 +4,13 @@ from typing import TYPE_CHECKING
 
 from alexandria.ir.contracts import Candidate, Params, Selection
 from alexandria.ir.registry import get_selector, register_selector
-from alexandria.ir.similarity import compute_cos_sim_diff
+from alexandria.ir.similarity import normalize
 from alexandria.utils.embedders import default_embedder
 
 if TYPE_CHECKING:
+    import numpy as np
+    from numpy.typing import NDArray
+
     from alexandria.ir.contracts import Embedder, Plan
     from alexandria.ir.document import Document
 
@@ -22,9 +25,13 @@ def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, param
     Ranking embeds every candidate's trial text in one batched call; the cumulative re-check
     then embeds once per applied candidate.
     """
-    base = document.embedding
     if params.max_tokens is not None and document.token_count <= params.max_tokens:
         return Selection(document=document, applied=())
+
+    base = normalize(document.embedding)  # normalize the fixed base once, not per cos_sim_diff measurement
+
+    def cos_sim_diff_from_base(vector: NDArray[np.float32]) -> float:
+        return 1.0 - float(normalize(vector) @ base)
 
     trials = [
         (candidate, trial)
@@ -32,7 +39,7 @@ def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, param
         if (trial := document.apply(candidate)) is not None and trial is not document
     ]
     vectors = embedder.embed([trial.text for _, trial in trials]) if trials else []
-    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: compute_cos_sim_diff(pair[1], base))
+    ranked = sorted(zip(trials, vectors, strict=True), key=lambda pair: cos_sim_diff_from_base(pair[1]))
 
     current = document
     applied: list[Candidate] = []
@@ -40,7 +47,7 @@ def least_cos_sim_diff(document: Document, plan: Plan, embedder: Embedder, param
         trial = current.apply(candidate)
         if trial is None or trial is current:
             continue
-        if compute_cos_sim_diff(embedder.embed([trial.text])[0], base) > params.cos_sim_diff_budget:
+        if cos_sim_diff_from_base(embedder.embed([trial.text])[0]) > params.cos_sim_diff_budget:
             continue
         current = trial
         applied.append(candidate)
@@ -71,4 +78,17 @@ def select(
     return get_selector(name)(document, plan, embedder, params)
 
 
-__all__ = ["DEFAULT_SELECTOR", "least_cos_sim_diff", "select"]
+def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
+    """Fold Document.apply over the candidates; accept means accept — no cos_sim_diff budget re-filtering.
+
+    A candidate whose edit would empty the document or a section (apply returns None) is skipped.
+    """
+    current = document
+    for candidate in candidates:
+        trial = current.apply(candidate)
+        if trial is not None:
+            current = trial
+    return current
+
+
+__all__ = ["DEFAULT_SELECTOR", "apply_candidates", "least_cos_sim_diff", "select"]
