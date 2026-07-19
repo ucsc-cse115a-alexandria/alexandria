@@ -38,6 +38,7 @@ dev = [
     { name = "python-dotenv" },
     { name = "ruff" },
     { name = "scikit-learn" },
+    { name = "scipy" },
     { name = "umap-learn" },
 ]
 scripts = [
@@ -71,6 +72,7 @@ dev = [
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "ruff", specifier = ">=0.15.19" },
     { name = "scikit-learn", specifier = ">=1.9.0" },
+    { name = "scipy", specifier = ">=1.17.0" },
     { name = "umap-learn", specifier = ">=0.5.12" },
 ]
 scripts = [

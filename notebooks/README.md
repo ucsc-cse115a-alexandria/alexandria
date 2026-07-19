@@ -42,4 +42,28 @@ The independently fitted plots are also written to:
 - `notebooks/outputs/skill_section_embedding_clusters.png`
 - `notebooks/outputs/babilong_qa1_42_section_embedding_clusters.png`
 - `notebooks/outputs/section_cohesion_metrics.csv`
-- `notebooks/outputs/clustering_ablation_metrics.csv`
+
+## Skill corpus section cohesion
+
+`scripts/skill_corpus_section_cohesion.py` measures deepest-section cohesion, aggregates section medians through
+skills to repositories, caches completed skills under `.cache/`, and writes section, skill, repo, statistical-test,
+and graph outputs. The committed exploratory run uses 10 repositories with complete cached coverage:
+
+```bash
+uv run python scripts/skill_corpus_section_cohesion.py \
+  --repo ClawBio__ClawBio \
+  --repo CloudAI-X__claude-workflow-v2 \
+  --repo Eronred__aso-skills \
+  --repo K-Dense-AI__scientific-agent-skills \
+  --repo NVIDIA__SkillSpector \
+  --repo NVIDIA__skills \
+  --repo Owl-Listener__designer-skills \
+  --repo Prat011__awesome-llm-skills \
+  --repo aipoch__medical-research-skills \
+  --repo alirezarezvani__claude-skills
+uv run jupyter lab notebooks/skill_corpus_section_cohesion.ipynb
+```
+
+The notebook reads and plots the generated files under
+`notebooks/outputs/skill_corpus_section_cohesion/`. Delete the corresponding `.cache/` directory only when a
+fresh embedding run is intentionally required.

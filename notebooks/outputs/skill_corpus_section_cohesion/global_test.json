@@ -1,0 +1,11 @@
+{
+  "test": "Kruskal-Wallis on per-skill median section pairwise cosine",
+  "eligible_repo_count": 10,
+  "skill_observation_count": 697,
+  "min_skills_per_repo": 3,
+  "statistic": 208.8264295089781,
+  "p_value": 4.662061861020284e-40,
+  "epsilon_squared": 0.2908681652241311,
+  "corpus_skill_median": 0.3383673798986377,
+  "repo_vs_rest_test": "two-sided Mann-Whitney U with Benjamini-Hochberg correction"
+}
