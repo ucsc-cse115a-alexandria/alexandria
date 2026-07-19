@@ -56,6 +56,54 @@ The harness deliberately reports this as `Task accuracy`, not strict format comp
 
 ## Reproducible experiment
 
+### Common benchmark interface
+
+The shared runner exposes BABILong, RULERv2, and LongBench v2 through the same options and raw-log schema. It keeps BABILong's instruction, examples, required answer format, `<context>` tags, and final question fixed, and compresses only the PG-19-plus-bAbI context inside the tags.
+
+Preview a small paired sample without API calls:
+
+```bash
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 5 --seed 42 --reductions 50 25 10 5 \
+  --out trial_results/babilong_8k/smoke --dry-run
+```
+
+Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, separate execution and reduction time/cost, merge work, API usage, paired confidence intervals, and plain release decisions.
+
+Recompute the summary from the saved raw records without new API calls:
+
+```bash
+uv run python -m scripts.summarize_prompt_compression_benchmark \
+  trial_results/babilong_8k/smoke --release-threshold 0.90
+```
+
+The legacy phase-one commands below remain available for reproducing the previously published keep90 run.
+
+## Shared-run 10-case keep90 pilot
+
+This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 42, `gpt-5.6-luna`, answer reasoning `none`, and a full-prompt target of at most 90% of each original prompt. The complete original prompts ranged from 7,251 to 7,883 `cl100k_base` tokens. Execution measures only the answer-model call after its prompt is ready. Reduction is separate and includes compression plus the whole-prompt cosine measurement with `text-embedding-3-small`.
+
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 7,668.5 (76,685) | 0.00% | 0.000000 | 60.0% (6/10) | 11.5s | $0.0768 | 0.0s | $0.0000 |
+| keep90 | 6,634.2 (66,342) | 13.49% | 0.006987 | 60.0% (6/10) | 9.2s | $0.0665 | 94.8s | $0.2166 |
+
+Original-to-keep90 reduction and whole-prompt comparison took 94.8 seconds and cost $0.2166. Once each prompt was ready, execution changed from 11.5 to 9.2 seconds and from $0.0768 to $0.0665. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, but its paired 95% percentile-bootstrap interval was 60.0%–175.0%. The lower bound did not clear the 90% release threshold, so this small pilot's decision is **FAIL**.
+
+Reproduce the run:
+
+```bash
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 10 --seed 42 --reductions 10 \
+  --data-dir data/babilong/8k \
+  --out benchmarks/babilong_8k/results/2026-07-18-keep90-n10-common-v1
+```
+
+Evidence: [`manifest.json`](results/2026-07-18-keep90-n10-common-v1/manifest.json), [`records.jsonl`](results/2026-07-18-keep90-n10-common-v1/records.jsonl), [`prompts.jsonl.gz`](results/2026-07-18-keep90-n10-common-v1/prompts.jsonl.gz), [`summary.json`](results/2026-07-18-keep90-n10-common-v1/summary.json), and [`report.md`](results/2026-07-18-keep90-n10-common-v1/report.md).
+
+Cost uses the manifest assumptions per million tokens: $1.00 model input, $0.10 cached input, $6.00 model output, and $0.02 embedding input. This is an exploratory ten-case result and should not replace the existing 100-case result below.
+
 The default phase-one run uses 50 cases selected with seed 42, balanced as 10 cases from each of `qa1`-`qa5`.
 It compares the original prompt with a 90%-retained target (at least a 10% token reduction):
 

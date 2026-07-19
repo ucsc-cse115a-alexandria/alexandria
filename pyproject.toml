@@ -79,7 +79,6 @@ exclude = [
     ".git",
     ".pytest_cache",
     ".ruff_cache",
-    "benchmarks/ifeval/vendor",
 ]
 
 [tool.ruff.lint]
@@ -151,7 +150,6 @@ exclude = [
     "dist",
     "__pycache__",
     "migrations",
-    "benchmarks/ifeval/vendor",
 ]
 
 [tool.importlinter]

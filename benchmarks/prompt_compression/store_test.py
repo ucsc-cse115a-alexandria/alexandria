@@ -1,0 +1,55 @@
+from __future__ import annotations
+
+import gzip
+import hashlib
+import json
+from typing import TYPE_CHECKING
+
+import pytest
+
+from benchmarks.prompt_compression.contracts import BenchmarkVerdict, ConditionRecord
+from benchmarks.prompt_compression.store import RunStore
+
+if TYPE_CHECKING:
+    from pathlib import Path
+
+
+def _record(prompt: str) -> ConditionRecord:
+    return ConditionRecord(
+        case_key="case:1",
+        benchmark="fixture",
+        task="qa",
+        condition="original",
+        reduction_percent=0,
+        source_tokens=3,
+        target_tokens=3,
+        sent_tokens=3,
+        prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),
+        response="A",
+        response_model="stub",
+        verdict=BenchmarkVerdict(score=1.0, correct=True, parsed_answer="A"),
+    )
+
+
+def test_run_store_checkpoints_records_and_exact_prompts(tmp_path: Path) -> None:
+    store = RunStore(tmp_path / "run")
+    record = _record("full prompt")
+    store.append(record, "full prompt")
+    assert store.load_records() == (record,)
+    assert store.completed_keys() == frozenset({("case:1", "original")})
+    with gzip.open(store.prompts_path, "rt", encoding="utf-8") as source:
+        assert json.loads(source.readline())["prompt"] == "full prompt"
+
+
+def test_run_store_rejects_wrong_prompt_hash(tmp_path: Path) -> None:
+    with pytest.raises(ValueError, match="hash"):
+        RunStore(tmp_path).append(_record("one"), "two")
+
+
+def test_run_store_refuses_to_mix_different_manifests(tmp_path: Path) -> None:
+    store = RunStore(tmp_path)
+    store.write_manifest({"seed": 42, "command": "first"})
+    store.write_manifest({"seed": 42, "command": "equivalent rerun"})
+    assert json.loads((tmp_path / "manifest.json").read_text())["command"] == "first"
+    with pytest.raises(ValueError, match="different run"):
+        store.write_manifest({"seed": 7})

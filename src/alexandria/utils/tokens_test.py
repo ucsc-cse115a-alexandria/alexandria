@@ -10,6 +10,13 @@ def test_count_tokens_matches_cl100k_base() -> None:
     assert count_tokens(text) == len(tiktoken.get_encoding("cl100k_base").encode(text))
 
 
+def test_literal_special_token_text_is_counted_as_ordinary_input() -> None:
+    text = "repository code contains <|endoftext|> as a literal"
+    expected = tiktoken.get_encoding("cl100k_base").encode(text, disallowed_special=())
+    assert count_tokens(text) == len(expected)
+    assert count_tokens(truncate_tokens(text, 4)) <= 4
+
+
 def test_truncate_tokens_enforces_the_limit_and_preserves_trailing_newline() -> None:
     text = "Always write focused tests for every new behavior.\n"
 
