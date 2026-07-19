@@ -19,6 +19,7 @@ import numpy as np
 from openai import OpenAI
 
 from alexandria.ir.contracts import MergeMetrics, Params
+from alexandria.ops.features.compare import compare
 from alexandria.ops.pipe import reduce
 from alexandria.utils.embedders import OPENAI_EMBEDDING_MODEL, default_embedder
 from alexandria.utils.merger import MERGE_MODEL, default_merger
@@ -41,7 +42,9 @@ def condition_name(reduction_percent: float) -> str:
     return f"keep{rendered}"
 
 
-def compress_parts(parts: PromptParts, reduction_percent: float) -> tuple[PromptParts, int, int, MergeMetrics, float]:
+def compress_parts(
+    parts: PromptParts, reduction_percent: float
+) -> tuple[PromptParts, int, int, MergeMetrics, float, float]:
     """Compress only context while enforcing a hard ceiling on the reconstructed full prompt."""
     source_tokens = count_tokens(parts.prompt)
     target_tokens = max(1, math.floor(source_tokens * (1.0 - reduction_percent / 100.0)))
@@ -73,7 +76,8 @@ def compress_parts(parts: PromptParts, reduction_percent: float) -> tuple[Prompt
     metrics = result.merge_metrics.model_copy(
         update={"repaired_tokens": result.merge_metrics.repaired_tokens + repaired}
     )
-    return compressed, target_tokens, sent_tokens, metrics, time.monotonic() - started
+    prompt_cosine_difference = float(compare(parts.prompt, compressed.prompt, default_embedder()).drift)
+    return compressed, target_tokens, sent_tokens, metrics, time.monotonic() - started, prompt_cosine_difference
 
 
 def _git_sha() -> str:
@@ -102,6 +106,7 @@ def _record(
     sent_tokens: int,
     generation: GenerationResult,
     adapter: BenchmarkAdapter,
+    prompt_cosine_difference: float,
     compression_elapsed: float,
     answer_elapsed: float,
     merge_metrics: MergeMetrics,
@@ -122,6 +127,7 @@ def _record(
         response_model=generation.model,
         response_id=generation.response_id,
         verdict=verdict,
+        prompt_embedding_cosine_difference=prompt_cosine_difference,
         compression_elapsed_seconds=compression_elapsed,
         answer_elapsed_seconds=answer_elapsed,
         merge_metrics=merge_metrics,
@@ -229,6 +235,7 @@ def main() -> None:
                     sent_tokens=source_tokens,
                     generation=generation,
                     adapter=adapter,
+                    prompt_cosine_difference=0.0,
                     compression_elapsed=0.0,
                     answer_elapsed=answer_elapsed,
                     merge_metrics=MergeMetrics(),
@@ -243,9 +250,14 @@ def main() -> None:
                     continue
                 usage_start = len(meter.records)
                 with meter.category("compression"):
-                    parts, target_tokens, sent_tokens, metrics, compression_elapsed = compress_parts(
-                        case.prompt_parts, reduction
-                    )
+                    (
+                        parts,
+                        target_tokens,
+                        sent_tokens,
+                        metrics,
+                        compression_elapsed,
+                        prompt_cosine_difference,
+                    ) = compress_parts(case.prompt_parts, reduction)
                 answer_started = time.monotonic()
                 with meter.category("answer"):
                     generation = _generate(client, args.model, args.reasoning, parts.prompt)
@@ -260,6 +272,7 @@ def main() -> None:
                     sent_tokens=sent_tokens,
                     generation=generation,
                     adapter=adapter,
+                    prompt_cosine_difference=prompt_cosine_difference,
                     compression_elapsed=compression_elapsed,
                     answer_elapsed=answer_elapsed,
                     merge_metrics=metrics,

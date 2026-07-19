@@ -34,7 +34,7 @@ Sampling is deterministic for a fixed eligible dataset, `n`, and seed. It round-
 The output directory is resumable and contains:
 
 - `manifest.json`: implementation commit, pinned dataset/prompt provenance, selected case IDs, model settings, eligibility filters, reductions, complete-prompt token distribution, and cost assumptions;
-- `records.jsonl`: append-only per-case and per-condition responses, parsed verdicts, prompt hashes, source/target/sent tokens, compression and answer latency, merge metrics, API usage, and estimated cost;
+- `records.jsonl`: append-only per-case and per-condition responses, parsed verdicts, prompt hashes, source/target/sent tokens, whole-prompt embedding cosine difference, compression and answer latency, merge metrics, API usage, and estimated cost;
 - `prompts.jsonl.gz`: the exact model-visible original and compressed prompts, keyed by case and condition;
 - `summary.json`: aggregate and per-task accuracy, benchmark score, token reduction, time, cost, paired transitions, bootstrap intervals, and the release decision; and
 - `report.md`: a compact original-versus-compressed evidence table and a plain PASS or FAIL statement.

@@ -33,7 +33,7 @@ def test_summary_pairs_conditions_and_reports_release_decision() -> None:
     assert comparison["release_decision"].startswith("PASS")  # type: ignore[index]
     assert summary["tasks"]["qa"]["keep90"]["accuracy"] == 1.0  # type: ignore[index]
     report = benchmark_report(summary)
-    assert "| keep90 | 90.0 | 10.0% | 100.0%" in report
+    assert "| keep90 | 90.0 | 10.0% | 0.0000 | 100.0%" in report
     assert "PASS:" in report
 
 

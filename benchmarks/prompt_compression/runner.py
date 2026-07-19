@@ -19,6 +19,7 @@ class _ConditionSummary(TypedDict):
     correct: int
     mean_sent_tokens: float
     token_reduction: float
+    mean_prompt_embedding_cosine_difference: float
     compression_seconds: float
     answer_seconds: float
     estimated_cost_usd: float
@@ -40,6 +41,12 @@ def _condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
         "mean_source_tokens": source_tokens / len(records),
         "mean_sent_tokens": sent_tokens / len(records),
         "token_reduction": 1.0 - sent_tokens / source_tokens,
+        "mean_prompt_embedding_cosine_difference": float(
+            np.mean([record.prompt_embedding_cosine_difference for record in records])
+        ),
+        "p95_prompt_embedding_cosine_difference": float(
+            np.quantile([record.prompt_embedding_cosine_difference for record in records], 0.95)
+        ),
         "compression_seconds": sum(record.compression_elapsed_seconds for record in records),
         "answer_seconds": sum(record.answer_elapsed_seconds for record in records),
         "estimated_cost_usd": sum(record.estimated_cost_usd for record in records),
@@ -151,14 +158,17 @@ def benchmark_report(summary: dict[str, object]) -> str:
     conditions = cast("dict[str, _ConditionSummary]", raw_conditions)
     comparisons = cast("dict[str, _ComparisonSummary]", raw_comparisons)
     lines = [
-        "| Condition | Mean input tokens | Token reduction | Accuracy | Estimated API cost | Wall-clock time |",
-        "|---|---:|---:|---:|---:|---:|",
+        "| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | "
+        "Estimated API cost | Wall-clock time |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     for condition, raw in conditions.items():
         wall_clock = float(raw["compression_seconds"]) + float(raw["answer_seconds"])
         lines.append(
             f"| {condition} | {float(raw['mean_sent_tokens']):,.1f} | "
-            f"{float(raw['token_reduction']) * 100:.1f}% | {float(raw['accuracy']) * 100:.1f}% "
+            f"{float(raw['token_reduction']) * 100:.1f}% | "
+            f"{float(raw['mean_prompt_embedding_cosine_difference']):.4f} | "
+            f"{float(raw['accuracy']) * 100:.1f}% "
             f"({int(raw['correct'])}/{int(raw['n_cases'])}) | ${float(raw['estimated_cost_usd']):.4f} | "
             f"{wall_clock:.1f}s |"
         )

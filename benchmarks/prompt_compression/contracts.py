@@ -92,6 +92,7 @@ class ConditionRecord(BaseModel):
     response_model: str
     response_id: str | None = None
     verdict: BenchmarkVerdict
+    prompt_embedding_cosine_difference: float = Field(default=0.0, ge=0.0)
     compression_elapsed_seconds: float = Field(default=0.0, ge=0.0)
     answer_elapsed_seconds: float = Field(default=0.0, ge=0.0)
     merge_metrics: MergeMetrics = MergeMetrics()
