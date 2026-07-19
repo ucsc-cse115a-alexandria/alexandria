@@ -1,0 +1,311 @@
+completed qa1:47 original
+completed qa2:40 original
+completed qa3:58 original
+completed qa4:82 original
+completed qa5:73 original
+completed qa1:46 original
+completed qa2:7 original
+completed qa3:37 original
+completed qa4:62 original
+completed qa5:86 original
+completed qa1:91 original
+completed qa2:36 original
+completed qa3:83 original
+completed qa4:14 original
+completed qa5:36 original
+completed qa1:17 original
+completed qa2:38 original
+completed qa3:50 original
+completed qa4:66 original
+completed qa5:75 original
+completed qa1:68 original
+completed qa2:0 original
+completed qa3:31 original
+completed qa4:31 original
+completed qa5:87 original
+completed qa1:54 original
+completed qa2:21 original
+completed qa3:66 original
+completed qa4:74 original
+completed qa5:46 original
+completed qa1:1 original
+completed qa2:55 original
+completed qa3:72 original
+completed qa4:93 original
+completed qa5:41 original
+completed qa1:72 original
+completed qa2:73 original
+completed qa3:18 original
+completed qa4:95 original
+completed qa5:58 original
+completed qa1:22 original
+completed qa2:65 original
+completed qa3:38 original
+completed qa4:70 original
+completed qa5:9 original
+completed qa1:8 original
+completed qa2:88 original
+completed qa3:32 original
+completed qa4:88 original
+completed qa5:32 original
+original baseline accuracy: 72.0% (minimum 50.0%)
+completed qa1:47 budget0p0025: retained=0.999 context_diff=0.000238 full_diff=0.000410 correct=True
+completed qa1:47 budget0p005: retained=0.999 context_diff=0.000238 full_diff=0.000410 correct=True
+completed qa1:47 budget0p01: retained=0.999 context_diff=0.000239 full_diff=0.000410 correct=True
+completed qa1:47 budget0p015: retained=0.999 context_diff=0.000238 full_diff=0.000410 correct=True
+completed qa1:47 budget0p02: retained=0.999 context_diff=0.000238 full_diff=0.000410 correct=True
+completed qa2:40 budget0p0025: retained=0.997 context_diff=0.002537 full_diff=0.002459 correct=False
+completed qa2:40 budget0p005: retained=0.996 context_diff=0.002223 full_diff=0.002300 correct=False
+completed qa2:40 budget0p01: retained=0.996 context_diff=0.002446 full_diff=0.002343 correct=True
+completed qa2:40 budget0p015: retained=0.996 context_diff=0.002426 full_diff=0.002834 correct=False
+completed qa2:40 budget0p02: retained=0.997 context_diff=0.002373 full_diff=0.002198 correct=False
+completed qa3:58 budget0p0025: retained=0.987 context_diff=0.004757 full_diff=0.004151 correct=False
+completed qa3:58 budget0p005: retained=0.988 context_diff=0.004326 full_diff=0.004161 correct=False
+completed qa3:58 budget0p01: retained=0.987 context_diff=0.004911 full_diff=0.004141 correct=False
+completed qa3:58 budget0p015: retained=0.986 context_diff=0.005804 full_diff=0.004444 correct=False
+completed qa3:58 budget0p02: retained=0.986 context_diff=0.004772 full_diff=0.004363 correct=False
+completed qa4:82 budget0p0025: retained=0.994 context_diff=0.002714 full_diff=0.003074 correct=False
+completed qa4:82 budget0p005: retained=0.994 context_diff=0.002673 full_diff=0.003691 correct=False
+completed qa4:82 budget0p01: retained=0.994 context_diff=0.002517 full_diff=0.003466 correct=False
+completed qa4:82 budget0p015: retained=0.995 context_diff=0.002768 full_diff=0.003174 correct=False
+completed qa4:82 budget0p02: retained=0.995 context_diff=0.002457 full_diff=0.003078 correct=False
+completed qa5:73 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:73 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:73 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:73 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:73 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:46 budget0p0025: retained=0.999 context_diff=0.000901 full_diff=0.000699 correct=True
+completed qa1:46 budget0p005: retained=0.999 context_diff=0.000901 full_diff=0.000699 correct=True
+completed qa1:46 budget0p01: retained=0.998 context_diff=0.000984 full_diff=0.000688 correct=False
+completed qa1:46 budget0p015: retained=0.998 context_diff=0.000985 full_diff=0.000688 correct=False
+completed qa1:46 budget0p02: retained=0.998 context_diff=0.000985 full_diff=0.000688 correct=False
+completed qa2:7 budget0p0025: retained=0.967 context_diff=0.003420 full_diff=0.003507 correct=False
+completed qa2:7 budget0p005: retained=0.967 context_diff=0.003362 full_diff=0.003589 correct=False
+completed qa2:7 budget0p01: retained=0.967 context_diff=0.003406 full_diff=0.003532 correct=False
+completed qa2:7 budget0p015: retained=0.967 context_diff=0.003214 full_diff=0.003488 correct=False
+completed qa2:7 budget0p02: retained=0.969 context_diff=0.002465 full_diff=0.002973 correct=False
+completed qa3:37 budget0p0025: retained=0.989 context_diff=0.004332 full_diff=0.004157 correct=True
+completed qa3:37 budget0p005: retained=0.987 context_diff=0.003980 full_diff=0.004075 correct=True
+completed qa3:37 budget0p01: retained=0.988 context_diff=0.003902 full_diff=0.003725 correct=True
+completed qa3:37 budget0p015: retained=0.987 context_diff=0.004118 full_diff=0.004159 correct=True
+completed qa3:37 budget0p02: retained=0.988 context_diff=0.004472 full_diff=0.003828 correct=True
+completed qa4:62 budget0p0025: retained=0.998 context_diff=0.002374 full_diff=0.002129 correct=True
+completed qa4:62 budget0p005: retained=0.998 context_diff=0.002390 full_diff=0.002132 correct=True
+completed qa4:62 budget0p01: retained=0.998 context_diff=0.002390 full_diff=0.002132 correct=True
+completed qa4:62 budget0p015: retained=0.998 context_diff=0.002391 full_diff=0.002131 correct=False
+completed qa4:62 budget0p02: retained=0.999 context_diff=0.002093 full_diff=0.001988 correct=True
+completed qa5:86 budget0p0025: retained=0.993 context_diff=0.002788 full_diff=0.003056 correct=True
+completed qa5:86 budget0p005: retained=0.992 context_diff=0.002909 full_diff=0.003153 correct=True
+completed qa5:86 budget0p01: retained=0.992 context_diff=0.003510 full_diff=0.003180 correct=True
+completed qa5:86 budget0p015: retained=0.993 context_diff=0.002782 full_diff=0.003048 correct=True
+completed qa5:86 budget0p02: retained=0.992 context_diff=0.003723 full_diff=0.003209 correct=True
+completed qa1:91 budget0p0025: retained=0.990 context_diff=0.002629 full_diff=0.002525 correct=True
+completed qa1:91 budget0p005: retained=0.990 context_diff=0.003109 full_diff=0.002862 correct=True
+completed qa1:91 budget0p01: retained=0.989 context_diff=0.002706 full_diff=0.002531 correct=True
+completed qa1:91 budget0p015: retained=0.990 context_diff=0.002728 full_diff=0.002352 correct=True
+completed qa1:91 budget0p02: retained=0.990 context_diff=0.002787 full_diff=0.002218 correct=True
+completed qa2:36 budget0p0025: retained=0.996 context_diff=0.002691 full_diff=0.002393 correct=True
+completed qa2:36 budget0p005: retained=0.996 context_diff=0.002466 full_diff=0.002307 correct=True
+completed qa2:36 budget0p01: retained=0.996 context_diff=0.001974 full_diff=0.002147 correct=True
+completed qa2:36 budget0p015: retained=0.995 context_diff=0.002690 full_diff=0.002520 correct=True
+completed qa2:36 budget0p02: retained=0.996 context_diff=0.002413 full_diff=0.002173 correct=True
+completed qa3:83 budget0p0025: retained=0.993 context_diff=0.004646 full_diff=0.004700 correct=True
+completed qa3:83 budget0p005: retained=0.993 context_diff=0.004798 full_diff=0.004083 correct=False
+completed qa3:83 budget0p01: retained=0.992 context_diff=0.004629 full_diff=0.005013 correct=False
+original baseline accuracy: 72.0% (minimum 50.0%)
+completed qa3:83 budget0p015: retained=0.993 context_diff=0.004085 full_diff=0.004647 correct=False
+completed qa3:83 budget0p02: retained=0.992 context_diff=0.004222 full_diff=0.004198 correct=False
+completed qa4:14 budget0p0025: retained=0.999 context_diff=0.000379 full_diff=0.000366 correct=True
+completed qa4:14 budget0p005: retained=0.999 context_diff=0.000380 full_diff=0.000363 correct=True
+completed qa4:14 budget0p01: retained=0.999 context_diff=0.000379 full_diff=0.000363 correct=True
+completed qa4:14 budget0p015: retained=0.999 context_diff=0.000381 full_diff=0.000363 correct=True
+completed qa4:14 budget0p02: retained=0.999 context_diff=0.000379 full_diff=0.000363 correct=True
+completed qa5:36 budget0p0025: retained=0.980 context_diff=0.004591 full_diff=0.003496 correct=False
+completed qa5:36 budget0p005: retained=0.979 context_diff=0.003991 full_diff=0.003432 correct=False
+completed qa5:36 budget0p01: retained=0.980 context_diff=0.004400 full_diff=0.003595 correct=False
+completed qa5:36 budget0p015: retained=0.981 context_diff=0.004706 full_diff=0.003286 correct=True
+completed qa5:36 budget0p02: retained=0.980 context_diff=0.004426 full_diff=0.003434 correct=False
+completed qa1:17 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:17 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:17 budget0p01: retained=1.000 context_diff=0.000002 full_diff=0.000000 correct=True
+completed qa1:17 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:17 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa2:38 budget0p0025: retained=0.999 context_diff=0.002536 full_diff=0.002175 correct=True
+completed qa2:38 budget0p005: retained=0.999 context_diff=0.002536 full_diff=0.002175 correct=True
+completed qa2:38 budget0p01: retained=0.999 context_diff=0.002536 full_diff=0.002174 correct=True
+completed qa2:38 budget0p015: retained=0.999 context_diff=0.002536 full_diff=0.002174 correct=True
+completed qa2:38 budget0p02: retained=0.999 context_diff=0.002538 full_diff=0.002173 correct=True
+completed qa3:50 budget0p0025: retained=0.987 context_diff=0.006693 full_diff=0.007453 correct=False
+completed qa3:50 budget0p005: retained=0.988 context_diff=0.007868 full_diff=0.007316 correct=False
+completed qa3:50 budget0p01: retained=0.988 context_diff=0.006776 full_diff=0.006218 correct=False
+completed qa3:50 budget0p015: retained=0.987 context_diff=0.008566 full_diff=0.007603 correct=False
+completed qa3:50 budget0p02: retained=0.987 context_diff=0.008088 full_diff=0.007838 correct=False
+completed qa4:66 budget0p0025: retained=0.997 context_diff=0.001244 full_diff=0.000858 correct=True
+completed qa4:66 budget0p005: retained=0.997 context_diff=0.001588 full_diff=0.001014 correct=True
+completed qa4:66 budget0p01: retained=0.997 context_diff=0.001245 full_diff=0.000860 correct=False
+completed qa4:66 budget0p015: retained=0.997 context_diff=0.001575 full_diff=0.001015 correct=False
+completed qa4:66 budget0p02: retained=0.997 context_diff=0.001259 full_diff=0.000841 correct=False
+completed qa5:75 budget0p0025: retained=0.997 context_diff=0.001301 full_diff=0.001779 correct=True
+completed qa5:75 budget0p005: retained=0.997 context_diff=0.001332 full_diff=0.001799 correct=True
+completed qa5:75 budget0p01: retained=0.997 context_diff=0.001445 full_diff=0.001420 correct=True
+completed qa5:75 budget0p015: retained=0.997 context_diff=0.001447 full_diff=0.001426 correct=True
+completed qa5:75 budget0p02: retained=0.997 context_diff=0.001297 full_diff=0.001751 correct=True
+incomplete qa1:68 budget0p0025: condition reached 30 generation-call limit
+incomplete qa1:68 budget0p005: condition reached 30 generation-call limit
+incomplete qa1:68 budget0p01: condition reached 30 generation-call limit
+incomplete qa1:68 budget0p015: condition reached 30 generation-call limit
+incomplete qa1:68 budget0p02: condition reached 30 generation-call limit
+completed qa2:0 budget0p0025: retained=0.993 context_diff=0.002712 full_diff=0.003083 correct=True
+completed qa2:0 budget0p005: retained=0.993 context_diff=0.002662 full_diff=0.002801 correct=True
+completed qa2:0 budget0p01: retained=0.993 context_diff=0.002822 full_diff=0.002854 correct=True
+completed qa2:0 budget0p015: retained=0.992 context_diff=0.002827 full_diff=0.003125 correct=True
+completed qa2:0 budget0p02: retained=0.992 context_diff=0.002819 full_diff=0.003232 correct=True
+completed qa3:31 budget0p0025: retained=0.986 context_diff=0.002291 full_diff=0.002697 correct=True
+completed qa3:31 budget0p005: retained=0.986 context_diff=0.002259 full_diff=0.002792 correct=True
+completed qa3:31 budget0p01: retained=0.986 context_diff=0.002273 full_diff=0.002704 correct=True
+completed qa3:31 budget0p015: retained=0.986 context_diff=0.002247 full_diff=0.002728 correct=False
+completed qa3:31 budget0p02: retained=0.987 context_diff=0.002170 full_diff=0.002758 correct=True
+completed qa4:31 budget0p0025: retained=0.994 context_diff=0.004874 full_diff=0.004248 correct=True
+completed qa4:31 budget0p005: retained=0.991 context_diff=0.005548 full_diff=0.004232 correct=True
+completed qa4:31 budget0p01: retained=0.992 context_diff=0.005560 full_diff=0.003897 correct=True
+completed qa4:31 budget0p015: retained=0.992 context_diff=0.005278 full_diff=0.004250 correct=True
+completed qa4:31 budget0p02: retained=0.993 context_diff=0.005314 full_diff=0.004259 correct=True
+completed qa5:87 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=False
+completed qa5:87 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=False
+completed qa5:87 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=False
+completed qa5:87 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=False
+completed qa5:87 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:54 budget0p0025: retained=0.982 context_diff=0.004819 full_diff=0.004991 correct=True
+completed qa1:54 budget0p005: retained=0.980 context_diff=0.005077 full_diff=0.005259 correct=True
+completed qa1:54 budget0p01: retained=0.978 context_diff=0.005372 full_diff=0.005460 correct=True
+completed qa1:54 budget0p015: retained=0.976 context_diff=0.005810 full_diff=0.005853 correct=True
+completed qa1:54 budget0p02: retained=0.976 context_diff=0.005938 full_diff=0.005918 correct=True
+completed qa2:21 budget0p0025: retained=0.987 context_diff=0.003778 full_diff=0.003923 correct=True
+completed qa2:21 budget0p005: retained=0.984 context_diff=0.004319 full_diff=0.003998 correct=True
+completed qa2:21 budget0p01: retained=0.985 context_diff=0.004200 full_diff=0.004152 correct=True
+completed qa2:21 budget0p015: retained=0.982 context_diff=0.004792 full_diff=0.004358 correct=True
+completed qa2:21 budget0p02: retained=0.982 context_diff=0.004998 full_diff=0.004367 correct=True
+completed qa3:66 budget0p0025: retained=0.995 context_diff=0.002126 full_diff=0.002086 correct=True
+completed qa3:66 budget0p005: retained=0.995 context_diff=0.002154 full_diff=0.002098 correct=False
+completed qa3:66 budget0p01: retained=0.996 context_diff=0.002204 full_diff=0.002050 correct=True
+completed qa3:66 budget0p015: retained=0.995 context_diff=0.002420 full_diff=0.002139 correct=False
+completed qa3:66 budget0p02: retained=0.995 context_diff=0.002111 full_diff=0.002367 correct=True
+completed qa4:74 budget0p0025: retained=0.998 context_diff=0.001331 full_diff=0.001746 correct=True
+completed qa4:74 budget0p005: retained=0.998 context_diff=0.001332 full_diff=0.001747 correct=True
+completed qa4:74 budget0p01: retained=0.998 context_diff=0.001330 full_diff=0.001750 correct=True
+completed qa4:74 budget0p015: retained=0.998 context_diff=0.001330 full_diff=0.001746 correct=True
+completed qa4:74 budget0p02: retained=0.998 context_diff=0.001331 full_diff=0.001748 correct=True
+completed qa5:46 budget0p0025: retained=0.993 context_diff=0.002955 full_diff=0.002421 correct=True
+completed qa5:46 budget0p005: retained=0.991 context_diff=0.002822 full_diff=0.002633 correct=True
+completed qa5:46 budget0p01: retained=0.992 context_diff=0.002701 full_diff=0.002445 correct=True
+completed qa5:46 budget0p015: retained=0.992 context_diff=0.002869 full_diff=0.002584 correct=True
+completed qa5:46 budget0p02: retained=0.992 context_diff=0.002882 full_diff=0.002733 correct=True
+completed qa1:1 budget0p0025: retained=0.998 context_diff=0.000233 full_diff=0.000204 correct=True
+completed qa1:1 budget0p005: retained=0.998 context_diff=0.000175 full_diff=0.000203 correct=True
+completed qa1:1 budget0p01: retained=0.998 context_diff=0.000175 full_diff=0.000204 correct=True
+completed qa1:1 budget0p015: retained=0.998 context_diff=0.000175 full_diff=0.000203 correct=True
+completed qa1:1 budget0p02: retained=0.998 context_diff=0.000175 full_diff=0.000203 correct=True
+completed qa2:55 budget0p0025: retained=0.993 context_diff=0.002883 full_diff=0.003355 correct=False
+completed qa2:55 budget0p005: retained=0.993 context_diff=0.002874 full_diff=0.002989 correct=False
+completed qa2:55 budget0p01: retained=0.992 context_diff=0.003232 full_diff=0.003305 correct=False
+completed qa2:55 budget0p015: retained=0.994 context_diff=0.002636 full_diff=0.002993 correct=False
+completed qa2:55 budget0p02: retained=0.993 context_diff=0.002753 full_diff=0.002997 correct=False
+completed qa3:72 budget0p0025: retained=0.997 context_diff=0.001327 full_diff=0.001225 correct=False
+completed qa3:72 budget0p005: retained=0.997 context_diff=0.001104 full_diff=0.001105 correct=False
+completed qa3:72 budget0p01: retained=0.997 context_diff=0.000814 full_diff=0.000590 correct=False
+completed qa3:72 budget0p015: retained=0.997 context_diff=0.001117 full_diff=0.001096 correct=False
+completed qa3:72 budget0p02: retained=0.997 context_diff=0.001329 full_diff=0.001226 correct=False
+completed qa4:93 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:93 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:93 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:93 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:93 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:41 budget0p0025: retained=0.989 context_diff=0.002484 full_diff=0.002133 correct=False
+completed qa5:41 budget0p005: retained=0.987 context_diff=0.002225 full_diff=0.002173 correct=True
+completed qa5:41 budget0p01: retained=0.987 context_diff=0.002852 full_diff=0.002394 correct=True
+completed qa5:41 budget0p015: retained=0.987 context_diff=0.002662 full_diff=0.002300 correct=False
+completed qa5:41 budget0p02: retained=0.987 context_diff=0.002851 full_diff=0.002393 correct=False
+completed qa1:72 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:72 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:72 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:72 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:72 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa2:73 budget0p0025: retained=0.992 context_diff=0.002664 full_diff=0.002331 correct=True
+completed qa2:73 budget0p005: retained=0.993 context_diff=0.002603 full_diff=0.002368 correct=True
+completed qa2:73 budget0p01: retained=0.993 context_diff=0.002910 full_diff=0.002557 correct=True
+completed qa2:73 budget0p015: retained=0.992 context_diff=0.002743 full_diff=0.002328 correct=True
+completed qa2:73 budget0p02: retained=0.992 context_diff=0.002711 full_diff=0.002536 correct=True
+completed qa3:18 budget0p0025: retained=0.981 context_diff=0.005577 full_diff=0.005419 correct=True
+completed qa3:18 budget0p005: retained=0.976 context_diff=0.005934 full_diff=0.006177 correct=False
+completed qa3:18 budget0p01: retained=0.976 context_diff=0.006546 full_diff=0.005406 correct=False
+completed qa3:18 budget0p015: retained=0.976 context_diff=0.006732 full_diff=0.005927 correct=False
+completed qa3:18 budget0p02: retained=0.976 context_diff=0.005968 full_diff=0.005890 correct=False
+completed qa4:95 budget0p0025: retained=0.982 context_diff=0.003235 full_diff=0.003829 correct=True
+completed qa4:95 budget0p005: retained=0.981 context_diff=0.003112 full_diff=0.003839 correct=True
+completed qa4:95 budget0p01: retained=0.980 context_diff=0.003218 full_diff=0.004023 correct=True
+completed qa4:95 budget0p015: retained=0.981 context_diff=0.002879 full_diff=0.003744 correct=True
+completed qa4:95 budget0p02: retained=0.981 context_diff=0.002886 full_diff=0.003729 correct=True
+completed qa5:58 budget0p0025: retained=0.997 context_diff=0.001878 full_diff=0.001895 correct=True
+completed qa5:58 budget0p005: retained=0.997 context_diff=0.001559 full_diff=0.001606 correct=True
+completed qa5:58 budget0p01: retained=0.998 context_diff=0.001498 full_diff=0.001460 correct=True
+completed qa5:58 budget0p015: retained=0.997 context_diff=0.002005 full_diff=0.001829 correct=True
+completed qa5:58 budget0p02: retained=0.998 context_diff=0.001470 full_diff=0.001683 correct=True
+completed qa1:22 budget0p0025: retained=0.997 context_diff=0.001246 full_diff=0.001230 correct=True
+completed qa1:22 budget0p005: retained=0.997 context_diff=0.001460 full_diff=0.001142 correct=True
+completed qa1:22 budget0p01: retained=0.997 context_diff=0.001181 full_diff=0.001220 correct=True
+completed qa1:22 budget0p015: retained=0.997 context_diff=0.001188 full_diff=0.001227 correct=True
+completed qa1:22 budget0p02: retained=0.997 context_diff=0.001177 full_diff=0.001220 correct=True
+incomplete qa2:65 budget0p0025: condition reached 30 generation-call limit
+incomplete qa2:65 budget0p005: condition reached 30 generation-call limit
+incomplete qa2:65 budget0p01: condition reached 30 generation-call limit
+incomplete qa2:65 budget0p015: condition reached 30 generation-call limit
+incomplete qa2:65 budget0p02: condition reached 30 generation-call limit
+completed qa3:38 budget0p0025: retained=0.994 context_diff=0.001428 full_diff=0.001618 correct=True
+completed qa3:38 budget0p005: retained=0.994 context_diff=0.001484 full_diff=0.001531 correct=False
+completed qa3:38 budget0p01: retained=0.994 context_diff=0.001410 full_diff=0.001617 correct=False
+completed qa3:38 budget0p015: retained=0.994 context_diff=0.001510 full_diff=0.001531 correct=False
+completed qa3:38 budget0p02: retained=0.994 context_diff=0.001413 full_diff=0.001622 correct=True
+completed qa4:70 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:70 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:70 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:70 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa4:70 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:9 budget0p0025: retained=1.000 context_diff=0.000084 full_diff=0.000124 correct=False
+completed qa5:9 budget0p005: retained=0.999 context_diff=0.000402 full_diff=0.000403 correct=False
+completed qa5:9 budget0p01: retained=0.999 context_diff=0.001168 full_diff=0.000757 correct=False
+completed qa5:9 budget0p015: retained=0.999 context_diff=0.000865 full_diff=0.000892 correct=False
+completed qa5:9 budget0p02: retained=0.999 context_diff=0.000794 full_diff=0.000901 correct=False
+completed qa1:8 budget0p0025: retained=1.000 context_diff=0.000000 full_diff=0.000001 correct=True
+completed qa1:8 budget0p005: retained=1.000 context_diff=0.000000 full_diff=0.000006 correct=True
+completed qa1:8 budget0p01: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:8 budget0p015: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:8 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000005 correct=True
+completed qa2:88 budget0p0025: retained=1.000 context_diff=0.001570 full_diff=0.001402 correct=True
+completed qa2:88 budget0p005: retained=1.000 context_diff=0.001570 full_diff=0.001403 correct=True
+completed qa2:88 budget0p01: retained=1.000 context_diff=0.001569 full_diff=0.001400 correct=True
+original baseline accuracy: 72.0% (minimum 50.0%)
+completed qa2:88 budget0p015: retained=1.000 context_diff=0.001570 full_diff=0.001402 correct=True
+completed qa2:88 budget0p02: retained=1.000 context_diff=0.001571 full_diff=0.001405 correct=True
+completed qa3:32 budget0p0025: retained=0.976 context_diff=0.006877 full_diff=0.005325 correct=False
+completed qa3:32 budget0p005: retained=0.974 context_diff=0.007461 full_diff=0.006242 correct=False
+completed qa3:32 budget0p01: retained=0.969 context_diff=0.008365 full_diff=0.005997 correct=False
+completed qa3:32 budget0p015: retained=0.970 context_diff=0.007524 full_diff=0.005719 correct=False
+completed qa3:32 budget0p02: retained=0.970 context_diff=0.008140 full_diff=0.005556 correct=False
+completed qa4:88 budget0p0025: retained=0.994 context_diff=0.002743 full_diff=0.002035 correct=True
+completed qa4:88 budget0p005: retained=0.994 context_diff=0.002654 full_diff=0.002205 correct=True
+completed qa4:88 budget0p01: retained=0.994 context_diff=0.002687 full_diff=0.002181 correct=True
+completed qa4:88 budget0p015: retained=0.994 context_diff=0.002500 full_diff=0.002180 correct=True
+completed qa4:88 budget0p02: retained=0.994 context_diff=0.002748 full_diff=0.002072 correct=True
+completed qa5:32 budget0p0025: retained=0.998 context_diff=0.001734 full_diff=0.001755 correct=True
+completed qa5:32 budget0p005: retained=0.998 context_diff=0.001753 full_diff=0.001756 correct=True
+completed qa5:32 budget0p01: retained=0.997 context_diff=0.001753 full_diff=0.001750 correct=False
+completed qa5:32 budget0p015: retained=0.998 context_diff=0.002012 full_diff=0.002215 correct=True
+completed qa5:32 budget0p02: retained=0.998 context_diff=0.001980 full_diff=0.002253 correct=True
+| Condition | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Mean full-prompt cos diff | Budget compliance | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| original | 50/50 | 72.0% | 100.0% | 0.0% | 0.000000 | 100.0% | Baseline |
+| budget0p0025 | 48/50 | 75.0% | 105.9% (88.9%–127.6%) | 0.7% | 0.002260 | 52.1% | FAIL |
+| budget0p005 | 48/50 | 68.8% | 97.1% (80.0%–118.5%) | 0.7% | 0.002297 | 89.6% | FAIL |
+| budget0p01 | 48/50 | 66.7% | 94.1% (78.9%–111.8%) | 0.7% | 0.002252 | 100.0% | FAIL |
+| budget0p015 | 48/50 | 60.4% | 85.3% (69.2%–102.9%) | 0.7% | 0.002336 | 100.0% | FAIL |
+| budget0p02 | 48/50 | 68.8% | 97.1% (81.1%–116.1%) | 0.7% | 0.002308 | 100.0% | FAIL |
