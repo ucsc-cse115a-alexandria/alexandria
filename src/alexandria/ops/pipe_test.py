@@ -8,7 +8,6 @@ import pytest
 from alexandria.ir.contracts import Params
 from alexandria.ir.document import Sentence, SentenceId
 from alexandria.ops.pipe import (
-    MAX_TARGET_MERGE_ROUNDS,
     InfeasibleTargetError,
     _target_merge_window,  # pyright: ignore[reportPrivateUsage]
     compare_reports,
@@ -43,10 +42,10 @@ class _RetryOnceMerger:
 
 
 class _TargetMerger:
-    def __init__(self, *outputs: tuple[str, ...]) -> None:
-        self._outputs = list(outputs)
-        self.feedback: list[str | None] = []
-        self.bases: list[str | None] = []
+    """Offline targeted merger: each call returns the next queued candidate set (last one repeats)."""
+
+    def __init__(self, *candidate_sets: tuple[str, ...]) -> None:
+        self._candidate_sets = list(candidate_sets)
         self.prompts: list[str] = []
         self.max_tokens: list[int] = []
 
@@ -54,18 +53,10 @@ class _TargetMerger:
         del second, feedback
         return first.strip()
 
-    def merge_candidates_to_target(
-        self,
-        prompt: str,
-        max_tokens: int,
-        feedback: str | None = None,
-        base_candidate: str | None = None,
-    ) -> tuple[str, ...]:
+    def merge_candidates_to_target(self, prompt: str, max_tokens: int) -> tuple[str, ...]:
         self.prompts.append(prompt)
         self.max_tokens.append(max_tokens)
-        self.feedback.append(feedback)
-        self.bases.append(base_candidate)
-        return self._outputs.pop(0) if len(self._outputs) > 1 else self._outputs[0]
+        return self._candidate_sets.pop(0) if len(self._candidate_sets) > 1 else self._candidate_sets[0]
 
 
 class _CountingEmbedder:
@@ -214,9 +205,9 @@ def test_prune_drift_backoff_keeps_the_longest_prefix_within_budget() -> None:
     assert result.merge_metrics.drift_budget_met is False
 
 
-def test_prune_floor_guard_defers_to_the_merge_phase_instead_of_undershooting() -> None:
-    # Each duplicate line is 3 tokens: deleting one would jump from 6 tokens straight below the
-    # [4, 5] window, so pruning must leave the document to the merge phase.
+def test_prune_may_undershoot_the_target_since_undershoot_is_allowed() -> None:
+    # Two identical 3-token lines: deleting one drops to 3 tokens, below the 5-token target. With the
+    # floor guard gone, undershoot is fine, so pruning takes the duplicate without any merge call.
     merger = _TargetMerger(("aa bb cc\n",) * 10)
 
     result = reduce(
@@ -226,9 +217,9 @@ def test_prune_floor_guard_defers_to_the_merge_phase_instead_of_undershooting() 
         params=Params(max_tokens=5, require_target=True),
     )
 
-    assert result.merge_metrics.pruned_sentences == 0
-    assert result.merge_metrics.calls >= 1
-    assert 4 <= result.reduced_tokens <= 5
+    assert result.merge_metrics.pruned_sentences == 1
+    assert result.merge_metrics.calls == 0
+    assert result.reduced_tokens < 5
 
 
 def test_strict_target_within_window_returns_unchanged_with_only_represent_embeds() -> None:
@@ -301,11 +292,10 @@ def test_strict_target_repairs_an_over_budget_candidate_without_retry() -> None:
     assert result.merge_metrics.retries == 0
     assert result.merge_metrics.repaired_tokens > 0
     assert result.merge_metrics.embed_calls == 3  # represent's two batches plus one repaired-candidate batch
-    assert merger.feedback[0] is None
 
 
 def test_strict_target_selects_the_lowest_drift_candidate_from_one_call() -> None:
-    merger = _TargetMerger(("aaaa\n", "aa bb\n"))
+    merger = _TargetMerger(("aaaa\n", "aa bb\n", "bbbb\n"))
 
     result = reduce(
         "aaaa\nbbbb\n",
@@ -315,9 +305,28 @@ def test_strict_target_selects_the_lowest_drift_candidate_from_one_call() -> Non
     )
 
     assert result.text == "aa bb\n"
+    assert len(merger.prompts) == 1  # exactly one merger invocation for the single group
     assert result.merge_metrics.calls == 1
     assert result.merge_metrics.retries == 0
-    assert result.merge_metrics.candidates_generated == 2
+    assert result.merge_metrics.candidates_generated == 3
+
+
+def test_strict_target_accepts_a_candidate_that_undershoots_the_budget() -> None:
+    # Every candidate is far below the budget; undershoot is allowed, so it applies without penalty.
+    merger = _TargetMerger(("a\n", "a\n", "a\n"))
+
+    result = reduce(
+        "aaaa\nbbbb\n",
+        _CountingEmbedder(),
+        merger,
+        params=Params(drift_budget=2.0, max_tokens=3, require_target=True),
+    )
+
+    assert result.text == "a\n"
+    assert result.reduced_tokens < 3
+    assert len(merger.prompts) == 1
+    assert result.merge_metrics.calls == 1
+    assert result.merge_metrics.candidates_generated == 3
 
 
 def test_target_merge_reports_group_round_and_completion_events() -> None:
@@ -349,11 +358,8 @@ def test_target_merge_reports_group_round_and_completion_events() -> None:
     assert reporter.target_group_done_calls == [(True, result.reduced_tokens)]
 
 
-def test_strict_target_mutates_one_base_and_only_keeps_a_non_worsening_candidate() -> None:
-    merger = _TargetMerger(
-        ("aaaa\n",) * 2,
-        ("bbbb\n", "ab\n"),
-    )
+def test_strict_target_records_exactly_one_round_per_group() -> None:
+    merger = _TargetMerger(("aaaa\n", "aa bb\n", "bbbb\n"))
 
     result = reduce(
         "aaaa\nbbbb\n",
@@ -362,16 +368,15 @@ def test_strict_target_mutates_one_base_and_only_keeps_a_non_worsening_candidate
         params=Params(drift_budget=0.01, max_tokens=3, require_target=True),
     )
 
-    assert merger.bases == [None, "aaaa\n"]
-    assert result.text == "ab\n"
+    assert result.text == "aa bb\n"
     rounds = result.merge_metrics.target_rounds
-    assert len(rounds) == 2
-    assert rounds[0].base_drift == 0.0
-    assert not rounds[0].improved
-    assert rounds[1].base_drift == rounds[0].selected_drift
-    assert rounds[1].selected_drift < rounds[1].base_drift
-    assert rounds[1].generated_best_drift == rounds[1].selected_drift
-    assert rounds[1].selected_tokens <= rounds[1].base_tokens
+    assert len(rounds) == 1
+    assert rounds[0].round == 1
+    assert rounds[0].base_tokens == result.source_tokens  # no pruning: the pre-merge doc is the source
+    assert rounds[0].base_drift == pytest.approx(0.0, abs=1e-6)  # the pre-merge doc equals the source
+    assert rounds[0].selected_tokens == result.reduced_tokens
+    assert rounds[0].generated_best_drift == rounds[0].selected_drift  # the chosen candidate was generated
+    assert rounds[0].generated_best_tokens == rounds[0].selected_tokens
 
 
 def test_strict_target_preserves_markup_structure() -> None:
@@ -388,8 +393,10 @@ def test_strict_target_preserves_markup_structure() -> None:
     assert result.merge_metrics.calls == 1
 
 
-def test_strict_target_returns_the_best_feasible_result_when_drift_stays_over_budget() -> None:
-    merger = _TargetMerger(("short\n",) * 2)
+def test_strict_target_applies_the_best_candidate_even_when_drift_stays_over_budget() -> None:
+    # With the refinement round gone, an over-budget-drift candidate is still applied as the best
+    # available: the hard ceiling comes first and drift is only minimized best-effort.
+    merger = _TargetMerger(("short\n",) * 3)
 
     result = reduce(
         "source prompt with tokens\nsecond source line\n",
@@ -399,12 +406,8 @@ def test_strict_target_returns_the_best_feasible_result_when_drift_stays_over_bu
     )
 
     assert result.reduced_tokens <= 3
-    assert len(merger.feedback) == MAX_TARGET_MERGE_ROUNDS
-    assert all(feedback is not None for feedback in merger.feedback[1:])
-    assert merger.bases[0] is None
-    assert merger.bases[1] == "short\n"
-    assert result.merge_metrics.calls == MAX_TARGET_MERGE_ROUNDS
-    assert result.merge_metrics.retries == MAX_TARGET_MERGE_ROUNDS - 1
+    assert result.merge_metrics.calls == 1
+    assert result.merge_metrics.retries == 0
     assert result.merge_metrics.final_drift is not None and result.merge_metrics.final_drift > 0
     assert result.merge_metrics.drift_budget_met is False
 
@@ -421,24 +424,6 @@ def test_strict_target_result_stamps_embedding_and_wall_clock_metrics() -> None:
 
     assert result.merge_metrics.embed_calls > 0
     assert result.merge_metrics.elapsed_seconds > 0.0
-
-
-def test_strict_target_stops_at_max_rounds_and_returns_the_best_feasible_candidate() -> None:
-    merger = _TargetMerger(
-        ("too many tokens remain here\n",) * 2,
-        ("still too many tokens here\n",) * 2,
-    )
-
-    result = reduce(
-        "source prompt with tokens\nsecond source line\n",
-        HashEmbedder(),
-        merger,
-        params=Params(drift_budget=0.0, max_tokens=3, require_target=True),
-    )
-
-    assert result.reduced_tokens <= 3
-    assert result.merge_metrics.calls == MAX_TARGET_MERGE_ROUNDS
-    assert len(result.merge_metrics.target_rounds) == MAX_TARGET_MERGE_ROUNDS
 
 
 def test_strict_target_can_rewrite_a_single_long_sentence() -> None:

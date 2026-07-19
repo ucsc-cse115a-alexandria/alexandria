@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from typing import TYPE_CHECKING
-
-from pydantic import BaseModel, ConfigDict, Field
 
 from alexandria.utils.config import require_api_key
 
@@ -13,37 +12,59 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import SentenceMerger
 
 MERGE_MODEL = "gpt-5.6-luna"
-TARGET_CANDIDATES_PER_CALL = 2
+TARGET_CANDIDATES_PER_CALL = 3
 _INSTRUCTIONS = (
     "You merge two overlapping prompt instructions. Rewrite them as ONE instruction that "
     "preserves the full meaning of both in as few tokens as possible. "
     "Reply with only the rewritten instruction, no explanations."
 )
-_TARGET_INSTRUCTIONS = (
-    f"Generate exactly {TARGET_CANDIDATES_PER_CALL} controlled variants for a token-constrained semantic search. "
-    "On the first round, create "
-    "diverse compressions from the source. On later rounds, mutate the single current base; do not restart or "
-    "summarize the source from scratch. Copy the base nearly verbatim and make only the localized "
-    f"substitution requested by the feedback. Candidate N must use feedback excerpt N, so the "
-    f"{TARGET_CANDIDATES_PER_CALL} outputs explore {TARGET_CANDIDATES_PER_CALL} "
-    "different local edits. Preserve all untouched base wording exactly. Remove redundant wording wherever needed "
-    "to stay at or below the requested hard token limit. Do not add "
-    "XML tags, Markdown headings, wrappers, explanations, or code fences. Return only the structured output."
+
+# One strategy line per candidate; the empty first line is the plain baseline. Diversity across
+# these lines is what makes best-of-3 selection outperform a single generation.
+_TARGET_STRATEGIES: tuple[str, ...] = (
+    "",
+    "Reuse the source's exact wording wherever possible; prefer deleting whole sentences over "
+    "paraphrasing what you keep.",
+    "Use dense paraphrasing to pack as much of the source's meaning as possible into the budget.",
 )
 
+_SENTENCE_FINAL_CHARS = (".", "!", "?", "`", '"')
+# A cap-cut sentence ends at one of these markers; the whitespace is dropped, the punctuation kept.
+_SENTENCE_ENDINGS = (". ", ".\n", "! ", "? ", ".)", ":\n")
 
-class TargetMergeCandidates(BaseModel):
-    """Structured output for one target-search generation round."""
 
-    model_config = ConfigDict(frozen=True)
-    candidates: list[str] = Field(
-        min_length=TARGET_CANDIDATES_PER_CALL,
-        max_length=TARGET_CANDIDATES_PER_CALL,
-        description=(
-            f"Exactly {TARGET_CANDIDATES_PER_CALL} distinct, meaning-preserving rewritten segments. "
-            "Every item must fit the requested token range."
-        ),
+def trim_to_last_sentence(text: str) -> str:
+    """Trim a cap-cut completion back to its last complete sentence.
+
+    Returns the stripped text unchanged if it already ends on sentence-final punctuation or if no
+    interior sentence boundary is found.
+    """
+    stripped = text.strip()
+    if stripped.endswith(_SENTENCE_FINAL_CHARS):
+        return stripped
+    cut = -1
+    for ending in _SENTENCE_ENDINGS:
+        index = stripped.rfind(ending)
+        if index != -1:
+            cut = max(cut, index + len(ending.rstrip()))
+    if cut == -1:
+        return stripped
+    return stripped[:cut]
+
+
+def _target_instructions(max_tokens: int, strategy: str) -> str:
+    lines = [
+        f"Compress the passage below to at most {max_tokens} cl100k_base tokens, preserving its "
+        "meaning and every distinct rule and fact.",
+        "Merge overlapping sentences rather than deleting information when possible.",
+    ]
+    if strategy:
+        lines.append(strategy)
+    lines.append(
+        "Do not add XML tags, Markdown headings, wrappers, explanations, or code fences; "
+        "return only the rewritten passage."
     )
+    return " ".join(lines)
 
 
 class OpenAIMerger:
@@ -70,45 +91,36 @@ class OpenAIMerger:
             raise ValueError(f"OpenAI merge request failed: {error}") from error
         return response.output_text.strip()
 
-    def merge_candidates_to_target(  # pragma: no cover
-        self,
-        prompt: str,
-        max_tokens: int,
-        feedback: str | None = None,
-        base_candidate: str | None = None,
-    ) -> tuple[str, ...]:
+    def merge_candidates_to_target(self, prompt: str, max_tokens: int) -> tuple[str, ...]:  # pragma: no cover
+        source = prompt.strip()
+        with ThreadPoolExecutor(max_workers=TARGET_CANDIDATES_PER_CALL) as executor:
+            # Futures preserve strategy order; result() re-raises the first failure, so any failed
+            # request fails the whole invocation.
+            futures = [
+                executor.submit(self._generate, source, max_tokens, strategy) for strategy in _TARGET_STRATEGIES
+            ]
+            return tuple(future.result() for future in futures)
+
+    def _generate(self, source: str, max_tokens: int, strategy: str) -> str:  # pragma: no cover
         from openai import OpenAIError
 
-        min_tokens = max(1, int(max_tokens * 0.95))
-        request = (
-            f"Merge and rewrite the content segment below to between {min_tokens} and {max_tokens} tokens. "
-            "The upper limit is mandatory and will be checked with cl100k_base. Prefer the top of the range when "
-            "quality is equal. Dense paraphrasing is allowed; information deletion is not.\n\n"
-            f"<source_segment>\n{prompt}\n</source_segment>"
-        )
-        if base_candidate is not None:
-            request += (
-                f"\n\nUse this as the single base for all {TARGET_CANDIDATES_PER_CALL} local mutations. "
-                "Keep every strong part unless the "
-                "feedback identifies a replacement that should improve semantic similarity:\n"
-                f"<current_base>\n{base_candidate}\n</current_base>"
-            )
-        if feedback is not None:
-            request += f"\n\nPrevious round feedback:\n{feedback}"
+        # max_tokens is a cl100k_base budget, but the model tokenizer is denser, so this cap makes a
+        # completed response fit that budget by construction.
+        cap = max(32, int(max_tokens / 1.1))
         try:
-            response = self._client.responses.parse(
+            response = self._client.responses.create(
                 model=MERGE_MODEL,
-                reasoning={"effort": "low"},
-                instructions=_TARGET_INSTRUCTIONS,
-                input=request,
-                text_format=TargetMergeCandidates,
+                reasoning={"effort": "none"},
+                max_output_tokens=cap,
+                instructions=_target_instructions(max_tokens, strategy),
+                input=source,
             )
         except OpenAIError as error:
             raise ValueError(f"OpenAI target merge request failed: {error}") from error
-        parsed = response.output_parsed
-        if parsed is None:
-            raise ValueError("OpenAI target merge request returned no structured output")
-        return tuple(candidate.strip() for candidate in parsed.candidates)
+        text = response.output_text.strip()
+        if response.status == "incomplete":
+            return trim_to_last_sentence(text)
+        return text
 
 
 @lru_cache(maxsize=2)

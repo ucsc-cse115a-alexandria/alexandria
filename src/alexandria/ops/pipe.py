@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import re
 import time
 from dataclasses import dataclass
@@ -32,17 +31,14 @@ from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import DEFAULT_SELECTOR, select
 from alexandria.utils.embedders import default_embedder
-from alexandria.utils.merger import TARGET_CANDIDATES_PER_CALL, default_merger
+from alexandria.utils.merger import default_merger
 from alexandria.utils.tokens import count_tokens, truncate_tokens
 
 if TYPE_CHECKING:
     from alexandria.ir.contracts import Embedder, ReductionReporter, SentenceMerger
     from alexandria.ir.document import SentenceId
 
-MAX_TARGET_MERGE_ROUNDS = 2
-TARGET_REFINEMENT_ROUNDS = 1
 PRUNE_VERIFY_MAX_STEPS = 12  # drift-search probe cap
-TARGET_GENERATION_HEADROOM = 0.0
 MAX_REPAIR_VARIANTS = 6
 _GENERATED_MARKUP = re.compile(r"(?m)^\s*(?:#{1,6}\s+\S|</?[A-Za-z][\w.-]*>)\s*$")
 _REPAIR_BOUNDARY = re.compile(r"(?<=[.!?])(?:[ \t]+|\n+)|\n+")
@@ -100,11 +96,9 @@ class _TargetCandidate:
     drift: float
     minimum_coverage: float
     target_distance: int
-    target_undercut: int
     structure_valid: bool
     issues: tuple[str, ...]
     repaired_tokens: int
-    coverage_gaps: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -305,8 +299,7 @@ def _merge_to_target(
             f"protected structure uses {protected_tokens} tokens, exceeding the {params.max_tokens}-token target"
         )
     expected_structure = tuple(sentence.text.strip() for sentence in document.sentences if not sentence.optimizable)
-    preferred_min_tokens = max(1, math.floor(params.max_tokens * 0.95))
-    current = _prune_to_target(document, embedder, params, preferred_min_tokens, params.max_tokens)
+    current = _prune_to_target(document, embedder, params, params.max_tokens)
     pruned_sentences = len(document.sentences) - len(current.sentences)
     pruned_tokens = document.token_count - current.token_count
     repaired_tokens = 0
@@ -323,9 +316,6 @@ def _merge_to_target(
         )
 
     applied_groups = 0
-    best_tokens = current.token_count
-    best_drift = cosine_distance(current.embedding, document.embedding)
-    last_issues: tuple[str, ...] = ()
     while current.token_count > params.max_tokens:
         groups = _compressible_groups(current)
         if not groups:
@@ -343,133 +333,94 @@ def _merge_to_target(
         group_tokens = sum(sentence.token_count for sentence in group)
         fixed_tokens = current.token_count - group_tokens
         group_max_tokens = max(1, params.max_tokens - fixed_tokens)
-        group_preferred_min_tokens = max(1, preferred_min_tokens - fixed_tokens)
         source_segment = "".join(sentence.text for sentence in group)
         reporter.target_group(source_segment, group_tokens, required_savings)
-        feedback: str | None = None
-        base: _TargetCandidate | None = None
-        for round_number in range(1, MAX_TARGET_MERGE_ROUNDS + 1):
-            if base is None:
-                round_max_tokens = max(1, math.floor(group_max_tokens * (1.0 - TARGET_GENERATION_HEADROOM)))
-            else:
-                round_max_tokens = min(group_max_tokens, count_tokens(base.text))
-            generated = merger.merge_candidates_to_target(
-                source_segment,
-                round_max_tokens,
-                feedback,
-                base.text if base is not None else None,
-            )
+        base_tokens = current.token_count
+        base_drift = max(0.0, cosine_distance(current.embedding, document.embedding))
+
+        generated = merger.merge_candidates_to_target(source_segment, group_max_tokens)
+        evaluated = _evaluate_target_candidates(
+            generated,
+            current=current,
+            source=document,
+            group=group,
+            embedder=embedder,
+            max_document_tokens=params.max_tokens,
+            group_max_tokens=group_max_tokens,
+            drift_budget=params.drift_budget,
+            expected_structure=expected_structure,
+        )
+        generated_selectable = [
+            candidate
+            for candidate in evaluated
+            if candidate.structure_valid and candidate.document.token_count < current.token_count
+        ]
+        generated_best = min(generated_selectable, key=_target_candidate_rank) if generated_selectable else None
+        if generated_selectable:
+            pool = generated_selectable
+        else:
+            # The source segment's repair variants are pure deletions, so they guarantee progress.
             evaluated = _evaluate_target_candidates(
-                generated,
+                (source_segment,),
                 current=current,
                 source=document,
                 group=group,
                 embedder=embedder,
-                preferred_min_document_tokens=preferred_min_tokens,
                 max_document_tokens=params.max_tokens,
-                group_preferred_min_tokens=group_preferred_min_tokens,
                 group_max_tokens=group_max_tokens,
                 drift_budget=params.drift_budget,
                 expected_structure=expected_structure,
             )
-            selectable = [
+            pool = [
                 candidate
                 for candidate in evaluated
                 if candidate.structure_valid and candidate.document.token_count < current.token_count
             ]
-            if not selectable:
-                selectable = [
-                    candidate
-                    for candidate in _evaluate_target_candidates(
-                        (source_segment,),
-                        current=current,
-                        source=document,
-                        group=group,
-                        embedder=embedder,
-                        preferred_min_document_tokens=preferred_min_tokens,
-                        max_document_tokens=params.max_tokens,
-                        group_preferred_min_tokens=group_preferred_min_tokens,
-                        group_max_tokens=group_max_tokens,
-                        drift_budget=params.drift_budget,
-                        expected_structure=expected_structure,
-                    )
-                    if candidate.structure_valid and candidate.document.token_count < current.token_count
-                ]
-            generated_best = min(selectable, key=_target_candidate_rank) if selectable else base
-            previous = base
-            pool = [*([base] if base is not None else []), *selectable]
-            if not pool:
-                last_issues = ("the model returned no new non-empty candidates",)
-                feedback = (
-                    f"Return exactly {TARGET_CANDIDATES_PER_CALL} distinct, non-empty candidates "
-                    "that are shorter than the current source segment."
-                )
-                continue
-            base = min(pool, key=_target_candidate_rank)
-            improved = (
-                previous is not None
-                and base.document.token_count <= previous.document.token_count
-                and base.drift < previous.drift
-            )
-            merger.record_target_round(
-                TargetMergeRoundMetrics(
-                    round=round_number,
-                    base_tokens=current.token_count if previous is None else previous.document.token_count,
-                    selected_tokens=base.document.token_count,
-                    base_drift=0.0 if previous is None else previous.drift,
-                    selected_drift=base.drift,
-                    generated_best_tokens=(
-                        generated_best.document.token_count
-                        if generated_best is not None
-                        else base.document.token_count
-                    ),
-                    generated_best_drift=generated_best.drift if generated_best is not None else base.drift,
-                    improved=improved,
-                )
-            )
-            best_tokens = base.document.token_count
-            best_drift = base.drift
-            last_issues = base.issues
-            candidate_list = tuple(
-                ReportedCandidate(
-                    text=candidate.text,
-                    token_count=candidate.document.token_count,
-                    drift=candidate.drift,
-                    structure_valid=candidate.structure_valid,
-                )
-                for candidate in evaluated
-            )
-            selected = ReportedCandidate(
-                text=base.text,
-                token_count=base.document.token_count,
-                drift=base.drift,
-                structure_valid=base.structure_valid,
-            )
-            reporter.target_round(
-                round_number,
-                previous.text if previous is not None else None,
-                candidate_list,
-                selected,
-                base is not previous,
-            )
-            if base.document.token_count > params.max_tokens:
-                break
-            if base.drift <= params.drift_budget:
-                break
-            if round_number < MAX_TARGET_MERGE_ROUNDS:  # the final round's feedback would go unread
-                feedback = _target_feedback(base, group, group_max_tokens)
-        if base is None or base.document.token_count >= current.token_count:
+        if not pool:
             reporter.target_group_done(applied=False, document_tokens=current.token_count)
-            details = "; ".join(last_issues) or "no shorter structure-valid candidate"
-            metrics = merge_metrics(applied_groups, final_drift=best_drift)
+            details = "; ".join(dict.fromkeys(issue for c in evaluated for issue in c.issues))
+            metrics = merge_metrics(applied_groups, final_drift=base_drift)
             raise TargetMergeError(
-                f"target merge made no progress after {merger.calls} calls: {details}",
+                f"target merge made no progress after {merger.calls} calls: "
+                f"{details or 'no shorter structure-valid candidate'}",
                 metrics,
-                best_tokens=best_tokens,
-                best_drift=best_drift,
+                best_tokens=current.token_count,
+                best_drift=base_drift,
             )
-        current = base.document
-        repaired_tokens += base.repaired_tokens
+        chosen = min(pool, key=_target_candidate_rank)
+        improved = chosen.document.token_count < base_tokens and chosen.drift < base_drift
+        merger.record_target_round(
+            TargetMergeRoundMetrics(
+                round=1,
+                base_tokens=base_tokens,
+                selected_tokens=chosen.document.token_count,
+                base_drift=base_drift,
+                selected_drift=chosen.drift,
+                generated_best_tokens=(
+                    generated_best.document.token_count if generated_best is not None else chosen.document.token_count
+                ),
+                generated_best_drift=generated_best.drift if generated_best is not None else chosen.drift,
+                improved=improved,
+            )
+        )
+        candidate_list = tuple(
+            ReportedCandidate(
+                text=candidate.text,
+                token_count=candidate.document.token_count,
+                drift=candidate.drift,
+                structure_valid=candidate.structure_valid,
+            )
+            for candidate in evaluated
+        )
+        selected = ReportedCandidate(
+            text=chosen.text,
+            token_count=chosen.document.token_count,
+            drift=chosen.drift,
+            structure_valid=chosen.structure_valid,
+        )
+        reporter.target_round(1, None, candidate_list, selected, generated_best is not None)
+        current = chosen.document
+        repaired_tokens += chosen.repaired_tokens
         reporter.target_group_done(applied=True, document_tokens=current.token_count)
         applied_groups += 1
     final_drift = cosine_distance(current.embedding, document.embedding)
@@ -484,17 +435,15 @@ def _merge_to_target(
     )
 
 
-def _prune_to_target(
-    document: Document, embedder: Embedder, params: Params, min_tokens: int, max_tokens: int
-) -> Document:
-    """Delete redundant sentences toward the token window without any merge-model call.
+def _prune_to_target(document: Document, embedder: Embedder, params: Params, max_tokens: int) -> Document:
+    """Delete redundant sentences toward the token target without any merge-model call.
 
     The plan orders deletions by descending redundancy; the whole plan is then drift-verified
     with one embedding call. When the full plan drifts over budget, bisect on the deletion count
     (a heuristic, since drift is not monotone in prefix length; every returned prefix is
     verified) and keep the longest passing prefix, falling back to no pruning at all.
     """
-    deletions = _prune_plan(document, params.threshold, min_tokens, max_tokens)
+    deletions = _prune_plan(document, params.threshold, max_tokens)
     if not deletions:
         return document
     pruned = _apply_prune_prefix(document, deletions, len(deletions))
@@ -519,9 +468,8 @@ def _prune_to_target(
     return passing_document
 
 
-def _prune_plan(document: Document, threshold: float, min_tokens: int, max_tokens: int) -> tuple[SentenceId, ...]:
-    """Deletions, most-redundant first, that approach max_tokens while never undershooting
-    min_tokens or emptying a section."""
+def _prune_plan(document: Document, threshold: float, max_tokens: int) -> tuple[SentenceId, ...]:
+    """Deletions, most-redundant first, that approach max_tokens while never emptying a section."""
     sentences = document.sentences
     if len(sentences) < 2 or document.token_count <= max_tokens:
         return ()
@@ -540,8 +488,6 @@ def _prune_plan(document: Document, threshold: float, min_tokens: int, max_token
                 continue
             if redundancy[index] < threshold:
                 break  # descending order: everything after is below the eligibility floor
-            if remaining - sentence.token_count < min_tokens:
-                continue  # floor guard: this deletion would undershoot the window
             if any(surviving_counts[ancestor] <= 1 for ancestor in ancestors[sentence.id]):
                 continue  # deleting the section's last sentence would empty it
             chosen = int(index)
@@ -658,9 +604,7 @@ def _evaluate_target_candidates(
     source: Document,
     group: tuple[Sentence, ...],
     embedder: Embedder,
-    preferred_min_document_tokens: int,
     max_document_tokens: int,
-    group_preferred_min_tokens: int,
     group_max_tokens: int,
     drift_budget: float,
     expected_structure: tuple[str, ...],
@@ -695,7 +639,7 @@ def _evaluate_target_candidates(
         if trial is None:
             continue
         structure_valid = not _GENERATED_MARKUP.search(variant.text)
-        pending.append((variant, trial, merged_tokens, structure_valid, _feedback_chunks(variant.text)))
+        pending.append((variant, trial, merged_tokens, structure_valid, _coverage_chunks(variant.text)))
     if not pending:
         return ()
 
@@ -737,20 +681,10 @@ def _evaluate_target_candidates(
         chunk_offset += chunk_counts[index]
         source_coverage = np.max(source_group_embeddings @ output_chunk_embeddings.T, axis=1)
         coverage = float(np.min(source_coverage))
-        ordered_gaps = np.argsort(source_coverage)
-        coverage_gaps = tuple(
-            int(ordered_gaps[index % len(ordered_gaps)]) for index in range(TARGET_CANDIDATES_PER_CALL)
-        )
         target_distance = max(0, candidate.token_count - max_document_tokens)
-        target_undercut = max(0, preferred_min_document_tokens - candidate.token_count)
         issues: list[str] = []
         if variant.repaired_tokens:
             issues.append(f"deterministic repair removed {variant.repaired_tokens} tokens to enforce the hard limit")
-        if candidate.token_count < preferred_min_document_tokens:
-            issues.append(
-                f"output used only {merged_tokens} tokens; prefer the available budget of "
-                f"{group_preferred_min_tokens}-{group_max_tokens} when quality permits"
-            )
         if not structure_valid:
             issues.append("candidate introduced an XML or Markdown boundary line")
         actual_structure = tuple(sentence.text.strip() for sentence in candidate.sentences if not sentence.optimizable)
@@ -766,46 +700,25 @@ def _evaluate_target_candidates(
                 drift=drift,
                 minimum_coverage=coverage,
                 target_distance=target_distance,
-                target_undercut=target_undercut,
                 structure_valid=structure_valid,
                 issues=tuple(issues),
                 repaired_tokens=variant.repaired_tokens,
-                coverage_gaps=coverage_gaps,
             )
         )
     return tuple(evaluated)
 
 
-def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int, int, float, float]:
+def _target_candidate_rank(candidate: _TargetCandidate) -> tuple[bool, bool, int, float, float]:
     return (
         not candidate.structure_valid,
         candidate.target_distance > 0,
         candidate.target_distance,
-        candidate.target_undercut,
-        -candidate.minimum_coverage,
         candidate.drift,
+        -candidate.minimum_coverage,
     )
 
 
-def _target_feedback(candidate: _TargetCandidate, group: tuple[Sentence, ...], max_tokens: int) -> str:
-    source_excerpts = [" ".join(group[index].text.split())[:220] for index in candidate.coverage_gaps]
-    problems = "; ".join(candidate.issues) or "improve semantic coverage while preserving the token range"
-    rendered_excerpts = "\n".join(
-        f'{index}. Restore the exact meaning of source passage "{source_excerpt}".'
-        for index, source_excerpt in enumerate(source_excerpts, start=1)
-        if source_excerpt
-    )
-    return (
-        f"The current base is within the hard token ceiling but needs a quality refinement: {problems}. Its "
-        f"whole-prompt drift is {candidate.drift:.4f}, and its minimum source-line similarity is "
-        f"{candidate.minimum_coverage:.4f}. Copy the base nearly verbatim and make one localized correction per "
-        f"candidate using the correspondingly numbered excerpt below. Candidate N must perform only correction N.\n"
-        f"{rendered_excerpts}\nEvery revision must use no more than {max_tokens} cl100k_base tokens. Remove redundant "
-        "wording as needed; do not keep the edit token-neutral."
-    )
-
-
-def _feedback_chunks(text: str) -> tuple[str, ...]:
+def _coverage_chunks(text: str) -> tuple[str, ...]:
     chunks = tuple(chunk.strip() for chunk in re.split(r"(?<=[.!?])\s+|\n+", text) if chunk.strip())
     return chunks if chunks else (text,)
 

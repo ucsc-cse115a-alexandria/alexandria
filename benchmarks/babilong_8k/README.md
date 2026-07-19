@@ -67,11 +67,12 @@ uv run python -m scripts.babilong_8k_phase1
 Results are written under `trial_results/babilong_8k/`.
 
 The reduction target is strict. Alexandria keeps instruction, example, format, and Markdown/XML boundaries fixed,
-then asks Luna to rewrite a content window to the remaining token budget. It verifies the complete prompt's token
+then, for each content window, fires three generation requests to Luna in parallel with different rewrite
+strategies (plain compression, extractive deletion, and dense paraphrase). It verifies the complete prompt's token
 count and deterministically repairs model overshoot. Candidate windows avoid query-linked terms and protect local
-semantic outliers. Target-safe candidates are ranked by local coverage and whole-prompt embedding drift. One merge
-call normally returns two candidates; a second call is allowed only for quality refinement. Each result records
-merge calls, retries, generated candidates, repaired tokens, and final drift.
+semantic outliers. Among target-safe candidates it selects the one with the lowest whole-prompt embedding drift,
+using local coverage as a tiebreaker. The three requests run concurrently, so each window costs roughly one
+generation call. Each result records merge calls, retries, generated candidates, repaired tokens, and final drift.
 
 ## 100-case hard-target result
 

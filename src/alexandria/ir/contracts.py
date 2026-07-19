@@ -84,15 +84,9 @@ class SentenceMerger(Protocol):
 
 @runtime_checkable
 class TargetedMerger(Protocol):
-    """Generate diverse compressions for a hard token budget, using prior elites and feedback."""
+    """Generate diverse compressions of a segment, each at or below a hard token budget."""
 
-    def merge_candidates_to_target(
-        self,
-        prompt: str,
-        max_tokens: int,
-        feedback: str | None = None,
-        base_candidate: str | None = None,
-    ) -> tuple[str, ...]: ...
+    def merge_candidates_to_target(self, prompt: str, max_tokens: int) -> tuple[str, ...]: ...
 
 
 class TrackedEmbedder:
@@ -138,21 +132,12 @@ class TrackedMerger:
         self._cache[key] = merged
         return merged
 
-    def merge_candidates_to_target(
-        self,
-        prompt: str,
-        max_tokens: int,
-        feedback: str | None = None,
-        base_candidate: str | None = None,
-    ) -> tuple[str, ...]:
+    def merge_candidates_to_target(self, prompt: str, max_tokens: int) -> tuple[str, ...]:
         if not isinstance(self._merger, TargetedMerger):
             raise TypeError("strict token targets require a merger with merge_candidates_to_target support")
         self.calls += 1
-        if feedback is None:
-            self.jobs_attempted += 1
-        else:
-            self.retries += 1
-        candidates = self._merger.merge_candidates_to_target(prompt, max_tokens, feedback, base_candidate)
+        self.jobs_attempted += 1
+        candidates = self._merger.merge_candidates_to_target(prompt, max_tokens)
         self.candidates_generated += len(candidates)
         return candidates
 
