@@ -26,10 +26,10 @@
 | src/alexandria/ops/pipe.py               |       77 |        2 |        4 |        0 |     97.5% |     90-91 |
 | src/alexandria/ops/report.py             |       87 |        4 |       12 |        4 |     91.9% |137, 139, 141, 143 |
 | src/alexandria/utils/config.py           |       35 |        0 |        6 |        0 |    100.0% |           |
-| src/alexandria/utils/embedders.py        |       25 |        1 |        0 |        0 |     96.0% |        49 |
+| src/alexandria/utils/embedders.py        |       55 |        2 |       10 |        2 |     93.8% |31, 53-\>55, 92 |
 | src/alexandria/utils/merger.py           |       30 |        5 |       10 |        0 |     82.5% |     56-67 |
-| src/alexandria/utils/tokens.py           |       20 |        2 |       10 |        3 |     83.3% |    18, 32 |
-| **TOTAL**                                | **2055** |  **106** |  **540** |   **78** | **92.1%** |           |
+| src/alexandria/utils/tokens.py           |       20 |        1 |       10 |        2 |     90.0% |18, 27-\>32 |
+| **TOTAL**                                | **2085** |  **106** |  **550** |   **79** | **92.2%** |           |
 
 
 ## Setup coverage badge
