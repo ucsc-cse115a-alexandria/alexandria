@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from scripts.plot_cos_sim_budget_benchmarks import aggregate_summaries, configured_budget
+from scripts.plot_cos_sim_budget_benchmarks import aggregate_summaries, configured_budget, write_outputs
 
 
 def _condition(accuracy: float, reduction: float, difference: float) -> dict[str, float]:
@@ -64,3 +64,23 @@ def test_aggregate_summaries_requires_matching_conditions() -> None:
 
     with pytest.raises(ValueError, match="same conditions"):
         aggregate_summaries({"babilong_8k": left, "ruler_v2": right})
+
+
+def test_write_outputs_creates_aggregate_and_four_figures(tmp_path) -> None:
+    aggregate = write_outputs(
+        {
+            "babilong_8k": _summary("babilong_8k", 0.8),
+            "ruler_v2": _summary("ruler_v2", 0.6),
+        },
+        tmp_path,
+    )
+
+    assert aggregate["average_definition"].startswith("equal-weight")
+    assert {path.name for path in tmp_path.iterdir()} == {
+        "aggregate_summary.json",
+        "quality_and_reduction_vs_budget.png",
+        "accuracy_vs_token_reduction.png",
+        "semantic_change_tradeoff.png",
+        "reliability_vs_budget.png",
+    }
+    assert all(path.stat().st_size > 1_000 for path in tmp_path.glob("*.png"))
