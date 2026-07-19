@@ -42,7 +42,7 @@ class _BaselineQualification(TypedDict):
     decision: str
 
 
-def _condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
+def condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
     source_tokens = sum(record.source_tokens for record in records)
     sent_tokens = sum(record.sent_tokens for record in records)
     correct = sum(record.verdict.correct for record in records)
@@ -105,7 +105,7 @@ def summarize_records(
         condition_records.sort(key=lambda record: record.case_key)
     original = grouped["original"]
     original_keys = [record.case_key for record in original]
-    original_summary = cast("_ConditionSummary", _condition_summary(original))
+    original_summary = cast("_ConditionSummary", condition_summary(original))
     original_accuracy = original_summary["accuracy"]
     baseline_qualifies = original_accuracy >= minimum_original_accuracy
     conditions: dict[str, object] = {"original": original_summary}
@@ -115,7 +115,7 @@ def summarize_records(
             continue
         if [record.case_key for record in condition_records] != original_keys:
             raise ValueError(f"condition {condition!r} does not contain the same paired cases as original")
-        conditions[condition] = _condition_summary(condition_records)
+        conditions[condition] = condition_summary(condition_records)
         official = paired_score_bootstrap(
             [record.verdict.score for record in original],
             [record.verdict.score for record in condition_records],
@@ -159,7 +159,7 @@ def summarize_records(
         for record in task_records:
             task_conditions[record.condition].append(record)
         tasks[task] = {
-            condition: _condition_summary(condition_records)
+            condition: condition_summary(condition_records)
             for condition, condition_records in sorted(task_conditions.items())
         }
     return {

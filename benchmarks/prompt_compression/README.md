@@ -50,6 +50,22 @@ model; both are recorded in the manifest. Conditions are always compared using t
 Sampling is deterministic for a fixed eligible dataset, `n`, and seed. It round-robins across task labels before
 taking additional cases from a task.
 
+For a best-effort semantic-change sweep instead of a hard token target, use:
+
+```bash
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 50 --seed 42 \
+  --cos-sim-diff-budgets 0.0025 0.005 0.01 0.015 0.02 \
+  --minimum-retained-percent 50 \
+  --max-generation-calls-per-condition 30 --max-condition-seconds 300 \
+  --max-estimated-cost-usd 15 \
+  --out benchmarks/babilong_8k/results/<run-name>
+```
+
+This mode treats `cos_sim_diff` as a ceiling and never breaks it merely to reach the token floor. The retained
+percentage is therefore an observed result, not a guaranteed target. Request-level usage is flushed before the
+case checkpoint, and terminal safety-limit outcomes are preserved and skipped on identical resumes.
+
 Recompute a summary from saved outcomes without API calls:
 
 ```bash
@@ -81,6 +97,10 @@ The output directory is resumable and contains:
 - `summary.json`: aggregate and per-task scores, token reduction, time/cost, paired transitions, bootstrap intervals,
   and release decisions;
 - `report.md`: the benchmark-specific result table and explicit PASS/FAIL statements; and
+- `api_events.jsonl`: request-level status, response ID, model, scoped case-condition, latency, usage, and estimated
+  cost, flushed immediately after each response;
+- `errors.jsonl`: incomplete case-conditions, error type, elapsed time, captured cost, and whether the failure is
+  terminal for identical resumes; and
 - `run.log` for committed evidence: progress, baseline-gate output, interruption traces, resume output, and final
   report.
 

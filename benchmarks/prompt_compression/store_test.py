@@ -53,3 +53,22 @@ def test_run_store_refuses_to_mix_different_manifests(tmp_path: Path) -> None:
     assert json.loads((tmp_path / "manifest.json").read_text())["command"] == "first"
     with pytest.raises(ValueError, match="different run"):
         store.write_manifest({"seed": 7})
+
+
+def test_run_store_flushes_api_events_as_jsonl(tmp_path: Path) -> None:
+    store = RunStore(tmp_path)
+    store.append_api_event({"case_key": "case:1", "status": "completed", "estimated_cost_usd": 0.25})
+
+    assert json.loads(store.api_events_path.read_text()) == {
+        "case_key": "case:1",
+        "status": "completed",
+        "estimated_cost_usd": 0.25,
+    }
+    assert store.api_event_cost() == 0.25
+
+
+def test_run_store_loads_persisted_errors(tmp_path: Path) -> None:
+    store = RunStore(tmp_path)
+    store.append_errors(({"condition": "budget0p02", "terminal": True},))
+
+    assert store.load_errors() == ({"condition": "budget0p02", "terminal": True},)
