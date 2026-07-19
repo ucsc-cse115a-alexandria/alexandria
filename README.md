@@ -114,51 +114,33 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current cross-benchmark result is a five-case smoke test of the publication pipeline, not release evidence. It
-uses seed 42, `gpt-5.6-luna` for both compression and answers, reasoning `none`, and
-`text-embedding-3-small`. Each benchmark had to achieve at least 50% original accuracy before any compressed
-condition ran. LongBench v2 uses the pinned official `length=short` subset and excludes complete prompts over
-128,000 `cl100k_base` tokens. Every point is based on only five paired cases, so one answer moves accuracy by 20
-percentage points and the curves are intentionally reported as exploratory.
+The current cross-benchmark result is a five-case smoke test of the publication pipeline across
+BABILong 8k, RULERv2, and LongBench v2 (seed 42, `gpt-5.6-luna` for compression and answers,
+`text-embedding-3-small`). With only five paired cases per benchmark, one answer moves accuracy by
+20 percentage points — these curves are exploratory, not release evidence.
 
-| Prompt retained | Average accuracy | Average accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Total wall time | Estimated API cost |
-|---:|---:|---:|---:|---:|---:|---:|
-| 50% | 20.0% | 27.8% | 56.9% | 0.083987 | 395.5s | $1.4291 |
-| 60% | 40.0% | 50.6% | 45.8% | 0.042149 | 351.5s | $1.2022 |
-| 70% | 53.3% | 68.9% | 33.1% | 0.019117 | 294.2s | $0.9405 |
-| 80% | 53.3% | 65.6% | 23.4% | 0.013509 | 222.8s | $0.7176 |
-| 90% | 73.3% | 93.3% | 12.4% | 0.007288 | 151.8s | $0.4969 |
-| 100% (original) | 80.0% | 100.0% | 0.0% | 0.000000 | 15.9s | $0.2425 |
+| Prompt retained | Average accuracy | Average accuracy retention | Achieved token reduction | Total wall time | Estimated API cost |
+|---:|---:|---:|---:|---:|---:|
+| 50% | 20.0% | 27.8% | 56.9% | 395.5s | $1.4291 |
+| 60% | 40.0% | 50.6% | 45.8% | 351.5s | $1.2022 |
+| 70% | 53.3% | 68.9% | 33.1% | 294.2s | $0.9405 |
+| 80% | 53.3% | 65.6% | 23.4% | 222.8s | $0.7176 |
+| 90% | 73.3% | 93.3% | 12.4% | 151.8s | $0.4969 |
+| 100% (original) | 80.0% | 100.0% | 0.0% | 15.9s | $0.2425 |
 
-![Accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/accuracy_vs_retained.png)
+`Accuracy retention` divides each benchmark's compressed accuracy by its original accuracy before
+averaging equally across the three benchmarks. In this smoke, retaining 90% of the prompt saved
+12.4% of tokens while keeping 93.3% average accuracy retention; below 70% retained, accuracy
+degrades quickly.
 
 ![Accuracy retention by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/accuracy_retention_vs_retained.png)
 
-![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
-
-![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
-
 ![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cost_and_time_vs_retained.png)
 
-The six conditions across all three benchmarks cost an estimated **$5.0288** and took **1,431.7 seconds** of
-measured sequential wall time. The manifests use standard short-context Luna prices per million tokens: $1.00
-input, $0.10 cached input, and $6.00 output, plus $0.02 embedding input. Scaling the selected n=100 source-token
-distributions by this smoke's measured per-token cost gives a planning estimate of **$91.54**; allow roughly
-**$140** for run-to-run variation in merge work. This is an estimate, not a spend claim.
-
-Original accuracy was 60% on BABILong 8k, 100% on RULERv2, and 80% on LongBench v2. All BABILong and RULERv2
-compression conditions failed the predeclared 90% accuracy-retention confidence rule. LongBench keep70 and keep90
-passed in this five-case sample; the other LongBench conditions failed. No n=5 PASS is a release claim.
-
-`Average` is the equal-weight mean of the three benchmark-level values. `Task accuracy` is the fraction of cases
-answered correctly under a condition. `Accuracy retention` divides each benchmark's compressed accuracy by its
-original accuracy before averaging, so it measures preservation relative to that benchmark's solvable baseline.
-
-Exact commands, assumptions, and links to the append-only records and exact prompts are in the
-[shared benchmark documentation](benchmarks/prompt_compression/README.md). Machine-readable aggregate data is in
-[`aggregate_summary.json`](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/aggregate_summary.json).
-The previously published 100-case BABILong keep90 result remains available in the
-[BABILong benchmark README](benchmarks/babilong_8k/README.md); its release decision is **FAIL**.
+The remaining figures (raw accuracy, `cos_sim_diff` curves, semantic-change trade-off), cost
+assumptions and planning estimates, per-benchmark pass/fail decisions, exact commands, and links to
+the append-only raw records are in the
+[shared benchmark documentation](benchmarks/prompt_compression/README.md).
 
 ## How it works
 

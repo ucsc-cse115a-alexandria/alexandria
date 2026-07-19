@@ -46,15 +46,26 @@ Original accuracy was 60% for BABILong, 100% for RULERv2, and 80% for LongBench,
 baseline gate. Across benchmarks, average accuracy rose from 20.0% at keep50 to 73.3% at keep90, versus 80.0% on
 original prompts. Average accuracy retention at keep90 was 93.3%, with a mean whole-prompt `cos_sim_diff` of
 0.007288 and an achieved 12.4% token reduction. The entire 90-condition run cost an estimated $5.0288 and took
-1,431.7 seconds of measured sequential wall time.
+1,431.7 seconds of measured sequential wall time. The manifests use standard short-context Luna prices per million
+tokens: $1.00 input, $0.10 cached input, and $6.00 output, plus $0.02 embedding input. Scaling the selected n=100
+source-token distributions by this smoke's measured per-token cost gives a planning estimate of $91.54; allow
+roughly $140 for run-to-run variation in merge work. This is an estimate, not a spend claim.
 
 `Average` is the equal-weight mean of the three benchmark-level values. Accuracy retention is computed per
 benchmark as compressed accuracy divided by original accuracy and then averaged; it is not another name for task
 accuracy.
 
-In addition to retained-percentage curves, the generated `semantic_change_vs_accuracy.png` directly plots task
-accuracy and original-relative accuracy retention against mean whole-prompt `cos_sim_diff`. This makes the quality
-trade-off visible without treating retained token percentage as a proxy for semantic preservation.
+The project README shows the accuracy-retention and cost/time curves. The remaining generated figures below plot
+raw task accuracy, the `cos_sim_diff` curve, and the semantic-change trade-off: `semantic_change_vs_accuracy.png`
+directly plots task accuracy and original-relative accuracy retention against mean whole-prompt `cos_sim_diff`,
+making the quality trade-off visible without treating retained token percentage as a proxy for semantic
+preservation. `Task accuracy` is the fraction of cases answered correctly under a condition.
+
+![Accuracy by retained prompt percentage](results/2026-07-18-luna-keep50-90-n5-v1/accuracy_vs_retained.png)
+
+![Cosine difference by retained prompt percentage](results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
+
+![Accuracy and retention versus semantic change](results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
 
 These are smoke-test numbers: with five cases per benchmark, accuracy moves in 20-point steps. All BABILong and
 RULERv2 compressed conditions failed the paired-bootstrap release rule. LongBench keep70 and keep90 passed, but
@@ -95,7 +106,11 @@ Raw evidence:
 - [BABILong 8k run](../babilong_8k/results/2026-07-18-luna-keep50-90-n5-v1/)
 - [RULERv2 run](../ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1/)
 - [LongBench v2 run](../longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1/)
-- [Cross-benchmark aggregates and figures](results/2026-07-18-luna-keep50-90-n5-v1/)
+- [Cross-benchmark aggregates and figures](results/2026-07-18-luna-keep50-90-n5-v1/), including machine-readable
+  [`aggregate_summary.json`](results/2026-07-18-luna-keep50-90-n5-v1/aggregate_summary.json)
+
+The previously published 100-case BABILong keep90 result remains available in the
+[BABILong benchmark README](../babilong_8k/README.md); its release decision is **FAIL**.
 
 As a negative control for model selection, `gpt-5.4-nano` was also tried as the answer model with Luna compression.
 Its original accuracy was 20% on BABILong and 40% on LongBench, so the gate correctly stopped those runs before
