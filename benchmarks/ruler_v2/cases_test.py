@@ -37,9 +37,7 @@ def test_adapter_separates_official_basic_instruction_haystack_and_query(tmp_pat
         "The special magic number for blue-key mentioned in the provided text is"
     )
     path.write_text(json.dumps({"question": question, "expected_answer": ["123"]}) + "\n")
-    case = RULERv2Adapter().load_cases(
-        1, seed=42, data_dir=path, min_source_tokens=0, max_source_tokens=None
-    )[0]
+    case = RULERv2Adapter().load_cases(1, seed=42, data_dir=path, min_source_tokens=0, max_source_tokens=None)[0]
     assert case.prompt == question
     assert case.prompt_parts.prefix.endswith("afterwards.\n")
     assert case.prompt_parts.context == "One of the special magic numbers for blue-key is: 123."

@@ -111,7 +111,5 @@ def estimate_cost(records: tuple[UsageRecord, ...]) -> float:
             total += record.input_tokens * 0.02 / 1_000_000
             continue
         uncached = record.input_tokens - record.cached_input_tokens
-        total += (
-            uncached * 1.00 + record.cached_input_tokens * 0.10 + record.output_tokens * 6.00
-        ) / 1_000_000
+        total += (uncached * 1.00 + record.cached_input_tokens * 0.10 + record.output_tokens * 6.00) / 1_000_000
     return total

@@ -80,9 +80,7 @@ def _git_sha() -> str:
     git = shutil.which("git")
     if git is None:
         raise RuntimeError("git executable not found")
-    return subprocess.run(
-        [git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True
-    ).stdout.strip()
+    return subprocess.run([git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
 
 
 def _prompt_hash(prompt: str) -> str:
