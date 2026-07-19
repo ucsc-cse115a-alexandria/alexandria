@@ -211,16 +211,3 @@ def review(
                 return None
     finally:
         write(_SHOW_CURSOR)
-
-
-def apply_candidates(document: Document, candidates: tuple[Candidate, ...]) -> Document:
-    """Fold Document.apply over the candidates; accept means accept — no drift-budget re-filtering.
-
-    A candidate whose edit would empty the document or a section (apply returns None) is skipped.
-    """
-    current = document
-    for candidate in candidates:
-        trial = current.apply(candidate)
-        if trial is not None:
-            current = trial
-    return current

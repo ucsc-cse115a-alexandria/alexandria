@@ -11,11 +11,12 @@ from pydantic import ValidationError
 
 from alexandria.cli.browser_review import run_browser_review
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.cli.interactive import apply_candidates, review
+from alexandria.cli.interactive import review
 from alexandria.cli.verbose import VerboseReporter
 from alexandria.ir.contracts import MergeMetrics, Params, TrackedMerger
 from alexandria.ops import (
     OptimizationReport,
+    apply_candidates,
     compare_reports,
     count_tokens,
     default_embedder,
@@ -28,10 +29,10 @@ from alexandria.ops.features.optimize import optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import DEFAULT_SCORER, score, score_rows
 from alexandria.ops.features.select import select
-from alexandria.ops.pipe import ReduceResult, propose, reduce
+from alexandria.ops.pipe import Proposal, ReduceResult, propose, reduce
 
 if TYPE_CHECKING:
-    from collections.abc import Generator
+    from collections.abc import Callable, Generator
     from typing import IO
 
     from alexandria.ir.contracts import Candidate, Embedder, Plan, SentenceMerger
@@ -88,32 +89,20 @@ def _reduction_json(
     return json.dumps(payload, indent=2)
 
 
-def _interactive_reduce(prompt: str, embedder: Embedder, merger: SentenceMerger, params: Params) -> ReduceResult:
-    """Propose edits, review them in the terminal, and apply exactly the accepted ones."""
-    proposal = propose(prompt, embedder, merger, params=params)
-    accepted: tuple[Candidate, ...] = ()
-    if not proposal.diffs:
-        click.echo("no proposed edits; the prompt is unchanged", err=True)
-    else:
-        chosen = review(proposal.document, proposal.diffs)
-        if chosen is None:
-            click.echo("review aborted; the prompt is unchanged", err=True)
-        else:
-            accepted = chosen
-    document = apply_candidates(proposal.document, accepted)
-    return ReduceResult(document=document, source=proposal.document, applied=accepted)
-
-
-def _browser_reduce(
-    prompt: str, embedder: Embedder, merger: SentenceMerger, params: Params, *, open_browser: bool
+def _reduce_with_review(
+    prompt: str,
+    embedder: Embedder,
+    merger: SentenceMerger,
+    params: Params,
+    review_ui: Callable[[Proposal], tuple[Candidate, ...] | None],
 ) -> ReduceResult:
-    """Propose edits, review them in a browser, and apply exactly the accepted ones."""
+    """Propose edits, review them via review_ui, and apply exactly the accepted ones."""
     proposal = propose(prompt, embedder, merger, params=params)
     accepted: tuple[Candidate, ...] = ()
     if not proposal.diffs:
         click.echo("no proposed edits; the prompt is unchanged", err=True)
     else:
-        chosen = run_browser_review(proposal, open_browser=open_browser)
+        chosen = review_ui(proposal)
         if chosen is None:
             click.echo("review aborted; the prompt is unchanged", err=True)
         else:
@@ -336,10 +325,20 @@ def reduce_cmd(
         merger = default_merger()
         prompt = file.read()
         if interactive:
-            result = _interactive_reduce(prompt, embedder, merger, Params(drift_budget=drift_budget))
+            result = _reduce_with_review(
+                prompt,
+                embedder,
+                merger,
+                Params(drift_budget=drift_budget),
+                lambda proposal: review(proposal.document, proposal.diffs),
+            )
         elif browser:
-            result = _browser_reduce(
-                prompt, embedder, merger, Params(drift_budget=drift_budget), open_browser=not no_open
+            result = _reduce_with_review(
+                prompt,
+                embedder,
+                merger,
+                Params(drift_budget=drift_budget),
+                lambda proposal: run_browser_review(proposal, open_browser=not no_open),
             )
         else:
             source_tokens = count_tokens(prompt)
