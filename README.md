@@ -137,9 +137,17 @@ degrades quickly.
 
 ![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cost_and_time_vs_retained.png)
 
-The remaining figures (raw accuracy, `cos_sim_diff` curves, semantic-change trade-off), cost
-assumptions and planning estimates, per-benchmark pass/fail decisions, exact commands, and links to
-the append-only raw records are in the
+`cos_sim_diff` (`1 - cosine_similarity` between the original and reduced whole-prompt embeddings)
+is the quality knob the CLI exposes as `--cos-sim-diff-budget`. The next two figures connect it to
+both sides of the trade-off — how much semantic change each retention level introduces, and how
+accuracy falls as semantic change grows — so you can pick a budget instead of guessing:
+
+![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
+
+![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
+
+The raw per-benchmark accuracy figure, cost assumptions and planning estimates, per-benchmark
+pass/fail decisions, exact commands, and links to the append-only raw records are in the
 [shared benchmark documentation](benchmarks/prompt_compression/README.md).
 
 ## How it works

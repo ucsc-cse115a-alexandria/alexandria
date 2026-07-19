@@ -55,17 +55,13 @@ roughly $140 for run-to-run variation in merge work. This is an estimate, not a 
 benchmark as compressed accuracy divided by original accuracy and then averaged; it is not another name for task
 accuracy.
 
-The project README shows the accuracy-retention and cost/time curves. The remaining generated figures below plot
-raw task accuracy, the `cos_sim_diff` curve, and the semantic-change trade-off: `semantic_change_vs_accuracy.png`
-directly plots task accuracy and original-relative accuracy retention against mean whole-prompt `cos_sim_diff`,
-making the quality trade-off visible without treating retained token percentage as a proxy for semantic
-preservation. `Task accuracy` is the fraction of cases answered correctly under a condition.
+The project README shows the accuracy-retention, cost/time, `cos_sim_diff`, and semantic-change trade-off curves.
+`semantic_change_vs_accuracy.png` directly plots task accuracy and original-relative accuracy retention against
+mean whole-prompt `cos_sim_diff`, making the quality trade-off visible without treating retained token percentage
+as a proxy for semantic preservation. The remaining figure below plots raw per-benchmark task accuracy — the
+fraction of cases answered correctly under a condition:
 
 ![Accuracy by retained prompt percentage](results/2026-07-18-luna-keep50-90-n5-v1/accuracy_vs_retained.png)
-
-![Cosine difference by retained prompt percentage](results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
-
-![Accuracy and retention versus semantic change](results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
 
 These are smoke-test numbers: with five cases per benchmark, accuracy moves in 20-point steps. All BABILong and
 RULERv2 compressed conditions failed the paired-bootstrap release rule. LongBench keep70 and keep90 passed, but
