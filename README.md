@@ -114,43 +114,36 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current evidence run measures 50 samples each from BABILong 8k and RULERv2 with seed 42. It uses
-`gpt-5.6-luna` with reasoning `none` for both compression and answers, plus `text-embedding-3-small`. The runner
-measures every original first and only runs compressed conditions when original accuracy is at least 50%.
-BABILong (68%) and RULERv2 (74%) both passed that gate.
+Can Alexandria reduce long prompts without losing task performance? The current evidence says **not yet at the
+tested operating points**. The benchmark measured 50 samples each from BABILong 8k and RULERv2 with seed 42,
+using `gpt-5.6-luna` for both compression and answers. The least destructive tested condition retained 90% of
+each prompt target; it achieved a 13.5% token reduction but did not pass the predeclared accuracy-retention rule.
 
-The table and `Average` curve are the equal-weight mean of the two benchmarks. `Accuracy retention` is calculated
-per benchmark relative to its own original accuracy before averaging.
+| Adoption signal | Original | Least destructive compressed condition |
+|---|---:|---:|
+| Prompt retained target | 100% | 90% |
+| Average task accuracy | 71.0% | 61.0% |
+| Accuracy retention | 100% | 86.7% |
+| Achieved token reduction | 0.0% | 13.5% |
+| Mean `cos_sim_diff` | 0.000000 | 0.016461 |
+| Measured benchmark work | 116.8s | 901.5s |
+| Release decision | Original baselines eligible | **FAIL on both benchmarks** |
 
-| Prompt retained | Average accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Measured time |
-|---:|---:|---:|---:|---:|---:|
-| 50% | 22.0% | 30.6% | 58.2% | 0.090447 | 2,008.4s |
-| 60% | 36.0% | 50.7% | 45.3% | 0.054069 | 1,838.2s |
-| 70% | 38.0% | 53.1% | 34.5% | 0.036756 | 1,518.4s |
-| 80% | 45.0% | 63.3% | 23.9% | 0.025185 | 1,186.8s |
-| 90% | 61.0% | 86.7% | 13.5% | 0.016461 | 901.5s |
-| 100% (original) | 71.0% | 100.0% | 0.0% | 0.000000 | 116.8s |
+`Average` is the equal-weight mean of the two benchmarks. The full curve shows how task accuracy changes as more
+of the prompt is retained:
 
 ![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
 
-![Accuracy retention by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_retention_vs_retained.png)
-
-`cos_sim_diff` (`1 - cosine_similarity` between the original and reduced whole-prompt embeddings)
-is the quality knob the CLI exposes as `--cos-sim-diff-budget`. The next two figures connect it to
-both sides of the trade-off — how much semantic change each retention level introduces, and how
-accuracy falls as semantic change grows — so you can pick a budget instead of guessing:
-
-![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/cos_sim_diff_vs_retained.png)
+`cos_sim_diff` is the semantic-change guard exposed as `--cos-sim-diff-budget`. This figure connects the measured
+semantic change directly to downstream quality:
 
 ![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/semantic_change_vs_accuracy.png)
 
-All five compressed conditions failed the predeclared paired-bootstrap release rule on both qualified benchmarks.
-The two published runs recorded 600 case/condition results and 4,946 metered usage events. Their summed measured
-reduction-plus-answer time was 7,570.1 seconds. The per-condition time table sums measured API work across both
-benchmarks; it is not the elapsed time of the parallel shell processes.
-
-The raw per-benchmark results, pass/fail decisions, exact commands, and links to the append-only records are in the
-[shared benchmark documentation](benchmarks/prompt_compression/README.md).
+All five compressed conditions failed the paired-bootstrap release rule on both benchmarks. See the
+[detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/report.md) for
+every condition, confidence intervals, timing and cost breakdowns, exact reproduction commands, caveats, and links
+to the append-only raw records. The [benchmark runner guide](benchmarks/prompt_compression/README.md) documents the
+shared evidence format and how to execute a new run.
 
 ## How it works
 
