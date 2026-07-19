@@ -136,6 +136,8 @@ percentage points and the curves are intentionally reported as exploratory.
 
 ![Cosine difference by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cos_sim_diff_vs_retained.png)
 
+![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/semantic_change_vs_accuracy.png)
+
 ![Cost and time by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-18-luna-keep50-90-n5-v1/cost_and_time_vs_retained.png)
 
 The six conditions across all three benchmarks cost an estimated **$5.0288** and took **1,431.7 seconds** of

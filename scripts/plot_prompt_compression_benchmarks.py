@@ -164,6 +164,60 @@ def _plot_efficiency(aggregate: dict[str, Any], path: Path) -> None:
     plt.close(figure)
 
 
+def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
+    """Plot downstream quality directly against whole-prompt semantic change."""
+    points = aggregate["points"]
+    figure, (accuracy_axis, retention_axis) = plt.subplots(1, 2, figsize=(14, 6), constrained_layout=True)
+    series = (*BENCHMARK_LABELS.items(), ("macro_average", "Macro average"))
+    for key, label in series:
+        x = [
+            point["macro_average"]["cos_sim_diff"]
+            if key == "macro_average"
+            else point["benchmarks"][key]["cos_sim_diff"]
+            for point in points
+        ]
+        for axis, metric in ((accuracy_axis, "accuracy"), (retention_axis, "accuracy_retention")):
+            y = [
+                point["macro_average"][metric]
+                if key == "macro_average"
+                else point["benchmarks"][key][metric]
+                for point in points
+            ]
+            axis.plot(
+                x,
+                y,
+                marker="o",
+                linewidth=3 if key == "macro_average" else 2,
+                markersize=7 if key == "macro_average" else 5,
+                color=COLORS[key],
+                label=label,
+            )
+            if key == "macro_average":
+                for semantic_change, quality, point in zip(x, y, points, strict=True):
+                    axis.annotate(
+                        f"{point['retained_percent']:.0f}%",
+                        (semantic_change, quality),
+                        xytext=(5, 6),
+                        textcoords="offset points",
+                        fontsize=8,
+                        color=COLORS[key],
+                    )
+    for axis in (accuracy_axis, retention_axis):
+        axis.set_xlabel("Mean cos_sim_diff (lower is better)")
+        axis.grid(color="#E5E7EB", linewidth=0.8)
+        axis.spines[["top", "right"]].set_visible(False)
+        axis.yaxis.set_major_formatter(lambda value, _position: f"{value * 100:.0f}%")
+    accuracy_axis.set_ylabel("Task accuracy")
+    accuracy_axis.set_ylim(-0.03, 1.05)
+    accuracy_axis.set_title("Absolute accuracy", loc="left", fontsize=14, fontweight="bold")
+    retention_axis.set_ylabel("Accuracy retention (original = 100%)")
+    retention_axis.set_title("Original-relative retention", loc="left", fontsize=14, fontweight="bold")
+    retention_axis.legend(frameon=False, loc="best")
+    figure.suptitle("Downstream quality vs. semantic change", x=0.01, ha="left", fontsize=17, fontweight="bold")
+    figure.savefig(path, dpi=180)
+    plt.close(figure)
+
+
 def write_outputs(summaries: dict[str, dict[str, Any]], out_dir: Path) -> dict[str, Any]:
     """Write machine-readable aggregates and the three committed figures."""
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -191,6 +245,7 @@ def write_outputs(summaries: dict[str, dict[str, Any]], out_dir: Path) -> dict[s
         out_dir / "cos_sim_diff_vs_retained.png",
     )
     _plot_efficiency(aggregate, out_dir / "cost_and_time_vs_retained.png")
+    _plot_semantic_tradeoff(aggregate, out_dir / "semantic_change_vs_accuracy.png")
     return aggregate
 
 

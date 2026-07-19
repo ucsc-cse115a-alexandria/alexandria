@@ -48,6 +48,10 @@ original prompts. Macro accuracy retention at keep90 was 93.3%, with a mean whol
 0.007288 and an achieved 12.4% token reduction. The entire 90-condition run cost an estimated $5.0288 and took
 1,431.7 seconds of measured sequential wall time.
 
+In addition to retained-percentage curves, the generated `semantic_change_vs_accuracy.png` directly plots task
+accuracy and original-relative accuracy retention against mean whole-prompt `cos_sim_diff`. This makes the quality
+trade-off visible without treating retained token percentage as a proxy for semantic preservation.
+
 These are smoke-test numbers: with five cases per benchmark, accuracy moves in 20-point steps. All BABILong and
 RULERv2 compressed conditions failed the paired-bootstrap release rule. LongBench keep70 and keep90 passed, but
 those n=5 decisions are not release claims. Use n=100 for the evidence run.
