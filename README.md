@@ -18,7 +18,7 @@
 | src/alexandria/ops/features/compare.py   |       34 |        0 |        2 |        0 |    100.0% |           |
 | src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        45 |
 | src/alexandria/ops/features/optimize.py  |       92 |        2 |       42 |        3 |     96.3% |84-\>63, 110, 126 |
-| src/alexandria/ops/features/represent.py |      168 |        0 |       42 |        0 |    100.0% |           |
+| src/alexandria/ops/features/represent.py |      198 |        0 |       54 |        0 |    100.0% |           |
 | src/alexandria/ops/features/score.py     |       47 |        0 |       14 |        1 |     98.4% |   61-\>65 |
 | src/alexandria/ops/features/select.py    |       35 |        2 |       12 |        2 |     91.5% |    27, 42 |
 | src/alexandria/ops/pipe.py               |      513 |       55 |      152 |       28 |     85.4% |153-156, 243-244, 301, 315, 332, 381, 402-407, 456, 462-465, 507-\>519, 518, 546, 571, 587, 599-600, 604, 605-\>607, 621-636, 647-651, 673, 680, 696, 700, 755, 758-759, 818-\>820, 822, 984, 986, 988, 990 |
@@ -26,7 +26,7 @@
 | src/alexandria/utils/embedders.py        |       25 |        1 |        0 |        0 |     96.0% |        49 |
 | src/alexandria/utils/merger.py           |       13 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/utils/tokens.py           |       20 |        2 |       10 |        3 |     83.3% |    18, 32 |
-| **TOTAL**                                | **2015** |  **108** |  **544** |   **83** | **91.8%** |           |
+| **TOTAL**                                | **2045** |  **108** |  **556** |   **83** | **92.0%** |           |
 
 
 ## Setup coverage badge
