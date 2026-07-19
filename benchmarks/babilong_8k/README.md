@@ -79,6 +79,31 @@ uv run python -m scripts.summarize_prompt_compression_benchmark \
 
 The legacy phase-one commands below remain available for reproducing the previously published keep90 run.
 
+## Shared-run 10-case keep90 pilot
+
+This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 42, `gpt-5.6-luna`, answer reasoning `none`, and a full-prompt target of at most 90% of each original prompt. The complete original prompts ranged from 7,251 to 7,883 `cl100k_base` tokens. Whole-prompt cosine difference was measured after compression with `text-embedding-3-small` and is included in keep90 time and cost.
+
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Measured time | Estimated API cost |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 7,668.5 (76,685) | 0.00% | 0.000000 | 60.0% (6/10) | 11.5s | $0.0768 |
+| keep90 | 6,634.2 (66,342) | 13.49% | 0.006987 | 60.0% (6/10) | 104.0s | $0.2832 |
+
+The combined sequential time was 115.4 seconds and estimated cost was $0.3600. Keep90 compression itself took 94.8 seconds; its answers took 9.2 seconds. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, but its paired 95% percentile-bootstrap interval was 60.0%–175.0%. The lower bound did not clear the 90% release threshold, so this small pilot's decision is **FAIL**.
+
+Reproduce the run:
+
+```bash
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k --n 10 --seed 42 --reductions 10 \
+  --data-dir data/babilong/8k \
+  --out benchmarks/babilong_8k/results/2026-07-18-keep90-n10-common-v1
+```
+
+Evidence: [`manifest.json`](results/2026-07-18-keep90-n10-common-v1/manifest.json), [`records.jsonl`](results/2026-07-18-keep90-n10-common-v1/records.jsonl), [`prompts.jsonl.gz`](results/2026-07-18-keep90-n10-common-v1/prompts.jsonl.gz), [`summary.json`](results/2026-07-18-keep90-n10-common-v1/summary.json), and [`report.md`](results/2026-07-18-keep90-n10-common-v1/report.md).
+
+Cost uses the manifest assumptions per million tokens: $1.00 model input, $0.10 cached input, $6.00 model output, and $0.02 embedding input. This is an exploratory ten-case result and should not replace the existing 100-case result below.
+
 The default phase-one run uses 50 cases selected with seed 42, balanced as 10 cases from each of `qa1`-`qa5`.
 It compares the original prompt with a 90%-retained target (at least a 10% token reduction):
 

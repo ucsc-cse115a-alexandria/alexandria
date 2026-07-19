@@ -67,6 +67,32 @@ uv run python -m scripts.prompt_compression_benchmark \
 
 Remove `--dry-run` to run original, keep50, keep75, keep90, and keep95. Change `--n 5` to `--n 100` for the standard larger run. Sampling is deterministic and balanced across the six top-level task categories as far as eligible data permits.
 
+## Measured 10-case keep90 pilot
+
+This pilot filtered the pinned dataset to complete prompts between 16,000 and 128,000 `cl100k_base` tokens, then selected ten cases deterministically across the six top-level domains with seed 42. The selected original prompts ranged from 22,676 to 123,954 tokens, with a mean of 68,824.7 tokens.
+
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Accuracy | Measured time | Estimated API cost |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 68,824.7 (688,247) | 0.00% | 0.000000 | 60.0% (6/10) | 14.8s | $0.6371 |
+| keep90 | 61,042.0 (610,420) | 11.31% | 0.009065 | 60.0% (6/10) | 302.6s | $0.8946 |
+
+The combined sequential time was 317.4 seconds and estimated cost was $1.5317. Keep90 compression and whole-prompt comparison took 290.0 seconds; keep90 answers took 12.6 seconds. All six original successes remained correct, and all four original failures remained wrong, so the paired retention estimate and every defined bootstrap resample were 100%. The pilot therefore records **PASS** against the 90% retention threshold. With only ten cases, this does not establish that the same retention will hold across LongBench v2.
+
+Reproduce the run:
+
+```bash
+uv run python -m scripts.download_longbench_v2_data
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark longbench_v2 --n 10 --seed 42 --reductions 10 \
+  --data-dir data/longbench_v2 \
+  --min-source-tokens 16000 --max-source-tokens 128000 \
+  --out benchmarks/longbench_v2/results/2026-07-18-keep90-n10-v2
+```
+
+Evidence: [`manifest.json`](results/2026-07-18-keep90-n10-v2/manifest.json), [`records.jsonl`](results/2026-07-18-keep90-n10-v2/records.jsonl), [`prompts.jsonl.gz`](results/2026-07-18-keep90-n10-v2/prompts.jsonl.gz), [`summary.json`](results/2026-07-18-keep90-n10-v2/summary.json), and [`report.md`](results/2026-07-18-keep90-n10-v2/report.md).
+
+Cost uses the manifest assumptions per million tokens: $1.00 model input, $0.10 cached input, $6.00 model output, and $0.02 embedding input. The answer and merge model was `gpt-5.6-luna` with answer reasoning `none`; whole-prompt cosine difference used `text-embedding-3-small`.
+
 ## Logs, confidence intervals, and release decisions
 
 The run directory contains:

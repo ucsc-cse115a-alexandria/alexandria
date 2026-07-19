@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "implementation_commit": "f89cd5f6f3702f270c13a6332a3c90a126618e67",
+  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 10 --seed 42 --reductions 10 --data-dir data/babilong/8k --out benchmarks/babilong_8k/results/2026-07-18-keep90-n10-common-v1",
+  "benchmark": "babilong_8k",
+  "provenance": {
+    "dataset": "RMT-team/babilong@ee0d588794c7ac098062ee0d247c733d62e94fe2",
+    "prompt_and_metric": "booydar/babilong@38da79d79519ef87aa46ae804f838e1eab7f86d7"
+  },
+  "data_dir": "data/babilong/8k",
+  "n_cases": 10,
+  "case_keys": [
+    "qa1:47",
+    "qa2:40",
+    "qa3:58",
+    "qa4:82",
+    "qa5:73",
+    "qa1:46",
+    "qa2:7",
+    "qa3:37",
+    "qa4:62",
+    "qa5:86"
+  ],
+  "seed": 42,
+  "reductions_percent": [
+    10.0
+  ],
+  "model": "gpt-5.6-luna",
+  "reasoning": "none",
+  "tokenizer": "cl100k_base",
+  "eligibility": {
+    "min_source_tokens": 0,
+    "max_source_tokens": null
+  },
+  "compression": {
+    "compressible_prompt_part": "context",
+    "embedding_model": "text-embedding-3-small",
+    "merge_model": "gpt-5.6-luna",
+    "require_target": true
+  },
+  "source_token_distribution": {
+    "min": 7251,
+    "mean": 7668.5,
+    "p50": 7733.0,
+    "p95": 7843.85,
+    "max": 7883
+  },
+  "pricing_usd_per_million": {
+    "answer_or_merge_input": 1.0,
+    "answer_or_merge_cached_input": 0.1,
+    "answer_or_merge_output": 6.0,
+    "embedding_input": 0.02
+  },
+  "pricing_source": "https://developers.openai.com/api/docs/pricing"
+}

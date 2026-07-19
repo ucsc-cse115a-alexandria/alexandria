@@ -71,6 +71,36 @@ uv run python -m scripts.prompt_compression_benchmark \
 
 Change `--n 5` to `--n 100` for the standard larger run. The four reductions produce `keep50`, `keep75`, `keep90`, and `keep95` conditions alongside `original`.
 
+## Measured 10-case keep90 pilot
+
+Official NeMo Skills generation used `cl100k_base`, an 8,192-token maximum, dataset seed 42, and ten generated rows per task. The common runner then selected ten cases round-robin across task names with seed 42. Because `n=10` is smaller than the twelve-task suite, this pilot includes the first ten sorted task names and excludes `qa_medium` and `qa_hard`. Actual complete prompts ranged from 4,149 to 8,139 tokens.
+
+| Condition | Mean prompt tokens (total) | Token reduction | Mean whole-prompt cosine diff | Strict accuracy | Official mean score | Measured time | Estimated API cost |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| original | 6,092.4 (60,924) | 0.00% | 0.000000 | 70.0% (7/10) | 77.5% | 14.6s | $0.0715 |
+| keep90 | 5,214.5 (52,145) | 14.41% | 0.023584 | 50.0% (5/10) | 57.5% | 83.5s | $0.2105 |
+
+The combined sequential time was 98.1 seconds and estimated cost was $0.2820. Keep90 compression and whole-prompt comparison took 68.6 seconds; keep90 answers took 14.9 seconds. Two cases regressed and none improved. Strict-accuracy retention was 71.43%, with a paired 95% percentile-bootstrap interval of 33.33%–100.00%; the decision is **FAIL** against the 90% release threshold.
+
+Prepare the pinned official data with NeMo Skills revision `74b8649734a6ecc2d3beca89311e1a5e02da48fa`, using setup `openai_8192`, tokenizer type `openai`, tokenizer path `cl100k_base`, maximum sequence length 8192, dataset size 10, and the generator's fixed seed 42. Then reproduce the measurement:
+
+```bash
+# Run from a checkout of NVIDIA-NeMo/Skills at the pinned revision.
+python -m nemo_skills.dataset.ruler2.prepare \
+  --setup openai_8192 --max_seq_length 8192 \
+  --tokenizer_type openai --tokenizer_path cl100k_base --dataset_size 10
+
+# Copy the twelve generated task directories to data/ruler_v2, then run:
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark ruler_v2 --n 10 --seed 42 --reductions 10 \
+  --data-dir data/ruler_v2 \
+  --out benchmarks/ruler_v2/results/2026-07-18-keep90-n10-v1
+```
+
+Evidence: [`manifest.json`](results/2026-07-18-keep90-n10-v1/manifest.json), [`records.jsonl`](results/2026-07-18-keep90-n10-v1/records.jsonl), [`prompts.jsonl.gz`](results/2026-07-18-keep90-n10-v1/prompts.jsonl.gz), [`summary.json`](results/2026-07-18-keep90-n10-v1/summary.json), and [`report.md`](results/2026-07-18-keep90-n10-v1/report.md).
+
+Cost uses the manifest assumptions per million tokens: $1.00 model input, $0.10 cached input, $6.00 model output, and $0.02 embedding input. The answer and merge model was `gpt-5.6-luna` with answer reasoning `none`; whole-prompt cosine difference used `text-embedding-3-small`. This ten-case slice is evidence that the pipeline works and exposes a possible quality regression, not a suite-level RULERv2 estimate.
+
 ## Logs, confidence intervals, and release decisions
 
 Each run writes `manifest.json`, append-only `records.jsonl`, exact prompts in `prompts.jsonl.gz`, `summary.json`, and `report.md`. Each condition record contains the response, parsed score, prompt hash, source/sent tokens, latency, merge metrics, API usage, and estimated cost.
