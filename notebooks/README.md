@@ -37,4 +37,7 @@ uv run jupyter nbconvert \
   notebooks/section_embedding_clusters.ipynb
 ```
 
-The plot is also written to `notebooks/outputs/section_embedding_clusters.png`.
+The independently fitted plots are also written to:
+
+- `notebooks/outputs/skill_section_embedding_clusters.png`
+- `notebooks/outputs/babilong_qa1_42_section_embedding_clusters.png`
