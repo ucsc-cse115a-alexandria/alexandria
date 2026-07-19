@@ -61,8 +61,7 @@ def aggregate_summaries(summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
         raise ValueError("all benchmark summaries must contain the same conditions")
     conditions = sorted(condition_sets[0], key=retained_percent)
     original_accuracies = {
-        benchmark: float(summary["conditions"]["original"]["accuracy"])
-        for benchmark, summary in summaries.items()
+        benchmark: float(summary["conditions"]["original"]["accuracy"]) for benchmark, summary in summaries.items()
     }
     if any(accuracy == 0.0 for accuracy in original_accuracies.values()):
         raise ValueError("accuracy retention is undefined when an original accuracy is zero")
@@ -132,10 +131,10 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
             x,
             y,
             marker="o",
-            linewidth=1.6,
-            markersize=5,
+            linewidth=1.1,
+            markersize=3.5,
             color=COLORS[benchmark],
-            alpha=0.58,
+            alpha=0.35,
             label=label,
             zorder=2,
         )
@@ -201,19 +200,17 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
         ]
         for axis, metric in ((accuracy_axis, "accuracy"), (retention_axis, "accuracy_retention")):
             y = [
-                point["macro_average"][metric]
-                if key == "macro_average"
-                else point["benchmarks"][key][metric]
+                point["macro_average"][metric] if key == "macro_average" else point["benchmarks"][key][metric]
                 for point in points
             ]
             axis.plot(
                 x,
                 y,
                 marker="o",
-                linewidth=4.5 if key == "macro_average" else 1.5,
-                markersize=9 if key == "macro_average" else 4.5,
+                linewidth=4.5 if key == "macro_average" else 1.1,
+                markersize=9 if key == "macro_average" else 3.5,
                 color=COLORS[key],
-                alpha=1.0 if key == "macro_average" else 0.55,
+                alpha=1.0 if key == "macro_average" else 0.35,
                 label=label,
                 zorder=5 if key == "macro_average" else 2,
             )
