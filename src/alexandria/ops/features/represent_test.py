@@ -117,6 +117,62 @@ def test_preamble_before_first_header_is_plain() -> None:
     assert sections[0].children == (RawSentence("Read carefully.\n"),)
 
 
+def test_plain_line_splits_into_sentences() -> None:
+    sections = split("Do X. Do Y.\n")
+    assert sections[0].kind is SectionKind.PLAIN
+    assert sections[0].children == (RawSentence("Do X. "), RawSentence("Do Y.\n"))
+
+
+def test_question_and_exclamation_end_sentences() -> None:
+    sections = split("Ready? Go now!\n")
+    assert sections[0].children == (RawSentence("Ready? "), RawSentence("Go now!\n"))
+
+
+def test_decimals_and_versions_do_not_split() -> None:
+    assert split("Set temp to 3.5 for gpt-5.6 now.\n")[0].children == (
+        RawSentence("Set temp to 3.5 for gpt-5.6 now.\n"),
+    )
+
+
+def test_url_does_not_split() -> None:
+    assert split("Visit example.com today.\n")[0].children == (RawSentence("Visit example.com today.\n"),)
+
+
+def test_abbreviation_does_not_end_a_sentence() -> None:
+    assert split("Use tools, e.g. curl or wget.\n")[0].children == (RawSentence("Use tools, e.g. curl or wget.\n"),)
+
+
+def test_ellipsis_stays_with_its_sentence() -> None:
+    assert split("Wait... really? Yes.\n")[0].children == (
+        RawSentence("Wait... "),
+        RawSentence("really? "),
+        RawSentence("Yes.\n"),
+    )
+
+
+def test_cjk_sentences_split_without_spaces() -> None:
+    sections = split("これはペンです。それは犬です。\n")
+    assert sections[0].children == (RawSentence("これはペンです。"), RawSentence("それは犬です。\n"))
+
+
+def test_structural_lines_are_not_sentence_split() -> None:
+    sections = split("# Do this. And that\nRun it. Now.\n")
+    section = sections[0]
+    assert section.children[0] == RawSentence("# Do this. And that\n", optimizable=False)
+    assert section.children[1:] == (RawSentence("Run it. "), RawSentence("Now.\n"))
+
+
+def test_multi_sentence_lossless_with_leading_and_trailing_newlines() -> None:
+    prompt = "\n\nFirst thing. Second thing? Third!\n"
+    assert _leaf_text(split(prompt)) == prompt
+
+
+def test_represent_gives_each_sentence_its_own_leaf() -> None:
+    document = represent("Do X. Do Y. Do Z.\n", HashEmbedder())
+    assert [s.text for s in document.sentences] == ["Do X. ", "Do Y. ", "Do Z.\n"]
+    assert len({s.id for s in document.sentences}) == 3
+
+
 def test_represent_builds_a_document() -> None:
     document = represent("first\nsecond\n", HashEmbedder())
     assert document.embedding_model == "hash-64"
