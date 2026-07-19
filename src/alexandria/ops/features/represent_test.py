@@ -118,14 +118,24 @@ def test_preamble_before_first_header_is_plain() -> None:
 
 
 def test_plain_line_splits_into_sentences() -> None:
-    sections = split("Do X. Do Y.\n")
+    sections = split("Describe the goal. Then list the steps.\n")
     assert sections[0].kind is SectionKind.PLAIN
-    assert sections[0].children == (RawSentence("Do X. "), RawSentence("Do Y.\n"))
+    assert sections[0].children == (RawSentence("Describe the goal. "), RawSentence("Then list the steps.\n"))
 
 
 def test_question_and_exclamation_end_sentences() -> None:
-    sections = split("Ready? Go now!\n")
-    assert sections[0].children == (RawSentence("Ready? "), RawSentence("Go now!\n"))
+    sections = split("Are you ready now? Then go for it!\n")
+    assert sections[0].children == (RawSentence("Are you ready now? "), RawSentence("Then go for it!\n"))
+
+
+def test_short_fragment_merges_into_the_next_sentence() -> None:
+    # 'Go! ' is under the ten-character minimum, so it stays with what follows.
+    assert split("Go! Keep the reply short.\n")[0].children == (RawSentence("Go! Keep the reply short.\n"),)
+
+
+def test_short_trailing_fragment_merges_into_the_previous_sentence() -> None:
+    # 'Ok.\n' is too short to stand alone, so it folds back into the sentence before it.
+    assert split("Finish the whole task. Ok.\n")[0].children == (RawSentence("Finish the whole task. Ok.\n"),)
 
 
 def test_decimals_and_versions_do_not_split() -> None:
@@ -142,24 +152,23 @@ def test_abbreviation_does_not_end_a_sentence() -> None:
     assert split("Use tools, e.g. curl or wget.\n")[0].children == (RawSentence("Use tools, e.g. curl or wget.\n"),)
 
 
-def test_ellipsis_stays_with_its_sentence() -> None:
-    assert split("Wait... really? Yes.\n")[0].children == (
-        RawSentence("Wait... "),
-        RawSentence("really? "),
-        RawSentence("Yes.\n"),
+def test_ellipsis_does_not_split_mid_run() -> None:
+    assert split("Hold on for a while... are you really sure?\n")[0].children == (
+        RawSentence("Hold on for a while... "),
+        RawSentence("are you really sure?\n"),
     )
 
 
 def test_cjk_sentences_split_without_spaces() -> None:
-    sections = split("これはペンです。それは犬です。\n")
-    assert sections[0].children == (RawSentence("これはペンです。"), RawSentence("それは犬です。\n"))
+    sections = split("今日はとても良い天気です。散歩に出かけましょう。\n")
+    assert sections[0].children == (RawSentence("今日はとても良い天気です。"), RawSentence("散歩に出かけましょう。\n"))
 
 
 def test_structural_lines_are_not_sentence_split() -> None:
-    sections = split("# Do this. And that\nRun it. Now.\n")
+    sections = split("# Do this. And that\nRun the setup. Then verify it.\n")
     section = sections[0]
     assert section.children[0] == RawSentence("# Do this. And that\n", optimizable=False)
-    assert section.children[1:] == (RawSentence("Run it. "), RawSentence("Now.\n"))
+    assert section.children[1:] == (RawSentence("Run the setup. "), RawSentence("Then verify it.\n"))
 
 
 def test_multi_sentence_lossless_with_leading_and_trailing_newlines() -> None:
@@ -168,8 +177,12 @@ def test_multi_sentence_lossless_with_leading_and_trailing_newlines() -> None:
 
 
 def test_represent_gives_each_sentence_its_own_leaf() -> None:
-    document = represent("Do X. Do Y. Do Z.\n", HashEmbedder())
-    assert [s.text for s in document.sentences] == ["Do X. ", "Do Y. ", "Do Z.\n"]
+    document = represent("Do the first task. Do the second task. Do the third task.\n", HashEmbedder())
+    assert [s.text for s in document.sentences] == [
+        "Do the first task. ",
+        "Do the second task. ",
+        "Do the third task.\n",
+    ]
     assert len({s.id for s in document.sentences}) == 3
 
 

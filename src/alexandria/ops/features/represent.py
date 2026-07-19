@@ -32,6 +32,9 @@ _XML_CLOSE = re.compile(r"</([A-Za-z][\w.-]*)>")
 _SENTENCE_BOUNDARY = re.compile(r"(?P<term>[.!?]+|[。！？]+)(?P<close>[\"')\]”’」』）】]*)(?P<space>\s*)")
 _WORD_BEFORE = re.compile(r"[A-Za-z.]*$")
 _CJK_TERMINATORS = frozenset("。！？")
+# A sentence must reach this many characters to stand on its own; shorter pieces (stray fragments,
+# initials like 'J.', interjections like 'Go!') merge into the neighbouring sentence instead.
+_MIN_SENTENCE_CHARS = 10
 _ABBREVIATIONS = frozenset(
     {
         "e.g.",
@@ -229,9 +232,12 @@ def _sentences(segment: str) -> list[str]:
     A sentence ends at a run of terminators, taking any trailing quotes and whitespace with it.
     ASCII terminators split only before whitespace or the end of the segment, so decimals,
     versions, and URLs stay intact; a known abbreviation before the terminator does not end a
-    sentence. CJK terminators always end a sentence. Concatenating the result reproduces ``segment``.
+    sentence. CJK terminators always end a sentence. A piece shorter than ``_MIN_SENTENCE_CHARS``
+    merges into its neighbour rather than standing alone. Concatenating the result reproduces
+    ``segment``.
     """
     cuts: list[int] = []
+    last = 0
     for match in _SENTENCE_BOUNDARY.finditer(segment):
         end = match.end()
         if end == len(segment):
@@ -239,8 +245,12 @@ def _sentences(segment: str) -> list[str]:
         term = match.group("term")
         cjk = term[0] in _CJK_TERMINATORS
         ascii_boundary = bool(match.group("space")) and not _is_abbreviation(segment[: match.start("term")], term)
-        if cjk or ascii_boundary:
-            cuts.append(end)
+        if not (cjk or ascii_boundary) or end - last < _MIN_SENTENCE_CHARS:
+            continue  # not a boundary, or too short to stand alone — merge into the next sentence
+        cuts.append(end)
+        last = end
+    if cuts and len(segment) - cuts[-1] < _MIN_SENTENCE_CHARS:
+        cuts.pop()  # a short trailing remainder merges back into the previous sentence
     if not cuts:
         return [segment]
     bounds = [0, *cuts, len(segment)]
