@@ -9,7 +9,7 @@
 | src/alexandria/cli/envelope.py           |       22 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/hunks.py              |       25 |        0 |       12 |        0 |    100.0% |           |
 | src/alexandria/cli/interactive.py        |      127 |        6 |       38 |        6 |     92.7% |37, 39, 111, 156-157, 186, 197-\>181 |
-| src/alexandria/cli/main.py               |      222 |        2 |       58 |        2 |     98.6% |  112, 379 |
+| src/alexandria/cli/main.py               |      222 |        2 |       58 |        2 |     98.6% |  114, 383 |
 | src/alexandria/cli/review\_html.py       |       70 |        4 |       14 |        2 |     90.5% |332, 335-338 |
 | src/alexandria/cli/verbose.py            |       34 |        0 |       10 |        0 |    100.0% |           |
 | src/alexandria/ir/contracts.py           |      167 |        1 |       36 |       18 |     90.6% |70-\>72, 70-\>exit, 72-\>exit, 82-\>exit, 89-\>exit, 135, 228-\>exit, 245-\>247, 245-\>exit, 247-\>249, 247-\>exit, 249-\>251, 249-\>exit, 251-\>260, 251-\>exit, 260-\>exit, 293-\>exit, 313-\>exit |
@@ -22,7 +22,7 @@
 | src/alexandria/ops/features/represent.py |      198 |        0 |       54 |        0 |    100.0% |           |
 | src/alexandria/ops/features/score.py     |       44 |        0 |       12 |        1 |     98.2% |   58-\>62 |
 | src/alexandria/ops/features/select.py    |       44 |        2 |       16 |        3 |     91.7% |29, 49, 89-\>87 |
-| src/alexandria/ops/features/target.py    |      344 |       46 |      122 |       23 |     82.2% |121-124, 132, 145, 159, 200-211, 217-220, 293-\>305, 304, 322-\>332, 329, 354, 370, 382-383, 387, 388-\>390, 404-419, 430-434, 454, 461, 477, 489, 538, 541-542, 580-\>582, 584 |
+| src/alexandria/ops/features/target.py    |      344 |       46 |      122 |       23 |     82.2% |121-124, 132, 145, 161, 202-213, 219-222, 297-\>309, 308, 326-\>336, 333, 358, 374, 386-387, 391, 392-\>394, 408-423, 434-438, 458, 465, 481, 493, 542, 545-546, 584-\>586, 588 |
 | src/alexandria/ops/pipe.py               |       77 |        2 |        4 |        0 |     97.5% |     90-91 |
 | src/alexandria/ops/report.py             |       87 |        4 |       12 |        4 |     91.9% |137, 139, 141, 143 |
 | src/alexandria/utils/config.py           |       35 |        0 |        6 |        0 |    100.0% |           |
