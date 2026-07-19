@@ -114,14 +114,13 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current evidence run measures 50 samples from each of BABILong 8k, RULERv2, and the official LongBench v2
-short subset with seed 42. It uses `gpt-5.6-luna` with reasoning `none` for both compression and answers, plus
-`text-embedding-3-small`. The runner measures every original first and only runs compressed conditions when
-original accuracy is at least 50%. BABILong (68%) and RULERv2 (74%) passed that gate. LongBench scored 48%
-(24/50), so its compressed calls were correctly stopped; the blue X below is its original-only result.
+The current evidence run measures 50 samples each from BABILong 8k and RULERv2 with seed 42. It uses
+`gpt-5.6-luna` with reasoning `none` for both compression and answers, plus `text-embedding-3-small`. The runner
+measures every original first and only runs compressed conditions when original accuracy is at least 50%.
+BABILong (68%) and RULERv2 (74%) both passed that gate.
 
-The table and `Average` curve are therefore the equal-weight mean of the two qualified benchmarks, not all three.
-`Accuracy retention` is calculated per benchmark relative to its own original accuracy before averaging.
+The table and `Average` curve are the equal-weight mean of the two benchmarks. `Accuracy retention` is calculated
+per benchmark relative to its own original accuracy before averaging.
 
 | Prompt retained | Average accuracy | Accuracy retention | Achieved token reduction | Mean `cos_sim_diff` | Measured time |
 |---:|---:|---:|---:|---:|---:|
@@ -146,10 +145,9 @@ accuracy falls as semantic change grows — so you can pick a budget instead of 
 ![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/semantic_change_vs_accuracy.png)
 
 All five compressed conditions failed the predeclared paired-bootstrap release rule on both qualified benchmarks.
-The complete experiment, including LongBench's stopped baseline, recorded 650 case/condition results and 4,996
-metered usage events. Its summed measured reduction-plus-answer time was 7,631.6 seconds. The per-condition time
-table sums measured API work across the two qualified benchmarks; it is not the elapsed time of the parallel shell
-processes.
+The two published runs recorded 600 case/condition results and 4,946 metered usage events. Their summed measured
+reduction-plus-answer time was 7,570.1 seconds. The per-condition time table sums measured API work across both
+benchmarks; it is not the elapsed time of the parallel shell processes.
 
 The raw per-benchmark results, pass/fail decisions, exact commands, and links to the append-only records are in the
 [shared benchmark documentation](benchmarks/prompt_compression/README.md).

@@ -69,6 +69,18 @@ uv run python -m scripts.prompt_compression_benchmark \
 
 Remove `--dry-run` to run original, keep50, keep75, keep90, and keep95. Change `--n 5` to `--n 100` for the standard larger run. Sampling is deterministic and balanced across the six top-level task categories as far as eligible data permits.
 
+## Excluded from the current n=50 aggregate
+
+The July 19 n=50 run used the pinned official `length=short` subset, seed 42, `gpt-5.6-luna` with reasoning
+`none`, and a 128,000-token complete-prompt ceiling. The original condition scored 48% (24/50), below the
+predeclared 50% minimum original-accuracy gate. The runner therefore stopped before keep50–keep90 compression.
+
+LongBench v2 is excluded from the current user-facing aggregate and plots because it has no valid compressed
+observations to pair with the original results. This was an intentional eligibility decision, not an API failure
+or missing-log error. The adapter remains supported, and the complete original-only evidence is preserved in
+[`results/2026-07-19-luna-keep50-90-short-n50-v1/`](results/2026-07-19-luna-keep50-90-short-n50-v1/), including
+the manifest, 50 records, 50 exact prompts, summary, report, and console log.
+
 ## Measured 10-case keep90 pilot
 
 This pilot filtered the pinned dataset to complete prompts between 16,000 and 128,000 `cl100k_base` tokens, then selected ten cases deterministically across the six top-level domains with seed 42. The selected original prompts ranged from 22,676 to 123,954 tokens, with a mean of 68,824.7 tokens.

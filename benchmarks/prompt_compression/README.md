@@ -66,9 +66,9 @@ and accumulated 7,631.6 seconds of measured reduction-plus-answer time. Costs us
 short-context prices per million tokens: $1.00 Luna input, $0.10 cached input, $6.00 output, and $0.02 embedding
 input. These are metered estimates, not invoice totals.
 
-The cross-benchmark graphs treat `Average` as the equal-weight mean of the two qualified benchmarks. LongBench's
-48% original is shown as a baseline-only marker in the task-accuracy graph and is never silently mixed into an
-average that lacks corresponding compressed observations.
+The cross-benchmark graphs treat `Average` as the equal-weight mean of the two qualified benchmarks. LongBench is
+omitted from the user-facing curves because it has no corresponding compressed observations; its original-only
+result remains in the raw aggregate metadata and its benchmark-specific documentation.
 
 ![Accuracy by retained prompt percentage](results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
 

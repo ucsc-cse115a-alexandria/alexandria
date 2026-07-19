@@ -174,18 +174,6 @@ def _plot_metric(aggregate: dict[str, Any], metric: str, ylabel: str, title: str
             label=label,
             zorder=2,
         )
-    if metric == "accuracy":
-        for benchmark, baseline in aggregate["baseline_only"].items():
-            axis.scatter(
-                [100.0],
-                [baseline["accuracy"]],
-                marker="X",
-                s=58,
-                color=COLORS[benchmark],
-                alpha=0.7,
-                label=f"{BENCHMARK_LABELS[benchmark]} (baseline only)",
-                zorder=4,
-            )
     average = [point["macro_average"][metric] for point in points]
     axis.plot(
         x,
