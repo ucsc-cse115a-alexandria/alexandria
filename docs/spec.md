@@ -1,57 +1,48 @@
 # Alexandria design specification
 
-**Status:** current implementation · **Package version:** `0.1.0` · **Updated:** 2026-07-19
+This document describes the implemented runtime contracts. User-facing commands and examples live in
+the [CLI guide](cli.md) and [library guide](library.md).
 
-This document describes the code that is present in this repository. It is not a roadmap and does
-not describe unimplemented command-line flags, storage formats, or plugin systems.
+## Scope
 
-## Purpose and scope
+Alexandria compresses instruction-heavy prompts without labels or expected outputs. The normal path
+finds semantically similar instructions, proposes deletions or rewrites, and applies compatible edits
+within token and whole-prompt semantic-change budgets. The hard-target path instead guarantees a token
+ceiling when feasible and reports whether the result also met the semantic budget.
 
-Alexandria compresses instruction-heavy prompts without labels or expected outputs. It represents a
-prompt as a validated tree, finds redundant instructions with sentence embeddings, asks a merger to
-rewrite compatible text, and applies edits only within the configured token and semantic-change
-budgets.
-
-The default runtime uses OpenAI for embeddings and merge rewrites. Library callers can inject their
-own implementations of the `Embedder` and `SentenceMerger` protocols; the included `HashEmbedder` is
-intended for deterministic offline tests, not semantic evaluation.
+The default runtime uses OpenAI for embeddings and rewrites. Library callers can inject compatible
+implementations for offline or alternative-model use.
 
 ## Architecture
 
-The code follows a functional-core, imperative-shell shape:
-
 ```text
-CLI / library API
-       |
-       v
-represent -> optional score -> optimize -> select
-       |             shared validated IR          |
-       +-------------------------------------------+
-                 injected embedders and merger
+CLI / public Python API
+          |
+          v
+Represent -> optional Score -> Optimize -> Select
+          |          validated IR          |
+          +--------------------------------+
+                 embedder and merger
+
+Hard target: Represent -> prune and targeted rewrite
+Review mode: Represent -> Optimize -> Diff -> human choice -> Apply
 ```
 
-The public phase commands remain independently composable. End-to-end `reduce` resolves which
-scorers its selected optimizers require. The built-in `merge_rewrite` optimizer currently requires no
-standalone scorer, so the default path skips the Score call and ranks pairs from the document's
-embeddings directly. Score remains available for inspection and for future or injected strategies
-that declare scorer requirements.
+The packages have these responsibilities:
 
-The main packages have these responsibilities:
+- `alexandria.ir`: immutable data contracts, edit application, similarity helpers, and strategy
+  registries.
+- `alexandria.ops.features`: independently callable pipeline operations.
+- `alexandria.ops.pipe`: end-to-end reduction, proposals, and metrics.
+- `alexandria.cli`: Click commands, review UIs, and JSON envelopes.
+- `alexandria.utils`: tokenization, OpenAI adapters, and local configuration.
 
-- `alexandria.ir`: immutable data contracts, edit application, similarity helpers, and internal
-  strategy registries.
-- `alexandria.ops.features`: the independently callable Represent, Score, Optimize, Select, Compare,
-  Diff, and hard-target operations.
-- `alexandria.ops.pipe`: end-to-end composition, proposals, and reduction metrics.
-- `alexandria.cli`: Click commands, interactive/browser review, JSON envelopes, and configuration.
-- `alexandria.utils`: tokenization plus the OpenAI/configuration shell.
-
-Import-linter contracts in `pyproject.toml` enforce the intended direction between these layers and
-keep OpenAI client construction out of the IR and operations packages.
+Import-linter rules in `pyproject.toml` enforce the layer direction and isolate OpenAI client
+construction from the IR and operations packages.
 
 ## Intermediate representation
 
-The shared IR is a frozen Pydantic tree:
+The frozen Pydantic tree is:
 
 ```text
 Document
@@ -60,160 +51,104 @@ Document
     └── Sentence
 ```
 
-Every encoded node carries its source text, token count, and a one-dimensional NumPy `float32`
-embedding. A `Document` also records the embedding model ID. Construction validates that:
+Represent assigns each encoded node its text, a `cl100k_base` token count, and a one-dimensional NumPy
+`float32` embedding. `Document` records the embedder model ID. The models validate non-negative token
+counts, parent rollups, one embedding dimension across the tree, unique sentence IDs, and at least one
+sentence in every document and section.
 
-- parent text and token counts exactly roll up from their children;
-- all embeddings in a tree have the same dimension;
-- sentence IDs are unique within a document; and
-- a document and every section retain at least one sentence.
+An edit is a `Delete` or `Replace` targeting sentence IDs. `Document.apply` rebuilds and validates the
+tree, ignores stale targets, and rejects edits that would empty a document or section. It does not call
+the embedder: rebuilt ancestor embeddings remain source snapshots. Optimize embeds trial text for
+measurement without replacing those stored ancestor values; reporting represents the reduced text
+again when it needs a fresh tree.
 
-Edits are `Delete` or `Replace` values targeting sentence IDs. `Document.apply` returns a rebuilt,
-validated document, ignores edits whose targets no longer apply, and refuses edits that would empty
-the document or a section. The IR itself never calls a model.
+## Runtime controls
 
-## Runtime contracts
+`Params` is the shared configuration contract:
 
-`Params` controls the built-in reduction behavior:
-
-| Field | Default | Meaning |
+| Field | Default | Behavior |
 | --- | ---: | --- |
-| `threshold` | `0.85` | Similarity threshold available to strategies. |
-| `cos_sim_diff_budget` | `0.5` | Maximum accepted whole-document `1 - cosine_similarity`. |
-| `max_tokens` | `None` | Optional stopping ceiling for the reduced prompt. |
-| `require_target` | `False` | Make `max_tokens` a hard requirement; requires `max_tokens`. |
+| `threshold` | `0.85` | Minimum pair similarity considered by the built-in optimizer and target pruning. |
+| `cos_sim_diff_budget` | `0.5` | Maximum whole-prompt semantic change accepted by the normal selector. |
+| `max_tokens` | `None` | Optional stopping ceiling. |
+| `require_target` | `False` | Use the hard-target path; requires `max_tokens`. |
 
-The principal injected protocols are:
+One document must use the same embedder model throughout a run. The main injected protocols are
+`Embedder`, `SentenceMerger`, `TargetedMerger`, and `ReductionReporter`.
 
-- `Embedder.embed(texts)` with a stable `model_id`;
-- `SentenceMerger.merge(first, second, feedback)`;
-- scorer, optimizer, and selector callables registered inside the package; and
-- `ReductionReporter` for optional progress events.
-
-The same embedder model must be used throughout one document's run. This prevents comparisons across
-incompatible vector spaces.
-
-## Built-in behavior
+## Normal pipeline
 
 ### Represent
 
-Represent preserves prompt text while identifying Markdown headings, XML blocks, plain sections, and
-sentence-like leaves. It tokenizes with `cl100k_base`, embeds the leaves and rollups, and constructs a
-validated `Document`.
+Represent splits text losslessly into Markdown, XML, or plain sections and sentence-like leaves.
+Markdown headings and XML boundary lines are marked non-optimizable. It tokenizes and embeds sentences,
+sections, and the whole document in batches.
 
 ### Score
 
-The built-in `redundancy` scorer reports each optimizable sentence's similarity to its most similar
-peer. It powers the standalone score report and is an extension point; it is not an obligatory step
-in the default end-to-end path.
+The `redundancy` scorer assigns every sentence the cosine similarity of its most-similar peer. Score is
+available for inspection and for optimizers that declare a scorer dependency. The built-in optimizer
+declares none, so end-to-end `reduce` skips this phase by default.
 
 ### Optimize
 
-The built-in `merge_rewrite` optimizer considers similar sentence pairs. Exact duplicates can become
-deletions without a merger call. Other pairs are sent to the merger, represented again, and checked
-as whole-document candidates. A rejected rewrite can be retried with feedback, up to three model
-attempts per pair.
+`merge_rewrite` considers only optimizable pairs at or above `threshold`, ordered by pair similarity.
+Exact duplicates may become `Delete` edits without a merger call. For other pairs, the merger output is
+embedded, applied to a trial document, and checked against the source document. A rejected or non-shorter
+rewrite receives feedback for up to three attempts.
 
 ### Select
 
-The built-in `least_cos_sim_diff` selector ranks viable edits by whole-document semantic change. It
-folds them over the source document, enforcing the cumulative semantic-change budget and stopping
-when `max_tokens` is reached when possible.
+`least_cos_sim_diff` ranks viable candidates by their individual whole-prompt semantic change, then
+folds them over the source. Each cumulative result is embedded and accepted only when it remains within
+`cos_sim_diff_budget`. Selection stops after reaching `max_tokens` when possible. A best-effort token
+request may remain unmet when no acceptable edit reaches it.
 
-### Hard target
+## Hard targets
 
-When `require_target=True`, reduction uses the hard-target path instead of the normal
-Optimize/Select path. Protected Markdown and XML boundaries remain intact. Generated candidates are
-checked with the same tokenizer used for reporting, overshoot is repaired deterministically, and the
-result must fit `max_tokens`. An infeasible protected structure raises `InfeasibleTargetError` before
-generation. Metrics separately report whether the selected target-safe result also met the semantic
-change budget.
+With `require_target=True`, `reduce` bypasses Score, Optimize, and Select. It first prunes sufficiently
+redundant content while preserving non-optimizable structure, then requests targeted rewrite candidates
+for compressible groups. Generated markup is rejected, token overshoot is repaired, and candidates are
+ranked by feasibility and measured quality until the document fits `max_tokens`.
+
+The token ceiling takes priority over `cos_sim_diff_budget`; `MergeMetrics.cos_sim_diff_budget_met`
+records compliance. `InfeasibleTargetError` identifies targets blocked by protected structure or a lack
+of rewritable content. `TargetMergeError` carries metrics when generation cannot make progress.
+
+## Human review
+
+`propose` runs the normal proposal path and renders candidates as discrete diffs. Terminal and browser
+review modes apply exactly the accepted candidates through `apply_candidates`; human acceptance replaces
+automatic selection, so edits are not re-filtered by the selector.
 
 ## Strategy registration
 
-Built-in strategies register by decorator when their modules are imported:
+Built-ins register in process under these names:
 
-| Kind | Built-in name |
+| Kind | Name |
 | --- | --- |
 | Scorer | `redundancy` |
 | Optimizer | `merge_rewrite` |
 | Selector | `least_cos_sim_diff` |
 
-The Python API accepts strategy names, but the CLI intentionally uses the built-in choices. There is
-no Python entry-point discovery and no installed third-party plugin loading. Adding an out-of-tree
-plugin mechanism would require a new public contract and is outside version `0.1.0`.
+The library accepts registered strategy names. The CLI uses the built-ins. There is no installed
+third-party plugin discovery in version `0.1.0`.
 
-## Library surface
+## Serialization and reporting
 
-The top-level `alexandria` package exports the end-to-end `reduce` and `propose` operations, individual
-phases, comparison/diff/report helpers, result models, and `Document`. Library callers can provide
-their own embedder and merger or allow the defaults to resolve an OpenAI API key.
+Phase commands exchange versioned Pydantic JSON envelopes:
 
-See [the library guide](library.md) for runnable examples and exact call signatures.
+- `DocumentEnvelope` contains a represented document.
+- `ScoredEnvelope` adds named score maps.
+- `PlanEnvelope` adds candidates and merge metrics.
 
-## Command-line surface
+Optimization reports contain their configuration, source and reduced token counts, applied-edit count,
+and token-weighted mean and minimum best-match similarity for source sentences. Reporting represents
+the reduced text again so its quality embeddings are fresh. A baseline is a user-saved compatible report; the
+repository does not commit or enforce one.
 
-All phase commands read an optional file argument or standard input. Diagnostics go to standard
-error so standard output remains pipeable.
+## Credentials
 
-| Command | Implemented options | Input / output |
-| --- | --- | --- |
-| `represent [FILE]` | `--out PATH` | Raw prompt -> `DocumentEnvelope` JSON. |
-| `score [FILE]` | `--table`, `--out PATH` | `DocumentEnvelope` -> `ScoredEnvelope` JSON or table. |
-| `optimize [FILE]` | `--cos-sim-diff-budget`, `--out PATH` | `ScoredEnvelope` -> `PlanEnvelope` JSON. |
-| `select [FILE]` | `--cos-sim-diff-budget`, `--json` | `PlanEnvelope` -> reduced text or JSON summary. |
-| `compare ORIGINAL EDITED` | `--min-similarity` | Prompt pair -> comparison JSON; optional exit gate. |
-| `reduce [FILE]` | `--save-tokens`, `--keep`, `--target-reduction`, `--cos-sim-diff-budget`, `--json`, `--interactive`, `--browser`, `--no-open`, `--verbose` | Raw prompt -> reduced text or JSON summary. |
-| `report [FILE]` | `--cos-sim-diff-budget`, `--baseline`, `--quality-tolerance`, `--token-tolerance` | Raw prompt -> optimization report JSON. |
-| `tokens [DIRECTORY]` | none | Token counts for recognized instruction Markdown files. |
-| `config set openai-api-key` | none | Save an API key with hidden input. |
-
-There are no CLI options for selecting a model, scorer, optimizer, selector, or similarity threshold.
-Use the library API for dependency injection and strategy selection. See [the CLI guide](cli.md) for
-examples and option interactions.
-
-## Persistence and reports
-
-The phase wire format is JSON, not Parquet:
-
-- `DocumentEnvelope` contains `schema_version = 1` and a `Document`.
-- `ScoredEnvelope` adds a name-keyed score bundle.
-- `PlanEnvelope` carries the document, candidate plan, and merge metrics.
-
-Pydantic serializes embeddings as JSON arrays and validates them back to NumPy `float32` vectors.
-Unknown envelope schema versions are rejected. The repository does not use Polars or an Arrow-backed
-persistence layer.
-
-Optimization reports use `schema_version = 3`. Their configuration records the embedder model,
-merger identity, optimizer and selector names, threshold, semantic-change budget, `max_tokens`, and
-`require_target`; token, quality, and applied-edit metrics follow. A baseline is simply a report JSON
-saved by the user. No baseline is committed or enforced in CI.
-
-## Credentials and local configuration
-
-The default OpenAI boundary resolves a key in this order:
-
-1. an explicit library argument;
-2. `OPENAI_API_KEY`; then
-3. the owner-only, XDG-aware config file written by `alexandria config set openai-api-key`.
-
-Alexandria does not load `.env` files automatically. The example program opts into
-`python-dotenv`, which is a development dependency.
-
-## Verification
-
-The repository uses ordinary pytest tests, strict Pyright checks, Ruff, coverage, and import-linter.
-Tests are co-located as `*_test.py` plus integration tests under `tests/`. There is no Hypothesis test
-suite and no generated `tests/strategies.py` module. Build configuration excludes co-located test
-modules from both wheels and source distributions.
-
-Benchmark runners and append-only evidence live under `benchmarks/prompt_compression`; they exercise
-the public pipeline but are not part of the runtime package.
-
-## Explicit non-features in 0.1.0
-
-- no Parquet or Polars persistence/reporting;
-- no Python entry-point or third-party plugin discovery;
-- no CLI model/strategy/threshold selection flags;
-- no automatic `.env` loading; and
-- no committed optimization baseline or quality-baseline CI gate.
+The default OpenAI adapters resolve an explicit library key first, then `OPENAI_API_KEY`, then the
+owner-only XDG-aware file written by `alexandria config set openai-api-key`. Alexandria does not load
+`.env` files automatically.

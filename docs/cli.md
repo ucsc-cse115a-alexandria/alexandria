@@ -1,123 +1,98 @@
 # CLI guide
 
-Each command reads either its optional `FILE` argument or standard input, writes its result to standard
-output, and sends diagnostics to standard error. Run `uv run alexandria --help` or
-`uv run alexandria COMMAND --help` for the complete option reference.
+Run `alexandria --help` or `alexandria COMMAND --help` for the authoritative option reference. In a
+development checkout, use `uv run alexandria` in place of `alexandria`.
 
-These examples use a development checkout. If Alexandria was installed with `uv tool install`, run
-the same commands as `alexandria ...` without the `uv run` prefix.
+## Configure OpenAI
 
-## Set your API key
-
-Alexandria uses OpenAI for embeddings and merging, so every command that runs the pipeline needs a key.
-Store it once with hidden input:
+Commands that embed or rewrite text use the OpenAI defaults and require a key:
 
 ```bash
-uv run alexandria config set openai-api-key
+alexandria config set openai-api-key
 ```
 
-The key is saved to `~/.config/alexandria/config.toml` (owner-only, honoring `XDG_CONFIG_HOME`). You can
-instead `export OPENAI_API_KEY=...`. Resolution order is explicit argument, then `OPENAI_API_KEY`, then
-the config file. Without a key, commands fail before any work with:
+The command saves hidden input to an owner-only, XDG-aware config file. `OPENAI_API_KEY` takes
+precedence over that file. The `score` and `tokens` commands do not make model calls.
 
-```text
-OpenAI API key not found. Set it with `alexandria config set openai-api-key` or export OPENAI_API_KEY.
-```
+## Reduce
 
-## Reduce a prompt
-
-`reduce` is the usual entry point. It represents the prompt, runs only the scorers required by the
-selected optimizer, then optimizes and selects in one process. The built-in optimizer currently
-requires no standalone scorer, so the default path skips that call and writes the reduced prompt.
+`reduce` writes the reduced prompt to standard output and diagnostics to standard error:
 
 ```bash
-uv run alexandria reduce prompt.txt > reduced.txt
+alexandria reduce prompt.md > reduced.md
+alexandria reduce prompt.md --json > reduction.json
 ```
 
-`--json` emits a machine-readable summary with `text`, `applied`, `source_tokens`, and `reduced_tokens`.
+Choose at most one token control:
+
+- `--save-tokens N` asks the best-effort selector to save N tokens.
+- `--keep P` asks it to retain P percent of the source tokens.
+- `--target-reduction P` makes a P percent reduction a hard requirement.
+
+Best-effort controls may fall short when no acceptable edits remain within
+`--cos-sim-diff-budget`. A hard target prioritizes its token ceiling and reports
+`merge_metrics.cos_sim_diff_budget_met` separately in JSON. Protected Markdown headings and XML tag
+boundaries are not removed.
+
+`-v`/`--verbose` streams automatic compaction progress to standard error.
+
+Use `--interactive` or `--browser` to review proposed edits and apply only accepted ones:
 
 ```bash
-uv run alexandria reduce prompt.txt --json
+alexandria reduce --interactive prompt.md > reduced.md
+alexandria reduce --browser prompt.md > reduced.md
+alexandria reduce --browser --no-open prompt.md
 ```
 
-Use `--keep P` to aim for P percent of the prompt's source tokens, or `--save-tokens N` to stop once N
-tokens are saved (edits are applied in ascending `cos_sim_diff` order). These options are mutually exclusive. They are
-stopping points rather than guarantees: `--cos-sim-diff-budget` may stop compression sooner.
+Review modes require a file path, are mutually exclusive, and cannot be combined with `--save-tokens`,
+`--keep`, `--target-reduction`, or `--verbose`. `--no-open` requires `--browser`.
 
-Use `--target-reduction P` when the percentage itself is required: `P` means “reduce by P percent,” and
-the returned prompt is guaranteed to fit the corresponding token ceiling. It is mutually exclusive with
-`--keep` and `--save-tokens`. Protected Markdown/XML boundaries are never removed; if those boundaries alone
-exceed the target, the command reports that the target is infeasible before calling the merge model.
+## Other commands
 
-`--cos-sim-diff-budget` caps the cumulative whole-document `cos_sim_diff` (`1 - cosine_similarity`)
-for best-effort reductions (`0.01` = 1%). For `--target-reduction`, the token target takes priority: the
-target-safe result with the lowest `cos_sim_diff` is returned
-and JSON output sets `merge_metrics.cos_sim_diff_budget_met` to `false` if the quality budget was missed.
-`--interactive` lets you accept or reject proposed edits in the terminal, and `--browser` does the same in a browser.
+| Command | Purpose |
+| --- | --- |
+| `compare ORIGINAL EDITED` | Report cosine similarity and `cl100k_base` token reduction; `--min-similarity` adds an exit-code gate. |
+| `report [FILE]` | Run best-effort reduction and emit token and instruction-preservation metrics as JSON. |
+| `tokens [DIRECTORY]` | Count Markdown files named `CLAUDE.md` or `AGENT.md`, plus Markdown under a `skills` path. |
+| `score [FILE] --table` | Display each represented sentence and its most-similar peer. |
 
-Use `-v`/`--verbose` to print compaction progress (redundant pairs, merge attempts, target-search
-rounds) to standard error as the automatic reduction runs; it is not available with `--interactive` or
-`--browser`, and it never changes standard output.
-
-```bash
-uv run alexandria reduce --keep 95 prompt.txt > reduced.txt
-uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
-uv run alexandria reduce --target-reduction 10 prompt.txt > reduced.txt
-```
+`report --baseline FILE` compares a new report with a compatible report saved earlier. The baseline
+must use the same configuration and source token count. No baseline is committed or checked by CI.
 
 ## Run phases separately
 
-The phase commands compose as a Unix pipeline:
+The phase commands exchange versioned JSON envelopes over standard input and output:
 
 ```bash
-cat prompt.md | alexandria represent | alexandria score | alexandria optimize | alexandria select
+uv run alexandria represent prompt.md \
+  | uv run alexandria score \
+  | uv run alexandria optimize \
+  | uv run alexandria select > reduced.md
 ```
-
-The first three commands write self-contained JSON envelopes:
 
 | Command | Input | Output |
 | --- | --- | --- |
 | `represent` | Raw prompt | `DocumentEnvelope` |
 | `score` | `DocumentEnvelope` | `ScoredEnvelope` |
 | `optimize` | `ScoredEnvelope` | `PlanEnvelope` |
-| `select` | `PlanEnvelope` | Reduced prompt text |
+| `select` | `PlanEnvelope` | Reduced text, or a summary with `--json` |
 
-`optimize` and `select` each accept `--cos-sim-diff-budget`, and `select` also accepts `--json`.
+This explicit pipeline includes Score. The end-to-end `reduce` command skips Score for the built-in
+optimizer because that optimizer ranks sentence pairs directly.
 
-## Save an envelope and resume later
-
-`represent`, `score`, and `optimize` accept `--out PATH`. The option saves the same JSON envelope that
-the command writes to standard output, so it does not interrupt a pipe.
-
-```bash
-uv run alexandria represent --out document.json < prompt.txt \
-  | uv run alexandria score --out scored.json \
-  | uv run alexandria optimize --out plan.json > /dev/null
-```
-
-Pass a saved envelope to the next compatible phase as its `FILE` argument. This reruns the selected
-phase without rerunning the earlier phases:
+`represent`, `score`, and `optimize` accept `--out PATH`. The option saves their JSON envelope without
+changing the normal standard output. With `score --table`, the table goes to standard output while
+`--out` still receives the JSON envelope.
 
 ```bash
-uv run alexandria optimize scored.json > new-plan.json
-uv run alexandria optimize scored.json | uv run alexandria select > reduced.txt
+uv run alexandria represent --out document.json < prompt.md > /dev/null
+uv run alexandria score --out scored.json document.json > /dev/null
+uv run alexandria optimize --out plan.json scored.json > /dev/null
+uv run alexandria select plan.json > reduced.md
 ```
 
-For example, `scored.json` is the output of `score` and therefore the input of `optimize`; a raw prompt
-or a `DocumentEnvelope` is not accepted by `optimize`. A save-then-load split run produces the same
-result as an equivalent in-memory `reduce` run.
+Each saved file is valid only as input to the next phase. Model-generated rewrites are stochastic, so
+rerunning `optimize` may produce a different plan.
 
-## Inspect redundancy
-
-Use `score --table` for a per-instruction, human-readable redundancy report. If `--out` is also present,
-the `ScoredEnvelope` is still saved while the table is printed.
-
-```bash
-uv run alexandria represent < prompt.txt | uv run alexandria score --table
-```
-
-## Offline runs
-
-The CLI always uses the OpenAI defaults and therefore requires an API key. To run the pipeline offline
-(for tests or CI) inject your own embedder and merger through the library API; see
-[the library guide](library.md).
+For offline execution, inject an embedder and merger through the Python API; see the
+[library guide](library.md).

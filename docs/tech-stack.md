@@ -1,15 +1,14 @@
 # Alexandria technology stack
 
-**Status:** current implementation · **Package version:** `0.1.0` · **Updated:** 2026-07-19
-
-This page records the technologies used by the repository today. See the
+This page summarizes the current implementation. `pyproject.toml` is authoritative for package
+metadata and dependencies. See the
 [design specification](spec.md) for component contracts and the [CLI guide](cli.md) for commands.
 
 ## Runtime and packaging
 
 | Area | Current choice | Role |
 | --- | --- | --- |
-| Language | Python 3.14 | Typed library and Click command-line application. |
+| Language | Python 3.14+ | Typed library and Click command-line application. |
 | Environment and lockfile | `uv` | Reproducible development and runtime dependency resolution. |
 | Build backend | Hatchling | Builds the source distribution and `src`-layout wheel; co-located tests are excluded. |
 | IR and validation | Pydantic v2 | Frozen `Document` / `Section` / `Sentence` models, edit contracts, envelopes, and reports. |
@@ -31,7 +30,7 @@ The library can run with injected implementations of its embedder and merger pro
 | Static types | Pyright in strict mode. |
 | Architecture | import-linter contracts plus layer-specific imports. |
 | CI | GitHub Actions runs repository quality checks. |
-| Benchmark analysis | Repository scripts use NumPy, SciPy, scikit-learn, Matplotlib, UMAP, and HDBSCAN where needed; these are development dependencies, not runtime persistence. |
+| Benchmark and research analysis | Repository tooling uses NumPy, SciPy, scikit-learn, Matplotlib, UMAP, and HDBSCAN where needed; these are development dependencies. |
 
 ## Strategy extension status
 
@@ -40,13 +39,5 @@ modules are imported. End-to-end composition can ask an optimizer which scorers 
 default optimizer currently requires none, while the standalone redundancy score remains available
 for inspection.
 
-There is no Python entry-point discovery, installed third-party plugin loading, or CLI flag for
-choosing a strategy. Library callers can select registered names and inject model boundaries.
-
-## Not used by the current implementation
-
-- Polars and Parquet are not runtime dependencies or persistence formats.
-- Apache Arrow is not part of the wire format.
-- Hypothesis is not a test dependency; the test suite uses ordinary pytest cases and fixtures.
-- `.env` loading is not automatic. Only the example program opts into the development dependency
-  `python-dotenv`.
+There is no installed third-party plugin loading or CLI flag for choosing a strategy. Library callers
+can select registered names and inject model boundaries.
