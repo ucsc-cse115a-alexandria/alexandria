@@ -9,27 +9,27 @@
 | src/alexandria/cli/envelope.py           |       22 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/hunks.py              |       25 |        0 |       12 |        0 |    100.0% |           |
 | src/alexandria/cli/interactive.py        |      127 |        6 |       38 |        6 |     92.7% |37, 39, 111, 156-157, 186, 197-\>181 |
-| src/alexandria/cli/main.py               |      222 |        2 |       58 |        2 |     98.6% |  114, 383 |
-| src/alexandria/cli/review\_html.py       |       70 |        4 |       14 |        2 |     90.5% |332, 335-338 |
-| src/alexandria/cli/verbose.py            |       34 |        0 |       10 |        0 |    100.0% |           |
-| src/alexandria/ir/contracts.py           |      167 |        1 |       36 |       18 |     90.6% |70-\>72, 70-\>exit, 72-\>exit, 82-\>exit, 89-\>exit, 135, 228-\>exit, 245-\>247, 245-\>exit, 247-\>249, 247-\>exit, 249-\>251, 249-\>exit, 251-\>260, 251-\>exit, 260-\>exit, 293-\>exit, 313-\>exit |
+| src/alexandria/cli/main.py               |      229 |        2 |       60 |        2 |     98.6% |  134, 403 |
+| src/alexandria/cli/review\_html.py       |       68 |        3 |       12 |        1 |     92.5% |   333-336 |
+| src/alexandria/cli/verbose.py            |       32 |        0 |        8 |        0 |    100.0% |           |
+| src/alexandria/ir/contracts.py           |      169 |        1 |       38 |       18 |     90.8% |73-\>75, 73-\>exit, 75-\>exit, 85-\>exit, 92-\>exit, 138, 231-\>exit, 248-\>250, 248-\>exit, 250-\>252, 250-\>exit, 252-\>254, 252-\>exit, 254-\>261, 254-\>exit, 261-\>exit, 292-\>exit, 312-\>exit |
 | src/alexandria/ir/document.py            |      119 |        5 |       36 |        5 |     93.5% |24, 53, 55, 116, 155 |
 | src/alexandria/ir/registry.py            |       54 |        0 |        4 |        0 |    100.0% |           |
 | src/alexandria/ir/similarity.py          |       21 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/ops/features/compare.py   |       34 |        0 |        2 |        0 |    100.0% |           |
-| src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        45 |
-| src/alexandria/ops/features/optimize.py  |       92 |        2 |       42 |        3 |     96.3% |84-\>63, 110, 126 |
-| src/alexandria/ops/features/represent.py |      198 |        0 |       54 |        0 |    100.0% |           |
+| src/alexandria/ops/features/diff.py      |       19 |        1 |        8 |        1 |     92.6% |        43 |
+| src/alexandria/ops/features/optimize.py  |       92 |        2 |       42 |        3 |     96.3% |82-\>61, 108, 124 |
+| src/alexandria/ops/features/represent.py |      194 |        0 |       54 |        0 |    100.0% |           |
 | src/alexandria/ops/features/score.py     |       44 |        0 |       12 |        1 |     98.2% |   58-\>62 |
 | src/alexandria/ops/features/select.py    |       44 |        2 |       16 |        3 |     91.7% |29, 49, 89-\>87 |
-| src/alexandria/ops/features/target.py    |      344 |       46 |      122 |       23 |     82.2% |121-124, 132, 145, 161, 202-213, 219-222, 297-\>309, 308, 326-\>336, 333, 358, 374, 386-387, 391, 392-\>394, 408-423, 434-438, 458, 465, 481, 493, 542, 545-546, 584-\>586, 588 |
-| src/alexandria/ops/pipe.py               |       77 |        2 |        4 |        0 |     97.5% |     90-91 |
-| src/alexandria/ops/report.py             |       87 |        4 |       12 |        4 |     91.9% |137, 139, 141, 143 |
+| src/alexandria/ops/features/target.py    |      361 |       51 |      130 |       25 |     80.9% |122-125, 133, 146, 161, 202-212, 218-221, 289-\>301, 300, 319-\>329, 326, 351, 361, 382-383, 387, 388-\>390, 404-419, 430-434, 445, 449-453, 472, 477, 486, 502, 514, 563, 602-\>604, 606 |
+| src/alexandria/ops/pipe.py               |       79 |        2 |        4 |        0 |     97.6% |     90-91 |
+| src/alexandria/ops/report.py             |       97 |        4 |       14 |        4 |     92.8% |143, 145, 149, 196 |
 | src/alexandria/utils/config.py           |       35 |        0 |        6 |        0 |    100.0% |           |
 | src/alexandria/utils/embedders.py        |       55 |        2 |       10 |        2 |     93.8% |31, 53-\>55, 92 |
-| src/alexandria/utils/merger.py           |       30 |        5 |       10 |        0 |     82.5% |     56-67 |
+| src/alexandria/utils/merger.py           |       33 |        6 |       10 |        0 |     81.4% | 56-67, 79 |
 | src/alexandria/utils/tokens.py           |       20 |        1 |       10 |        2 |     90.0% |18, 27-\>32 |
-| **TOTAL**                                | **2085** |  **106** |  **550** |   **79** | **92.2%** |           |
+| **TOTAL**                                | **2118** |  **111** |  **560** |   **80** | **92.0%** |           |
 
 
 ## Setup coverage badge
