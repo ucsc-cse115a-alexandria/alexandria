@@ -2,168 +2,100 @@
 
 [![Coverage badge](https://github.com/ucsc-cse115a-alexandria/alexandria/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
 
-Label-free prompt optimization: shorten instruction-heavy prompts while preserving their meaning,
-using sentence embeddings. Alexandria finds which instructions overlap (a redundancy score) and
-merges each near-duplicate pair into a single rewritten sentence — instead of dropping instructions,
-an LLM fuses their intent — no labels, no training, no target output to compare against.
-
-See [the design specification](docs/spec.md) for the implementation architecture.
+Label-free prompt optimization: shorten instruction-heavy prompts while preserving their meaning.
+Alexandria finds near-duplicate instructions with sentence embeddings and has an LLM merge each pair
+into a single rewritten sentence — no labels, no training, no target output to compare against.
 
 ## Install
 
-Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14 and
-[uv](https://docs.astral.sh/uv/). Install the command directly from the public repository:
+Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14
+and [uv](https://docs.astral.sh/uv/).
 
 ```bash
+# CLI
 uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
-alexandria --help
+
+# or run once without installing
+uvx --from git+https://github.com/ucsc-cse115a-alexandria/alexandria.git alexandria reduce prompt.txt
+
+# as a library dependency
+uv add git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
 ```
 
-For development from a checkout, install the locked environment and run the command through `uv`:
-
-```bash
-uv sync --frozen
-uv run alexandria --help
-```
-
-The examples below use the installed `alexandria` command. From a development checkout, substitute
+The package is distributed as `alexandria-prompt`; the import name is `alexandria`. The examples
+below use the installed `alexandria` command; from a development checkout, substitute
 `uv run alexandria`.
 
-## Setup
+## Set your API key
 
-Alexandria uses OpenAI for embeddings (`text-embedding-3-small`) and merging (`gpt-5.6-luna`), so it
-needs an API key. Store it once:
+Alexandria calls OpenAI for embeddings and merging. Store a key once (or `export OPENAI_API_KEY=...`):
 
 ```bash
 alexandria config set openai-api-key
 ```
 
-This prompts with hidden input and saves the key to `~/.config/alexandria/config.toml` (owner-only,
-XDG-aware). You can instead `export OPENAI_API_KEY=...`. Resolution order is explicit argument, then
-`OPENAI_API_KEY`, then the config file. Without a key, commands fail before any work with:
+## Usage
 
-```text
-OpenAI API key not found. Set it with `alexandria config set openai-api-key` or export OPENAI_API_KEY.
-```
-
-## CLI
-
-Run the full optimization pipeline with one command:
+Reduce a prompt in one command:
 
 ```bash
 alexandria reduce prompt.txt > reduced.txt
 ```
 
-Use `--save-tokens N` to stop once N tokens are saved and `--cos-sim-diff-budget` to cap the cumulative
-whole-document `cos_sim_diff` (`1 - cosine_similarity`) the reduction may accept (default: `0.5`):
+Common options:
+
+- `--save-tokens N` — stop once N tokens are saved.
+- `--target-reduction P` — treat a P% reduction as a hard requirement; the result never exceeds the
+  derived token ceiling.
+- `--cos-sim-diff-budget B` — cap the accepted semantic change (`1 - cosine_similarity`,
+  default `0.5`).
+- `--json` — emit a machine-readable summary; `-v` streams progress to stderr.
+
+`report` runs the same pipeline and emits JSON with token and quality metrics, optionally failing
+against a baseline report you saved earlier (no baseline is included in the repository or checked
+by CI):
 
 ```bash
-alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
+alexandria report prompt.txt
 ```
 
-Use `--target-reduction P` when the reduction percentage is a requirement rather than a best-effort
-budget. The returned prompt is always at or below the derived token ceiling. The command fails before
-calling the merge model only when protected Markdown/XML structure alone cannot fit:
-
-```bash
-alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
-```
-
-Strict targets keep Markdown/XML boundaries fixed and, for each content group, fire three generation requests in
-parallel with different rewrite strategies (plain compression, extractive deletion, and dense paraphrase), each
-capped so a completed response fits the token budget. Alexandria checks every candidate with `cl100k_base` and
-deterministically repairs any overshoot. Among the structure-valid candidates within the token ceiling it selects
-the one with the lowest whole-prompt `cos_sim_diff`, breaking ties by coverage. Undershooting the target is acceptable: the
-guarantee is at most the requested token count. When no candidate meets the `cos_sim_diff` budget, the best target-safe
-result is returned and `merge_metrics.cos_sim_diff_budget_met` is `false`. `--json` also reports final `cos_sim_diff`, repaired tokens, calls, and retries.
-Exact duplicate text in best-effort reduction is still removed without a merge-model call. Text mode prints call
-and retry counts to stderr. Add `-v`/`--verbose` to stream automatic-reduction progress live to stderr instead of
-waiting for the final summary.
-
-`report` runs the full optimization and always emits machine-readable JSON with token metrics and
-quality scores:
-
-```bash
-alexandria report prompt.txt --cos-sim-diff-budget 2.0
-```
-
-The `tokens` object reports source, reduced, and saved tokens. The `quality` object reports the
-token-weighted mean and minimum best-match cosine similarity for every source instruction. To fail
-when a report is worse than a report you saved earlier, pass that file as the baseline:
-
-```bash
-alexandria report prompt.txt \
-  --cos-sim-diff-budget 2.0 \
-  --baseline .cache/alexandria/optimization-baseline.json
-```
-
-The command exits with status 1 when reduced token count rises or either monitored quality score
-falls beyond its tolerance. Use `--token-tolerance` and `--quality-tolerance` for expected numerical
-variation. No baseline is included in the repository or checked by CI. To make one for local
-comparisons (an API key is required), write it to an ignored local directory and pass that same path
-to later runs:
-
-```bash
-mkdir -p .cache/alexandria
-alexandria report prompt.txt \
-  > .cache/alexandria/optimization-baseline.json
-alexandria report prompt.txt \
-  --baseline .cache/alexandria/optimization-baseline.json
-```
-
-For phase-by-phase execution, saving and resuming JSON envelopes, and the full option reference, see
-[the CLI guide](docs/cli.md).
+See [the CLI guide](docs/cli.md) for phase-by-phase execution, saving and resuming JSON envelopes,
+baseline comparisons with `--baseline`, and the full option reference.
 
 ## Library
 
-The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python (it builds the
-OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use the
-saved config file):
+The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python (it builds
+the OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use
+the saved config file):
 
 ```python
 import alexandria
 
-result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n")
+result = alexandria.reduce(
+    "Keep your answers concise and to the point.\n"
+    "Keep your answers brief and to the point.\n"
+    "Use examples.\n"
+)
 print(result.text)
 ```
 
-See [the library guide](docs/library.md) for injecting your own embedder and merger for offline tests,
-direct phase composition, and a runnable example in `examples/reduce_prompt.py`. The core library does
-not load `.env` files automatically; that example opts into `python-dotenv` for local development.
+See [the library guide](docs/library.md) for injecting your own embedder and merger for offline
+tests, and a runnable example in `examples/reduce_prompt.py`. The core library does not load `.env`
+files automatically; that example opts into `python-dotenv` for local development.
 
 ## Benchmark
 
-The current study measures 50 cases each from BABILong 8k and RULERv2 with seed 42, using `gpt-5.6-luna` for both
-compression and answers. It tests best-effort context `cos_sim_diff` budgets from 0.0025 through 0.02. Within this
-range, completed prompts were reduced by 0.40%–0.51% on average while mean realized full-prompt `cos_sim_diff`
-remained between 0.0019 and 0.0024.
+Hard-target reduction on BABILong 8k (n=50, seed 42, `gpt-5.6-luna` for compression and answers)
+swept retained-prompt targets from 95% down to 75% against the uncompressed 72% baseline. Shallow
+cuts keep most of the accuracy — an 8.0% token reduction (95% retained) scored 62.0% and a 13.2%
+reduction (90% retained) scored 64.0% — while at 85% retained and below, accuracy falls to 44–48%.
 
-| Configured budget | Average task accuracy | Mean token reduction | Complete case-condition pairs |
-|---:|---:|---:|---:|
-| Original | 76.0% | 0.00% | 100.0% |
-| 0.0025 | 63.3% | 0.40% | 79.0% |
-| 0.005 | 60.9% | 0.43% | 80.0% |
-| 0.01 | 58.3% | 0.46% | 78.0% |
-| 0.015 | 56.0% | 0.48% | 79.0% |
-| 0.02 | 63.4% | 0.51% | 79.0% |
+![Task accuracy by retained prompt share](benchmarks/prompt_compression/results/2026-07-20-luna-keep75-95-n50-v1/accuracy_vs_retained.png)
 
-`Average` is the equal-weight mean of the two benchmarks. Accuracy uses completed paired cases; completion is
-shown alongside it so the effective coverage remains visible.
-
-![Quality and prompt reduction by semantic-change budget](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/quality_and_reduction_vs_budget.png)
-
-A separate hard-target study used 50 cases per benchmark to retain 50%, 60%, 70%, 80%, and 90% of each prompt,
-with the uncompressed prompt shown at 100%. This provides the broader compression-quality curve independently of
-the semantic-change budget above.
-
-![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
-
-See the
-[detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for
-benchmark-specific results, paired-bootstrap intervals and decisions, compliance and completion analysis, exact
-reproduction commands, timing and cost, caveats, and links to every append-only raw artifact. The
-[benchmark runner guide](benchmarks/prompt_compression/README.md) documents the shared evidence format and how to
-execute a new run.
+See the [run report](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/report.md) for
+per-task results, timing, cost, and append-only raw artifacts, earlier studies under
+[`benchmarks/prompt_compression/results/`](benchmarks/prompt_compression/results/), and the
+[benchmark runner guide](benchmarks/prompt_compression/README.md) for executing a new run.
 
 ## How it works
 
@@ -173,23 +105,23 @@ Score result: `merge_rewrite` ranks pairs directly from their embeddings, so `re
 unless a selected optimizer declares that it needs a scorer.
 
 1. **Represent** — split the prompt into instructions, tokenize, and embed each one.
-2. **Score** — optionally inspect each instruction's redundancy (its cosine similarity to the most
-   similar other) or supply scores required by another registered optimizer.
-3. **Optimize** — for each near-duplicate pair the LLM rewrites both sentences as one minimal-token
-   sentence, kept at the first occurrence (the second is removed). Every rewrite is checked by
-   applying it and measuring the whole-document `cos_sim_diff`; if it exceeds the `cos_sim_diff` budget the
-   LLM is re-asked with feedback, up to 3 attempts, then the pair is skipped.
-4. **Select** — apply accepted edits in ascending `cos_sim_diff` order under the cumulative budget, stopping
-   at the requested token budget. `--target-reduction` uses a hard-target path that repairs model overshoot
-   deterministically and reports whether the resulting prompt also met the `cos_sim_diff` budget.
+2. **Score** — optionally rate each instruction's redundancy (cosine similarity to its most similar
+   other) when a selected optimizer needs scores.
+3. **Optimize** — an LLM rewrites each near-duplicate pair as one minimal-token sentence, re-checked
+   against the semantic budget with up to 3 attempts.
+4. **Select** — apply accepted edits in ascending `cos_sim_diff` order under the cumulative budget,
+   stopping at the requested token budget; `--target-reduction` uses a hard-target path that repairs
+   model overshoot deterministically.
 
-## Tech stack
-
-Python 3.14 · Pydantic (the validated IR) · openai · NumPy · tiktoken · click.
+See [the design specification](docs/spec.md) for the implementation architecture.
 
 ## Development
 
 ```bash
+git clone https://github.com/ucsc-cse115a-alexandria/alexandria
+cd alexandria
+uv sync
+
 uv run pytest        # tests + coverage
 uv run ruff check .  # lint
 uv run pyright       # types

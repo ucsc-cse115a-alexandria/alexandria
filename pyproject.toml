@@ -3,7 +3,7 @@ requires = ["hatchling>=1.27"]
 build-backend = "hatchling.build"
 
 [project]
-name = "alexandria"
+name = "alexandria-prompt"
 version = "0.1.0"
 description = "Label-free prompt optimization library using text embeddings to compress prompts while preserving meaning."
 readme = "README.md"
@@ -60,6 +60,7 @@ scripts = []
 [tool.uv]
 package = true
 
+# Distribution name is alexandria-prompt (PyPI "alexandria" is taken); the import stays alexandria.
 [tool.hatch.build]
 exclude = ["**/*_test.py"]
 
