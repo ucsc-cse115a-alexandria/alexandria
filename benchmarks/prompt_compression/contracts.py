@@ -92,6 +92,9 @@ class ConditionRecord(BaseModel):
     response_model: str
     response_id: str | None = None
     verdict: BenchmarkVerdict
+    configured_cos_sim_diff_budget: float | None = Field(default=None, ge=0.0)
+    context_embedding_cosine_difference: float = Field(default=0.0, ge=0.0)
+    context_cos_sim_diff_budget_met: bool | None = None
     prompt_embedding_cosine_difference: float = Field(default=0.0, ge=0.0)
     compression_elapsed_seconds: float = Field(default=0.0, ge=0.0)
     answer_elapsed_seconds: float = Field(default=0.0, ge=0.0)

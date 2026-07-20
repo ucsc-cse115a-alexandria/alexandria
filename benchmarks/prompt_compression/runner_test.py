@@ -53,6 +53,20 @@ def test_summary_pairs_conditions_and_reports_release_decision() -> None:
     assert "PASS:" in report
 
 
+def test_summary_qualifies_original_accuracy_before_comparing_compression() -> None:
+    records = (
+        _record("a", "original", True, 100),
+        _record("b", "original", False, 100),
+    )
+
+    summary = summarize_records(records, minimum_original_accuracy=0.6, bootstrap_samples=10)
+
+    qualification = summary["baseline_qualification"]  # type: ignore[assignment]
+    assert qualification["original_accuracy"] == 0.5  # type: ignore[index]
+    assert qualification["qualifies"] is False  # type: ignore[index]
+    assert "FAIL" in benchmark_report(summary)
+
+
 def test_summary_separates_reduction_from_execution_time_and_cost() -> None:
     answer = UsageRecord(
         category="answer",

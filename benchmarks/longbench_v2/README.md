@@ -52,7 +52,9 @@ The downloader fetches `zai-org/LongBench-v2@2b48e494f2c7a2f0af81aae178e05c7e1dd
 uv run python -m scripts.download_longbench_v2_data
 ```
 
-The resulting `data/longbench_v2/data.json` is about 465 MB and is ignored by Git.
+The resulting `data/longbench_v2/data.json` is about 465 MB and is ignored by Git. The same command also writes
+`data/longbench_v2/short.json`, containing the 180 pinned rows whose official `length` label is `short`; the
+multi-retention smoke uses that explicit subset before applying its exact complete-prompt token ceiling.
 
 ## Running a small evidence-producing experiment
 
@@ -66,6 +68,21 @@ uv run python -m scripts.prompt_compression_benchmark \
 ```
 
 Remove `--dry-run` to run original, keep50, keep75, keep90, and keep95. Change `--n 5` to `--n 100` for the standard larger run. Sampling is deterministic and balanced across the six top-level task categories as far as eligible data permits.
+
+## Excluded from the current n=50 aggregate
+
+The July 19 n=50 run used the pinned official `length=short` subset, seed 42, `gpt-5.6-luna` with reasoning
+`none`, and a 128,000-token complete-prompt ceiling. The original condition scored 48% (24/50), below the
+predeclared 50% minimum original-accuracy gate. The runner therefore stopped before keep50–keep90 compression.
+
+LongBench v2 is excluded from the current user-facing aggregate and plots because it has no valid compressed
+observations to pair with the original results. This was an intentional eligibility decision, not an API failure
+or missing-log error. The adapter remains supported, and the complete original-only evidence is preserved in
+[`results/2026-07-19-luna-keep50-90-short-n50-v1/`](results/2026-07-19-luna-keep50-90-short-n50-v1/), including
+the manifest, 50 records, 50 exact prompts, summary, report, and console log.
+
+The subsequent n=50 semantic-budget study also excludes LongBench v2; it makes no new LongBench model calls and
+publishes only paired BABILong 8k and RULERv2 curves.
 
 ## Measured 10-case keep90 pilot
 

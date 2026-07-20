@@ -1,0 +1,262 @@
+{
+  "schema_version": 1,
+  "benchmarks": [
+    "babilong_8k",
+    "ruler_v2",
+    "longbench_v2"
+  ],
+  "points": [
+    {
+      "condition": "keep50",
+      "retained_percent": 50.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.2,
+          "accuracy_retention": 0.33333333333333337,
+          "official_score": 0.2,
+          "cos_sim_diff": 0.091376793384552,
+          "token_reduction": 0.5437277198095287,
+          "wall_clock_seconds": 120.57423866599856,
+          "estimated_cost_usd": 0.41215882000000004
+        },
+        "ruler_v2": {
+          "accuracy": 0.0,
+          "accuracy_retention": 0.0,
+          "official_score": 0.07564102564102564,
+          "cos_sim_diff": 0.13412536382675172,
+          "token_reduction": 0.6445626662494133,
+          "wall_clock_seconds": 44.860811249996914,
+          "estimated_cost_usd": 0.1276969
+        },
+        "longbench_v2": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.5,
+          "official_score": 0.4,
+          "cos_sim_diff": 0.02645775079727173,
+          "token_reduction": 0.5186449897256135,
+          "wall_clock_seconds": 230.03845404299864,
+          "estimated_cost_usd": 0.8892226599999999
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.20000000000000004,
+        "accuracy_retention": 0.2777777777777778,
+        "official_score": 0.22521367521367522,
+        "cos_sim_diff": 0.0839866360028585,
+        "token_reduction": 0.5689784585948519
+      },
+      "total_wall_clock_seconds": 395.4735039589941,
+      "total_estimated_cost_usd": 1.42907838
+    },
+    {
+      "condition": "keep60",
+      "retained_percent": 60.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.6666666666666667,
+          "official_score": 0.4,
+          "cos_sim_diff": 0.046850275993347165,
+          "token_reduction": 0.45070385886393793,
+          "wall_clock_seconds": 107.57036525100557,
+          "estimated_cost_usd": 0.35091412
+        },
+        "ruler_v2": {
+          "accuracy": 0.6,
+          "accuracy_retention": 0.6,
+          "official_score": 0.65,
+          "cos_sim_diff": 0.06399024724960327,
+          "token_reduction": 0.5065248005007041,
+          "wall_clock_seconds": 55.930386832988006,
+          "estimated_cost_usd": 0.15744666000000002
+        },
+        "longbench_v2": {
+          "accuracy": 0.2,
+          "accuracy_retention": 0.25,
+          "official_score": 0.2,
+          "cos_sim_diff": 0.015607821941375732,
+          "token_reduction": 0.4166112655626738,
+          "wall_clock_seconds": 188.04051766399425,
+          "estimated_cost_usd": 0.6938427800000001
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.39999999999999997,
+        "accuracy_retention": 0.5055555555555555,
+        "official_score": 0.4166666666666667,
+        "cos_sim_diff": 0.042149448394775385,
+        "token_reduction": 0.45794664164243865
+      },
+      "total_wall_clock_seconds": 351.5412697479878,
+      "total_estimated_cost_usd": 1.20220356
+    },
+    {
+      "condition": "keep70",
+      "retained_percent": 70.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.6666666666666667,
+          "official_score": 0.4,
+          "cos_sim_diff": 0.026122617721557616,
+          "token_reduction": 0.3466472379068981,
+          "wall_clock_seconds": 88.87089616800222,
+          "estimated_cost_usd": 0.27492202
+        },
+        "ruler_v2": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.4,
+          "official_score": 0.45,
+          "cos_sim_diff": 0.022231578826904297,
+          "token_reduction": 0.33616022531685186,
+          "wall_clock_seconds": 56.777321669007506,
+          "estimated_cost_usd": 0.14685798
+        },
+        "longbench_v2": {
+          "accuracy": 0.8,
+          "accuracy_retention": 1.0,
+          "official_score": 0.8,
+          "cos_sim_diff": 0.008995842933654786,
+          "token_reduction": 0.310140416616302,
+          "wall_clock_seconds": 148.54958933399757,
+          "estimated_cost_usd": 0.51875304
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.5333333333333333,
+        "accuracy_retention": 0.688888888888889,
+        "official_score": 0.55,
+        "cos_sim_diff": 0.019116679827372234,
+        "token_reduction": 0.33098262661335065
+      },
+      "total_wall_clock_seconds": 294.1978071710073,
+      "total_estimated_cost_usd": 0.94053304
+    },
+    {
+      "condition": "keep80",
+      "retained_percent": 80.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.6666666666666667,
+          "official_score": 0.4,
+          "cos_sim_diff": 0.015015363693237305,
+          "token_reduction": 0.24867945148447868,
+          "wall_clock_seconds": 75.51214999900185,
+          "estimated_cost_usd": 0.2171071
+        },
+        "ruler_v2": {
+          "accuracy": 0.8,
+          "accuracy_retention": 0.8,
+          "official_score": 0.95,
+          "cos_sim_diff": 0.020077550411224367,
+          "token_reduction": 0.24781724299796593,
+          "wall_clock_seconds": 46.30163862399786,
+          "estimated_cost_usd": 0.11994882000000001
+        },
+        "longbench_v2": {
+          "accuracy": 0.4,
+          "accuracy_retention": 0.5,
+          "official_score": 0.4,
+          "cos_sim_diff": 0.005433046817779541,
+          "token_reduction": 0.2067166283895403,
+          "wall_clock_seconds": 100.963820252,
+          "estimated_cost_usd": 0.38051737999999996
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.5333333333333333,
+        "accuracy_retention": 0.6555555555555556,
+        "official_score": 0.5833333333333334,
+        "cos_sim_diff": 0.01350865364074707,
+        "token_reduction": 0.2344044409573283
+      },
+      "total_wall_clock_seconds": 222.77760887499971,
+      "total_estimated_cost_usd": 0.7175733
+    },
+    {
+      "condition": "keep90",
+      "retained_percent": 90.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.6,
+          "accuracy_retention": 1.0,
+          "official_score": 0.6,
+          "cos_sim_diff": 0.006626498699188232,
+          "token_reduction": 0.1393666571257578,
+          "wall_clock_seconds": 50.48935204299778,
+          "estimated_cost_usd": 0.13955632
+        },
+        "ruler_v2": {
+          "accuracy": 0.8,
+          "accuracy_retention": 0.8,
+          "official_score": 0.8,
+          "cos_sim_diff": 0.012865662574768066,
+          "token_reduction": 0.12664684712877483,
+          "wall_clock_seconds": 33.90150783300123,
+          "estimated_cost_usd": 0.08042556
+        },
+        "longbench_v2": {
+          "accuracy": 0.8,
+          "accuracy_retention": 1.0,
+          "official_score": 0.8,
+          "cos_sim_diff": 0.0023720502853393556,
+          "token_reduction": 0.10491961803457028,
+          "wall_clock_seconds": 67.38770045899582,
+          "estimated_cost_usd": 0.27689446
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.7333333333333334,
+        "accuracy_retention": 0.9333333333333332,
+        "official_score": 0.7333333333333334,
+        "cos_sim_diff": 0.0072880705197652185,
+        "token_reduction": 0.12364437409636764
+      },
+      "total_wall_clock_seconds": 151.77856033499484,
+      "total_estimated_cost_usd": 0.49687634
+    },
+    {
+      "condition": "original",
+      "retained_percent": 100.0,
+      "benchmarks": {
+        "babilong_8k": {
+          "accuracy": 0.6,
+          "accuracy_retention": 1.0,
+          "official_score": 0.6,
+          "cos_sim_diff": 0.0,
+          "token_reduction": 0.0,
+          "wall_clock_seconds": 4.661251540001103,
+          "estimated_cost_usd": 0.011085600000000001
+        },
+        "ruler_v2": {
+          "accuracy": 1.0,
+          "accuracy_retention": 1.0,
+          "official_score": 1.0,
+          "cos_sim_diff": 0.0,
+          "token_reduction": 0.0,
+          "wall_clock_seconds": 4.674994917997537,
+          "estimated_cost_usd": 0.03239
+        },
+        "longbench_v2": {
+          "accuracy": 0.8,
+          "accuracy_retention": 1.0,
+          "official_score": 0.8,
+          "cos_sim_diff": 0.0,
+          "token_reduction": 0.0,
+          "wall_clock_seconds": 6.6076016669976525,
+          "estimated_cost_usd": 0.199016
+        }
+      },
+      "macro_average": {
+        "accuracy": 0.8000000000000002,
+        "accuracy_retention": 1.0,
+        "official_score": 0.8000000000000002,
+        "cos_sim_diff": 0.0,
+        "token_reduction": 0.0
+      },
+      "total_wall_clock_seconds": 15.943848124996293,
+      "total_estimated_cost_usd": 0.2424916
+    }
+  ]
+}

@@ -68,10 +68,11 @@ def _target_instructions(max_tokens: int, strategy: str) -> str:
 
 
 class OpenAIMerger:
-    def __init__(self, api_key: str | None = None) -> None:  # pragma: no cover
+    def __init__(self, api_key: str | None = None, *, model: str = MERGE_MODEL) -> None:  # pragma: no cover
         from openai import OpenAI
 
         self._client = OpenAI(api_key=require_api_key(api_key))
+        self._model = model
 
     def merge(self, first: str, second: str, feedback: str | None = None) -> str:  # pragma: no cover
         from openai import OpenAIError
@@ -81,7 +82,7 @@ class OpenAIMerger:
             prompt += f"\n\n{feedback}"
         try:
             response = self._client.responses.create(
-                model=MERGE_MODEL,
+                model=self._model,
                 reasoning={"effort": "medium"},
                 instructions=_INSTRUCTIONS,
                 input=prompt,
@@ -109,7 +110,7 @@ class OpenAIMerger:
         cap = max(32, int(max_tokens / 1.1))
         try:
             response = self._client.responses.create(
-                model=MERGE_MODEL,
+                model=self._model,
                 reasoning={"effort": "none"},
                 max_output_tokens=cap,
                 instructions=_target_instructions(max_tokens, strategy),
@@ -123,7 +124,7 @@ class OpenAIMerger:
         return text
 
 
-@lru_cache(maxsize=2)
-def default_merger(api_key: str | None = None) -> SentenceMerger:  # pragma: no cover
+@lru_cache(maxsize=4)
+def default_merger(api_key: str | None = None, *, model: str = MERGE_MODEL) -> SentenceMerger:  # pragma: no cover
     """The process-wide default merger, built lazily on first use."""
-    return OpenAIMerger(api_key)
+    return OpenAIMerger(api_key, model=model)

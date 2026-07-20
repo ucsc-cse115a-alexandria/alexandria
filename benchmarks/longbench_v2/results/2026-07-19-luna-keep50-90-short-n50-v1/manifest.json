@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "implementation_commit": "bb7e177f56e2ec9fa563dab57ca36debb9a4f516",
+  "implementation_dirty": false,
+  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-longbench/scripts/prompt_compression_benchmark.py --benchmark longbench_v2 --n 50 --seed 42 --reductions 50 40 30 20 10 --data-dir data/longbench_v2/short.json --max-source-tokens 128000 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/longbench_v2/results/2026-07-19-luna-keep50-90-short-n50-v1",
+  "benchmark": "longbench_v2",
+  "provenance": {
+    "dataset": "zai-org/LongBench-v2@2b48e494f2c7a2f0af81aae178e05c7e1dde0fe9",
+    "prompt_and_metric": "THUDM/LongBench@2e00731f8d0bff23dc4325161044d0ed8af94c1e"
+  },
+  "data_dir": "data/longbench_v2/short.json",
+  "n_cases": 50,
+  "case_keys": [
+    "66fa7c81bb02136c067c6e09",
+    "66f6a14dbb02136c067c2453",
+    "67062a63bb02136c067cf5ac",
+    "671b3d1bbb02136c067d5283",
+    "66f78ecfbb02136c067c2f12",
+    "66fea153bb02136c067ca3e7",
+    "66f39ac5821e116aacb2da81",
+    "66ece358821e116aacb1dc08",
+    "66ed2c87821e116aacb1f149",
+    "6719bc01bb02136c067d43fa",
+    "66faac15bb02136c067c73f3",
+    "66eefa2f821e116aacb2284f",
+    "66ed3e90821e116aacb1f82f",
+    "66f6909bbb02136c067c2380",
+    "6703a0ecbb02136c067cd11b",
+    "671b170cbb02136c067d4f4a",
+    "66ebee0a5a08c7b9b35e1d05",
+    "66f618f1bb02136c067c16f9",
+    "66fcf36fbb02136c067c919e",
+    "66f3edfb821e116aacb2fc91",
+    "671b3e0cbb02136c067d52e5",
+    "66ec356a821e116aacb1c22b",
+    "66f8d84cbb02136c067c465f",
+    "66f530ce821e116aacb32f09",
+    "66f9625fbb02136c067c5456",
+    "671b3d9fbb02136c067d52b2",
+    "66f95126bb02136c067c5070",
+    "66f52567821e116aacb329bc",
+    "66fa50acbb02136c067c6827",
+    "66f578fa821e116aacb33c58",
+    "671b1480bb02136c067d4f14",
+    "66f59d31821e116aacb340f6",
+    "66f37635821e116aacb2d017",
+    "66fcfb5fbb02136c067c93ae",
+    "66f68b33bb02136c067c2303",
+    "671b08c8bb02136c067d4e19",
+    "66f3abe6821e116aacb2e1d2",
+    "66f36490821e116aacb2cc22",
+    "66f3ad93821e116aacb2e29f",
+    "66f56c9c821e116aacb33a45",
+    "671b2c67bb02136c067d50f7",
+    "66efa466821e116aacb23219",
+    "66ebed525a08c7b9b35e1cb4",
+    "66ec3644821e116aacb1c312",
+    "66f67c1bbb02136c067c21b9",
+    "671b17d5bb02136c067d4f7d",
+    "66fab090bb02136c067c74e7",
+    "66f67c18bb02136c067c21b8",
+    "66ecf139821e116aacb1e0e1",
+    "66f2aac2821e116aacb2a9de"
+  ],
+  "seed": 42,
+  "reductions_percent": [
+    50.0,
+    40.0,
+    30.0,
+    20.0,
+    10.0
+  ],
+  "model": "gpt-5.6-luna",
+  "reasoning": "none",
+  "minimum_original_accuracy": 0.5,
+  "tokenizer": "cl100k_base",
+  "eligibility": {
+    "min_source_tokens": 0,
+    "max_source_tokens": 128000
+  },
+  "compression": {
+    "compressible_prompt_part": "context",
+    "embedding_model": "text-embedding-3-small",
+    "merge_model": "gpt-5.6-luna",
+    "require_target": true
+  },
+  "source_token_distribution": {
+    "min": 10713,
+    "mean": 37369.92,
+    "p50": 29874.5,
+    "p95": 75556.95,
+    "max": 92764
+  },
+  "pricing_usd_per_million": {
+    "answer_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "merge_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "embedding_input": 0.02,
+    "context_tier": "standard short context"
+  },
+  "pricing_source": "https://developers.openai.com/api/docs/pricing"
+}

@@ -71,6 +71,14 @@ uv run python -m scripts.prompt_compression_benchmark \
 
 Change `--n 5` to `--n 100` for the standard larger run. The four reductions produce `keep50`, `keep75`, `keep90`, and `keep95` conditions alongside `original`.
 
+## Current 50-case semantic-budget run
+
+The current publication run selected 50 cases with seed 42 and evaluated the original plus five best-effort
+context `cos_sim_diff` budgets from 0.0025 through 0.02 using `gpt-5.6-luna`. The complete raw evidence is in
+[`results/2026-07-19-luna-cos-budget-n50-v1/`](results/2026-07-19-luna-cos-budget-n50-v1/). See the
+[cross-benchmark report](../prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for the
+figures, paired intervals, task-family terminal distribution, time/cost, exact commands, and caveats.
+
 ## Measured 10-case keep90 pilot
 
 Official NeMo Skills generation used `cl100k_base`, an 8,192-token maximum, dataset seed 42, and ten generated rows per task. The common runner then selected ten cases round-robin across task names with seed 42. Because `n=10` is smaller than the twelve-task suite, this pilot includes the first ten sorted task names and excludes `qa_medium` and `qa_hard`. Actual complete prompts ranged from 4,149 to 8,139 tokens.

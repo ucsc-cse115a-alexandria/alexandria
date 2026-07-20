@@ -3,6 +3,7 @@ from __future__ import annotations
 import gzip
 import hashlib
 import json
+import threading
 from typing import TYPE_CHECKING
 
 from benchmarks.prompt_compression.contracts import ConditionRecord
@@ -21,6 +22,8 @@ class RunStore:
         self.prompts_path = output_dir / "prompts.jsonl.gz"
         self.summary_path = output_dir / "summary.json"
         self.report_path = output_dir / "report.md"
+        self.api_events_path = output_dir / "api_events.jsonl"
+        self._api_event_lock = threading.Lock()
         output_dir.mkdir(parents=True, exist_ok=True)
 
     def load_records(self) -> tuple[ConditionRecord, ...]:
@@ -72,3 +75,26 @@ class RunStore:
         with path.open("a", encoding="utf-8") as output:
             for error in errors:
                 output.write(json.dumps(error, ensure_ascii=False) + "\n")
+                output.flush()
+
+    def append_api_event(self, event: Mapping[str, object]) -> None:
+        """Persist one request outcome immediately, before its case-condition checkpoint exists."""
+        with self._api_event_lock, self.api_events_path.open("a", encoding="utf-8") as output:
+            output.write(json.dumps(event, ensure_ascii=False) + "\n")
+            output.flush()
+
+    def api_event_cost(self) -> float:
+        """Return completed request cost already persisted for safe budgeted resume."""
+        if not self.api_events_path.exists():
+            return 0.0
+        total = 0.0
+        for line in self.api_events_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                total += float(json.loads(line).get("estimated_cost_usd", 0.0))
+        return total
+
+    def load_errors(self) -> tuple[dict[str, object], ...]:
+        path = self.output_dir / "errors.jsonl"
+        if not path.exists():
+            return ()
+        return tuple(json.loads(line) for line in path.read_text(encoding="utf-8").splitlines() if line.strip())

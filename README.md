@@ -114,14 +114,37 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The committed BABILong 8k result used 100 task-balanced cases and a strict 90%-retained target. All 100 prompts met
-their token ceilings, reducing mean input from 7,540.82 to 6,716.60 tokens (10.93%). Original task accuracy was 66%
-and compressed accuracy was 65%, so accuracy retention was 98.48% with a 95% paired-bootstrap interval of
-85.71%-112.90%.
+The current study measures 50 cases each from BABILong 8k and RULERv2 with seed 42, using `gpt-5.6-luna` for both
+compression and answers. It tests best-effort context `cos_sim_diff` budgets from 0.0025 through 0.02. Within this
+range, completed prompts were reduced by 0.40%–0.51% on average while mean realized full-prompt `cos_sim_diff`
+remained between 0.0019 and 0.0024.
 
-**Release decision: FAIL.** The confidence interval does not clear the predeclared 90% retention threshold. This
-run validates the hard-target behavior and measurement path; it does not support the release accuracy claim.
-See the [method, assumptions, costs, timing, and committed raw results](benchmarks/babilong_8k/README.md).
+| Configured budget | Average task accuracy | Mean token reduction | Complete case-condition pairs |
+|---:|---:|---:|---:|
+| Original | 76.0% | 0.00% | 100.0% |
+| 0.0025 | 63.3% | 0.40% | 79.0% |
+| 0.005 | 60.9% | 0.43% | 80.0% |
+| 0.01 | 58.3% | 0.46% | 78.0% |
+| 0.015 | 56.0% | 0.48% | 79.0% |
+| 0.02 | 63.4% | 0.51% | 79.0% |
+
+`Average` is the equal-weight mean of the two benchmarks. Accuracy uses completed paired cases; completion is
+shown alongside it so the effective coverage remains visible.
+
+![Quality and prompt reduction by semantic-change budget](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/quality_and_reduction_vs_budget.png)
+
+A separate hard-target study used 50 cases per benchmark to retain 50%, 60%, 70%, 80%, and 90% of each prompt,
+with the uncompressed prompt shown at 100%. This provides the broader compression-quality curve independently of
+the semantic-change budget above.
+
+![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
+
+See the
+[detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for
+benchmark-specific results, paired-bootstrap intervals and decisions, compliance and completion analysis, exact
+reproduction commands, timing and cost, caveats, and links to every append-only raw artifact. The
+[benchmark runner guide](benchmarks/prompt_compression/README.md) documents the shared evidence format and how to
+execute a new run.
 
 ## How it works
 
