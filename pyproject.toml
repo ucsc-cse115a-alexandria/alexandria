@@ -155,6 +155,9 @@ ignore = [
 # Utility scripts shell out to a fixed `gh` binary with controlled argv (shell=False)
 # and fetch from a hardcoded https raw.githubusercontent.com host.
 "scripts/**" = ["S603", "S310"]
+# The demo notebook shells out to the project's own `alexandria` CLI with fixed,
+# trusted argv (shell=False, no user input) — the same controlled-subprocess pattern as scripts/**.
+"examples/*.ipynb" = ["S603"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = ["pydantic.BaseModel"]
