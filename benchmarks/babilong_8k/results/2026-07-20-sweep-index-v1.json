@@ -1,0 +1,237 @@
+{
+  "schema_version": 1,
+  "runbook_path": "benchmarks/prompt_compression/sweep-matrix-runbook.md",
+  "implementation_commit": "231c6236dcdbd9090acae5b6d4ff39ca60f7143a",
+  "generated_at": "2026-07-20T21:33:51.668218+00:00",
+  "points": [
+    {
+      "sweep_point": "P0",
+      "type": "Baseline",
+      "setting": "Uncompressed original prompt",
+      "mechanism": "--min-original-accuracy 1.0 gate (original only)",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --reductions 50 --min-original-accuracy 1.0 --model gpt-5.6-luna --out benchmarks/babilong_8k/results/2026-07-20-p0-original-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p0-original-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 1,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 50,
+        "errors_count": 0
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": []
+      }
+    },
+    {
+      "sweep_point": "P1",
+      "type": "Baseline",
+      "setting": "Current default compression (`Params()` defaults)",
+      "mechanism": "Inline runner → `reduce(..., params=Params())`",
+      "command": "inline:library_default",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p1-library-default-n50-v1",
+      "execution_kind": "inline",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": false,
+        "records_count": 100,
+        "errors_count": 0
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.74,
+        "compressed_conditions": [
+          "default"
+        ],
+        "compressed_condition": "default",
+        "compressed_accuracy": 0.7,
+        "mean_token_reduction": 0.007916347601066742,
+        "mean_prompt_cosine_difference": 0.0025452756881713867,
+        "estimated_cost_usd": 0.0,
+        "wall_clock_seconds": 1218.172082211975,
+        "accuracy_retention": 0.9459459459459459
+      }
+    },
+    {
+      "sweep_point": "P2",
+      "type": "Weaker",
+      "setting": "Tight semantic budget",
+      "mechanism": "--cos-sim-diff-budgets 0.0025",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.0025 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p2-budget-0.0025-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p2-budget-0.0025-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 98,
+        "errors_count": 2
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": [
+          "budget0p0025"
+        ],
+        "compressed_condition": "budget0p0025",
+        "compressed_accuracy": 0.6666666666666666,
+        "mean_token_reduction": 0.0065746617155139075,
+        "mean_prompt_cosine_difference": 0.0022726704676946006,
+        "estimated_cost_usd": 0.57803626,
+        "wall_clock_seconds": 1105.0772979989997,
+        "accuracy_retention": 0.9142857142857143
+      }
+    },
+    {
+      "sweep_point": "P3",
+      "type": "Weaker",
+      "setting": "Slightly tight semantic budget",
+      "mechanism": "--cos-sim-diff-budgets 0.005",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.005 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p3-budget-0.005-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p3-budget-0.005-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 98,
+        "errors_count": 2
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": [
+          "budget0p005"
+        ],
+        "compressed_condition": "budget0p005",
+        "compressed_accuracy": 0.6458333333333334,
+        "mean_token_reduction": 0.006918237265028715,
+        "mean_prompt_cosine_difference": 0.0023241775731245675,
+        "estimated_cost_usd": 0.59061084,
+        "wall_clock_seconds": 1033.4989834199841,
+        "accuracy_retention": 0.9117647058823529
+      }
+    },
+    {
+      "sweep_point": "P4",
+      "type": "Reference",
+      "setting": "Mid semantic budget",
+      "mechanism": "--cos-sim-diff-budgets 0.01",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.01 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p4-budget-0.01-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p4-budget-0.01-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 98,
+        "errors_count": 2
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": [
+          "budget0p01"
+        ],
+        "compressed_condition": "budget0p01",
+        "compressed_accuracy": 0.7291666666666666,
+        "mean_token_reduction": 0.007019935627684992,
+        "mean_prompt_cosine_difference": 0.0022534926732381186,
+        "estimated_cost_usd": 0.5804809000000001,
+        "wall_clock_seconds": 1019.3665320830114,
+        "accuracy_retention": 1.0294117647058822
+      }
+    },
+    {
+      "sweep_point": "P5",
+      "type": "Stronger",
+      "setting": "Loose semantic budget",
+      "mechanism": "--cos-sim-diff-budgets 0.015",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.015 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p5-budget-0.015-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p5-budget-0.015-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 98,
+        "errors_count": 2
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": [
+          "budget0p015"
+        ],
+        "compressed_condition": "budget0p015",
+        "compressed_accuracy": 0.7083333333333334,
+        "mean_token_reduction": 0.007173857473867673,
+        "mean_prompt_cosine_difference": 0.0023372682432333627,
+        "estimated_cost_usd": 0.5819757600000001,
+        "wall_clock_seconds": 1051.841520422986,
+        "accuracy_retention": 1.0
+      }
+    },
+    {
+      "sweep_point": "P6",
+      "type": "Stronger",
+      "setting": "Loosest allowed semantic budget",
+      "mechanism": "--cos-sim-diff-budgets 0.02",
+      "command": "uv run python -m scripts.prompt_compression_benchmark --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.02 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p6-budget-0.02-n50-v1",
+      "out_dir": "benchmarks/babilong_8k/results/2026-07-20-p6-budget-0.02-n50-v1",
+      "execution_kind": "subprocess",
+      "status": "success",
+      "exit_code": null,
+      "expected_exit_code": 0,
+      "artifacts": {
+        "manifest": true,
+        "summary": true,
+        "prompts": true,
+        "report": true,
+        "api_events": true,
+        "records_count": 98,
+        "errors_count": 2
+      },
+      "summary_metrics": {
+        "original_accuracy": 0.72,
+        "compressed_conditions": [
+          "budget0p02"
+        ],
+        "compressed_condition": "budget0p02",
+        "compressed_accuracy": 0.6458333333333334,
+        "mean_token_reduction": 0.007146371429906484,
+        "mean_prompt_cosine_difference": 0.002299923449754715,
+        "estimated_cost_usd": 0.58251368,
+        "wall_clock_seconds": 1054.0803466250327,
+        "accuracy_retention": 0.9117647058823529
+      }
+    }
+  ]
+}

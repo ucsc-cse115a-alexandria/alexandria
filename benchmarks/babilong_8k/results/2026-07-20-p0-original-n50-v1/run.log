@@ -1,0 +1,64 @@
+
+--- sweep_runner invoking P0 at 2026-07-20T19:10:10.835370+00:00 ---
+completed qa1:47 original
+completed qa2:40 original
+completed qa3:58 original
+completed qa4:82 original
+completed qa5:73 original
+completed qa1:46 original
+completed qa2:7 original
+completed qa3:37 original
+completed qa4:62 original
+completed qa5:86 original
+completed qa1:91 original
+completed qa2:36 original
+completed qa3:83 original
+completed qa4:14 original
+completed qa5:36 original
+completed qa1:17 original
+completed qa2:38 original
+completed qa3:50 original
+completed qa4:66 original
+completed qa5:75 original
+completed qa1:68 original
+completed qa2:0 original
+completed qa3:31 original
+completed qa4:31 original
+completed qa5:87 original
+completed qa1:54 original
+completed qa2:21 original
+completed qa3:66 original
+completed qa4:74 original
+completed qa5:46 original
+completed qa1:1 original
+completed qa2:55 original
+completed qa3:72 original
+completed qa4:93 original
+completed qa5:41 original
+completed qa1:72 original
+completed qa2:73 original
+completed qa3:18 original
+completed qa4:95 original
+completed qa5:58 original
+completed qa1:22 original
+completed qa2:65 original
+completed qa3:38 original
+completed qa4:70 original
+completed qa5:9 original
+completed qa1:8 original
+completed qa2:88 original
+completed qa3:32 original
+completed qa4:88 original
+completed qa5:32 original
+original baseline accuracy: 72.0% (minimum 100.0%)
+original baseline is too weak; compressed conditions were not run
+| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | Execution time | Execution cost | Reduction time | Reduction cost |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| original | 7,574.2 | 0.0% | 0.0000 | 72.0% (36/50) | 55.9s | $0.3787 | 0.0s | $0.0000 |
+
+## Baseline qualification
+
+- **Original:** FAIL: original accuracy does not clear the minimum baseline (72.0% accuracy; minimum 100.0%)
+
+## Release decisions
+
