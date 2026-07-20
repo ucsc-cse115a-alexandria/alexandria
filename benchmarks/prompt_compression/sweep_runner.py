@@ -13,7 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -27,7 +27,13 @@ from alexandria.utils.tokens import count_tokens
 from benchmarks.prompt_compression.adapters import get_adapter
 from benchmarks.prompt_compression.runner import benchmark_report, summarize_records
 from benchmarks.prompt_compression.store import RunStore
-from scripts.prompt_compression_benchmark import DEFAULT_MODEL, _generate, _git_dirty, _git_sha, _record
+from scripts.prompt_compression_benchmark import (
+    DEFAULT_MODEL,
+    build_condition_record,
+    generate_response,
+    git_dirty,
+    git_sha,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
@@ -279,8 +285,8 @@ def run_library_default_point(out_dir: Path, *, log_path: Path) -> int:
     store.write_manifest(
         {
             "schema_version": 1,
-            "implementation_commit": _git_sha(),
-            "implementation_dirty": _git_dirty(),
+            "implementation_commit": git_sha(),
+            "implementation_dirty": git_dirty(),
             "command": "inline:library_default",
             "benchmark": adapter.name,
             "provenance": adapter.provenance,
@@ -310,8 +316,8 @@ def run_library_default_point(out_dir: Path, *, log_path: Path) -> int:
                 source_tokens = count_tokens(case.prompt)
                 if (case.key, "original") not in completed:
                     started = time.monotonic()
-                    generation = _generate(client, DEFAULT_MODEL, "none", case.prompt)
-                    record = _record(
+                    generation = generate_response(client, DEFAULT_MODEL, "none", case.prompt)
+                    record_entry = build_condition_record(
                         case=case,
                         condition="original",
                         reduction_percent=0.0,
@@ -326,7 +332,7 @@ def run_library_default_point(out_dir: Path, *, log_path: Path) -> int:
                         merge_metrics=MergeMetrics(),
                         usage=(),
                     )
-                    store.append(record, case.prompt)
+                    store.append(record_entry, case.prompt)
                 if (case.key, condition) in completed:
                     continue
                 parts = case.prompt_parts
@@ -339,10 +345,10 @@ def run_library_default_point(out_dir: Path, *, log_path: Path) -> int:
                 compression_elapsed = time.monotonic() - compression_started
                 sent_tokens = count_tokens(compressed.prompt)
                 answer_started = time.monotonic()
-                generation = _generate(client, DEFAULT_MODEL, "none", compressed.prompt)
+                generation = generate_response(client, DEFAULT_MODEL, "none", compressed.prompt)
                 answer_elapsed = time.monotonic() - answer_started
                 actual_reduction = max(0.0, (1.0 - sent_tokens / source_tokens) * 100.0)
-                record = _record(
+                record_entry = build_condition_record(
                     case=case,
                     condition=condition,
                     reduction_percent=actual_reduction,
@@ -358,7 +364,7 @@ def run_library_default_point(out_dir: Path, *, log_path: Path) -> int:
                     usage=(),
                     configured_cos_sim_diff_budget=params.cos_sim_diff_budget,
                 )
-                store.append(record, compressed.prompt)
+                store.append(record_entry, compressed.prompt)
             records = store.load_records()
             summary = summarize_records(records, bootstrap_seed=SEED)
             report = benchmark_report(summary)
@@ -421,9 +427,21 @@ def classify_point_status(
     return PointStatus.FAILED
 
 
+def _object_dict(value: object) -> dict[str, object] | None:
+    if not isinstance(value, dict):
+        return None
+    return cast(dict[str, object], value)
+
+
+def _object_list(value: object) -> list[object] | None:
+    if not isinstance(value, list):
+        return None
+    return cast(list[object], value)
+
+
 def _compressed_conditions(summary: dict[str, object]) -> list[str]:
-    conditions = summary.get("conditions")
-    if not isinstance(conditions, dict):
+    conditions = _object_dict(summary.get("conditions"))
+    if conditions is None:
         return []
     return [name for name in conditions if name != "original"]
 
@@ -434,21 +452,22 @@ def _primary_compressed_condition(summary: dict[str, object], sweep_point: str) 
         return None
     if len(compressed) == 1:
         return compressed[0]
-    expected = summary.get("expected_conditions")
-    if isinstance(expected, list) and expected:
-        first = expected[0]
-        return str(first) if first in compressed else compressed[0]
+    expected = _object_list(summary.get("expected_conditions"))
+    if expected:
+        first: object = expected[0]
+        first_name = str(first)
+        return first_name if first_name in compressed else compressed[0]
     if sweep_point == "P1":
         return "default" if "default" in compressed else compressed[0]
     return compressed[0]
 
 
 def extract_summary_metrics(summary: dict[str, object], sweep_point: str) -> dict[str, object] | None:
-    conditions = summary.get("conditions")
-    if not isinstance(conditions, dict):
+    conditions = _object_dict(summary.get("conditions"))
+    if conditions is None:
         return None
-    original = conditions.get("original")
-    if not isinstance(original, dict):
+    original = _object_dict(conditions.get("original"))
+    if original is None:
         return None
     compressed_name = _primary_compressed_condition(summary, sweep_point)
     metrics: dict[str, object] = {
@@ -457,8 +476,8 @@ def extract_summary_metrics(summary: dict[str, object], sweep_point: str) -> dic
     }
     if compressed_name is None:
         return metrics
-    compressed = conditions.get(compressed_name)
-    if not isinstance(compressed, dict):
+    compressed = _object_dict(conditions.get(compressed_name))
+    if compressed is None:
         return metrics
     metrics["compressed_condition"] = compressed_name
     metrics["compressed_accuracy"] = compressed.get("accuracy")
@@ -469,12 +488,12 @@ def extract_summary_metrics(summary: dict[str, object], sweep_point: str) -> dic
     answer_seconds = compressed.get("answer_seconds")
     if isinstance(compression_seconds, (int, float)) and isinstance(answer_seconds, (int, float)):
         metrics["wall_clock_seconds"] = float(compression_seconds) + float(answer_seconds)
-    comparisons = summary.get("comparisons")
-    if isinstance(comparisons, dict):
-        comparison = comparisons.get(compressed_name)
-        if isinstance(comparison, dict):
-            accuracy_retention = comparison.get("accuracy_retention")
-            if isinstance(accuracy_retention, dict):
+    comparisons = _object_dict(summary.get("comparisons"))
+    if comparisons is not None:
+        comparison = _object_dict(comparisons.get(compressed_name))
+        if comparison is not None:
+            accuracy_retention = _object_dict(comparison.get("accuracy_retention"))
+            if accuracy_retention is not None:
                 metrics["accuracy_retention"] = accuracy_retention.get("retention")
     return metrics
 
@@ -545,7 +564,7 @@ def build_sweep_index(
     return {
         "schema_version": 1,
         "runbook_path": str(RUNBOOK_PATH),
-        "implementation_commit": _git_sha(),
+        "implementation_commit": git_sha(),
         "generated_at": datetime.now(UTC).isoformat(),
         "points": entries,
     }
