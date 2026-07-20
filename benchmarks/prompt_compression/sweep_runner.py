@@ -430,13 +430,13 @@ def classify_point_status(
 def _object_dict(value: object) -> dict[str, object] | None:
     if not isinstance(value, dict):
         return None
-    return cast(dict[str, object], value)
+    return cast("dict[str, object]", value)
 
 
 def _object_list(value: object) -> list[object] | None:
     if not isinstance(value, list):
         return None
-    return cast(list[object], value)
+    return cast("list[object]", value)
 
 
 def _compressed_conditions(summary: dict[str, object]) -> list[str]:
