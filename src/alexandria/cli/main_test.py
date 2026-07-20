@@ -10,7 +10,8 @@ from click.testing import CliRunner
 
 from alexandria.cli import cli
 from alexandria.cli.envelope import DocumentEnvelope, PlanEnvelope, ScoredEnvelope
-from alexandria.ir.contracts import Params
+from alexandria.ir.contracts import Candidate, Params, Replace
+from alexandria.ir.document import Encoded
 from alexandria.ir.registry import register_scorer
 from alexandria.ops import HashEmbedder, count_tokens, default_embedder, default_merger
 from alexandria.ops.features.represent import represent
@@ -111,6 +112,7 @@ def test_select_json_reports_the_reduction_summary() -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
+    assert payload["schema_version"] == 1
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
     assert payload["reduced_tokens"] < payload["source_tokens"]
@@ -211,16 +213,15 @@ def test_optimize_rejects_an_unknown_schema_version_cleanly() -> None:
 
 
 @pytest.mark.usefixtures("offline_models")
-def test_optimize_reports_a_missing_required_scorer_cleanly() -> None:
+def test_default_optimize_does_not_require_a_redundancy_score_bundle() -> None:
     document = represent("dup\ndup\n", HashEmbedder())
-    bundle = score(document, names=("cli_test_constant",))  # lacks the redundancy scorer merge_rewrite requires
+    bundle = score(document, names=("cli_test_constant",))
     scored = ScoredEnvelope(document=document, scores=bundle).model_dump_json()
 
-    result = CliRunner().invoke(cli, ["optimize"], input=scored)
+    result = CliRunner().invoke(cli, ["optimize", "--cos-sim-diff-budget", "2.0"], input=scored)
 
-    assert result.exit_code == 1
-    assert "redundancy" in result.output
-    assert "Traceback" not in result.output
+    assert result.exit_code == 0
+    assert PlanEnvelope.model_validate_json(result.output).plan
 
 
 @pytest.mark.usefixtures("offline_models")
@@ -250,8 +251,12 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     )
     assert result.exit_code == 0
     payload = json.loads(result.output)
+    assert payload["schema_version"] == 1
     assert payload["text"].count("keep one") == 1
     assert len(payload["applied"]) == 1
+    assert payload["applied"][0]["op"] == "delete"
+    assert "edit" not in payload["applied"][0]
+    assert "embedding" not in json.dumps(payload["applied"])
     assert payload["reduced_tokens"] < payload["source_tokens"]
     metrics = payload["merge_metrics"]
     assert metrics["elapsed_seconds"] > 0.0
@@ -268,6 +273,51 @@ def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
 
 
 @pytest.mark.usefixtures("offline_models")
+def test_select_json_uses_a_compact_replace_summary_but_plan_envelope_keeps_embeddings() -> None:
+    embedder = HashEmbedder()
+    document = represent("long alpha\nlong beta\n", embedder)
+    replacement_text = "short\n"
+    replacement = Encoded(
+        text=replacement_text,
+        token_count=count_tokens(replacement_text),
+        embedding=embedder.embed([replacement_text])[0],
+    )
+    candidate = Candidate(
+        edit=Replace(
+            targets=(document.sentences[0].id, document.sentences[1].id),
+            replacement=replacement,
+        ),
+        confidence=0.9,
+        source="test",
+        reason="compact output",
+    )
+    envelope_json = PlanEnvelope(document=document, plan=(candidate,)).model_dump_json()
+
+    result = CliRunner().invoke(
+        cli,
+        ["select", "--cos-sim-diff-budget", "2.0", "--json"],
+        input=envelope_json,
+    )
+
+    assert result.exit_code == 0
+    assert '"embedding"' in envelope_json
+    payload = json.loads(result.output)
+    assert payload["schema_version"] == 1
+    applied = payload["applied"]
+    assert applied == [
+        {
+            "op": "replace",
+            "targets": [document.sentences[0].id, document.sentences[1].id],
+            "confidence": 0.9,
+            "source": "test",
+            "reason": "compact output",
+            "replacement": {"text": replacement_text, "token_count": count_tokens(replacement_text)},
+        }
+    ]
+    assert "embedding" not in json.dumps(applied)
+
+
+@pytest.mark.usefixtures("offline_models")
 def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
     result = CliRunner().invoke(
         cli,
@@ -277,7 +327,10 @@ def test_report_outputs_machine_readable_token_and_quality_fields() -> None:
 
     assert result.exit_code == 0
     payload = json.loads(result.output)
-    assert payload["schema_version"] == 2
+    assert payload["schema_version"] == 3
+    assert payload["config"]["merger"].endswith("._FakeMerger")
+    assert payload["config"]["max_tokens"] is None
+    assert payload["config"]["require_target"] is False
     assert payload["tokens"]["source"] > payload["tokens"]["reduced"]
     assert "instruction_coverage" in payload["quality"]
     assert "minimum_instruction_similarity" in payload["quality"]
@@ -592,7 +645,6 @@ def test_reduce_interactive_rejects_save_tokens() -> None:
 @pytest.mark.usefixtures("offline_models")
 def test_reduce_browser_applies_only_accepted_edits(monkeypatch: pytest.MonkeyPatch) -> None:
     from alexandria.cli import main as main_module
-    from alexandria.ir.contracts import Candidate
     from alexandria.ops.pipe import Proposal, propose
 
     prompt = "keep one\nkeep one\nunique\n"

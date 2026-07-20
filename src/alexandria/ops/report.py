@@ -24,10 +24,13 @@ class ReportConfig(BaseModel):
 
     model_config = ConfigDict(frozen=True)
     model: str
+    merger: str
     optimizers: tuple[str, ...]
     selector: str
     threshold: float
     cos_sim_diff_budget: float
+    max_tokens: int | None
+    require_target: bool
 
 
 class TokenMetrics(BaseModel):
@@ -52,7 +55,7 @@ class OptimizationReport(BaseModel):
     """Stable, machine-readable summary of one end-to-end optimization run."""
 
     model_config = ConfigDict(frozen=True)
-    schema_version: Literal[2] = 2
+    schema_version: Literal[3] = 3
     config: ReportConfig
     tokens: TokenMetrics
     quality: QualityScores
@@ -106,10 +109,13 @@ def optimization_report(
     return OptimizationReport(
         config=ReportConfig(
             model=embedder.model_id,
+            merger=_merger_identity(merger),
             optimizers=optimizers,
             selector=selector,
             threshold=params.threshold,
             cos_sim_diff_budget=params.cos_sim_diff_budget,
+            max_tokens=params.max_tokens,
+            require_target=params.require_target,
         ),
         tokens=TokenMetrics(
             source=result.source_tokens,
@@ -180,6 +186,15 @@ def _instruction_quality(source: Document, reduced: Document) -> tuple[float, fl
 
 def _round_score(value: float) -> float:
     return round(value, 6)
+
+
+def _merger_identity(merger: SentenceMerger) -> str:
+    merger_type = type(merger)
+    class_name = f"{merger_type.__module__}.{merger_type.__qualname__}"
+    model_id = getattr(merger, "model_id", None)
+    if isinstance(model_id, str):
+        return f"{class_name}:{model_id}"
+    return class_name
 
 
 def _append_min_regression(

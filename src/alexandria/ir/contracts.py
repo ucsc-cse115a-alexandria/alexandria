@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Annotated, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Annotated, Literal, Protocol, Self, runtime_checkable
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from alexandria.ir.document import Document, Encoded, SentenceId
 
@@ -29,18 +29,21 @@ class Params(BaseModel):
     max_tokens: int | None = Field(default=None, ge=1)
     require_target: bool = False
 
+    @model_validator(mode="after")
+    def _target_requires_a_budget(self) -> Self:
+        if self.require_target and self.max_tokens is None:
+            raise ValueError("require_target=True requires max_tokens")
+        return self
+
 
 class TargetMergeRoundMetrics(BaseModel):
-    """The selected base before and after one target-search generation call."""
+    """The document before and after one target-search generation call."""
 
     model_config = ConfigDict(frozen=True)
-    round: int = Field(ge=1)
     base_tokens: int = Field(ge=1)
     selected_tokens: int = Field(ge=1)
     base_cos_sim_diff: float = Field(ge=0.0)
     selected_cos_sim_diff: float = Field(ge=0.0)
-    generated_best_tokens: int = Field(ge=1)
-    generated_best_cos_sim_diff: float = Field(ge=0.0)
     improved: bool
 
 
@@ -250,8 +253,6 @@ class ReductionReporter(Protocol):
 
     def target_round(
         self,
-        round_number: int,
-        base: str | None,
         candidates: tuple[ReportedCandidate, ...],
         selected: ReportedCandidate,
         selected_from_generation: bool,
@@ -274,8 +275,6 @@ class SilentReporter:
 
     def target_round(
         self,
-        round_number: int,
-        base: str | None,
         candidates: tuple[ReportedCandidate, ...],
         selected: ReportedCandidate,
         selected_from_generation: bool,

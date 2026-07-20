@@ -328,8 +328,6 @@ def _hunk_html(document: Document, removed: frozenset[SentenceId]) -> str:
         escaped = html.escape(text)
         if kind == "removed":
             parts.append(f'<div class="line removed">-{escaped}</div>')
-        elif kind == "added":
-            parts.append(f'<div class="line added">+{escaped}</div>')
         elif kind == "context":
             parts.append(f'<div class="line context"> {escaped}</div>')
         elif kind == "gap":

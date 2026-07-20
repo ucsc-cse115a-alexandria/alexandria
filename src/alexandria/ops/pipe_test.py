@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import importlib
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -9,6 +10,7 @@ from alexandria.ops.pipe import propose, reduce, score_report
 from alexandria.utils.embedders import HashEmbedder
 
 if TYPE_CHECKING:
+    import pytest
     from numpy.typing import NDArray
 
 
@@ -39,6 +41,30 @@ class _CountingEmbedder:
 
 def test_default_whole_prompt_cos_sim_diff_budget_is_fifty_percent() -> None:
     assert Params().cos_sim_diff_budget == 0.5
+
+
+def test_default_reduce_and_propose_skip_the_unused_score_phase(monkeypatch: pytest.MonkeyPatch) -> None:
+    def unexpected_score(*_args: object, **_kwargs: object) -> None:
+        raise AssertionError("default optimizer must not invoke score")
+
+    pipe_module = importlib.import_module("alexandria.ops.pipe")
+    monkeypatch.setattr(pipe_module, "score", unexpected_score)
+
+    result = reduce(
+        "repeat me\nrepeat me\nunique line\n",
+        HashEmbedder(),
+        _FirstWinsMerger(),
+        params=Params(cos_sim_diff_budget=2.0),
+    )
+    proposal = propose(
+        "repeat me\nrepeat me\nunique line\n",
+        HashEmbedder(),
+        _FirstWinsMerger(),
+        params=Params(cos_sim_diff_budget=2.0),
+    )
+
+    assert result.applied
+    assert proposal.diffs
 
 
 def test_score_report_adds_the_redundant_peer() -> None:
