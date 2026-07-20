@@ -1,50 +1,54 @@
 # Library guide
 
-Alexandria's CLI calls the same importable functions that are available to Python applications.
+The public Python API exposes end-to-end reduction, reviewable proposals, individual phases,
+comparison and report helpers, result models, and the `Document` IR.
 
-## Reduce a prompt
-
-`reduce` runs the complete pipeline. Its signature is:
-
-```python
-def reduce(
-    prompt: str,
-    embedder: Embedder | None = None,
-    merger: SentenceMerger | None = None,
-    *,
-    api_key: str | None = None,
-    params: Params | None = None,
-) -> ReduceResult: ...
-```
-
-Without an explicit `embedder` and `merger`, it builds the OpenAI defaults
-(`text-embedding-3-small` for embeddings, `gpt-5.6-luna` for merging), so a key must be resolvable.
-Resolution order is the `api_key` argument, then the `OPENAI_API_KEY` environment variable, then the
-config file written by `alexandria config set openai-api-key`.
+## Reduce
 
 ```python
 import alexandria
 
 result = alexandria.reduce("Be concise.\nBe concise.\nUse examples.\n")
 print(result.text)
+print(result.source_tokens, result.reduced_tokens)
 ```
 
-`result` contains the reduced `Document`, the original source document, and the candidates that were
-applied. `examples/reduce_prompt.py` is a runnable version that loads the key from a `.env` file — copy
-`.env.example` to `.env`, add your key, then run `uv run python examples/reduce_prompt.py`.
+Without an injected embedder and merger, `reduce` builds the OpenAI defaults. The API key resolution
+order is `api_key=`, `OPENAI_API_KEY`, then the config written by
+`alexandria config set openai-api-key`.
 
-For a hard ceiling, pass `Params(max_tokens=..., require_target=True)`. Successful results always satisfy
-`result.reduced_tokens <= max_tokens`; model overshoot is repaired with the same tokenizer used for reporting.
-`result.merge_metrics.final_cos_sim_diff` records the selected prompt's whole-document `cos_sim_diff` and
-`cos_sim_diff_budget_met` states whether it also cleared the requested quality budget. If protected Markdown/XML
-structure itself exceeds the ceiling, `reduce` raises `InfeasibleTargetError` before calling the merger.
+`ReduceResult` contains the source and reduced `Document` values, applied edits, token convenience
+properties, and merger-call, retry, pruning, embedding, and elapsed-time metrics.
 
-## Run offline by injecting an embedder and merger
+Use `Params` for semantic and token controls:
 
-For tests or CI that must run without network access, pass your own `Embedder` and `SentenceMerger`
-instead of the OpenAI defaults. `HashEmbedder` is reproducible but not semantic (it only scores exact
-duplicates as redundant and re-embeds edited text to an unrelated vector), so use a generous `cos_sim_diff`
-budget. A minimal first-wins merger returns the first sentence unchanged:
+```python
+import alexandria
+from alexandria.ir.contracts import Params
+
+result = alexandria.reduce(
+    "# Rules\nKeep responses concise.\nDo not repeat information.\nInclude a useful example.\n",
+    params=Params(
+        cos_sim_diff_budget=0.01,
+        max_tokens=12,
+        require_target=True,
+    ),
+)
+```
+
+With `require_target=True`, `max_tokens` is mandatory and the hard-target path replaces the normal
+Optimize/Select path. It preserves structural lines, prioritizes the token ceiling, and reports
+semantic-budget compliance separately. It can raise `alexandria.InfeasibleTargetError` when protected
+structure cannot fit or `alexandria.TargetMergeError` when generation cannot make progress.
+
+A custom merger used for hard targets must also implement
+`merge_candidates_to_target(prompt, max_tokens)`. The normal best-effort path only requires
+`merge(first, second, feedback)`.
+
+## Run offline
+
+Inject an `Embedder` and `SentenceMerger` to avoid network calls. `HashEmbedder` is deterministic but
+not semantic; it is intended for tests.
 
 ```python
 import alexandria
@@ -67,13 +71,11 @@ result = alexandria.reduce(
 print(result.text)
 ```
 
-See `tests/pipeline_e2e_test.py` for the same pattern used as a test.
+See [`tests/pipeline_e2e_test.py`](../tests/pipeline_e2e_test.py) for a tested offline composition.
 
-## Compose the phases
+## Compose the normal phases
 
-Each phase is independently callable. This is the in-memory equivalent of the CLI pipeline and avoids
-serializing JSON between phases. Pass the same `embedder` and `merger` you would give `reduce` — the
-defaults below require an API key.
+This example uses the OpenAI defaults and requires a configured API key.
 
 ```python
 from alexandria import optimize, represent, score, select
@@ -89,7 +91,9 @@ selection = select(document, plan, embedder)
 print(selection.document.text)
 ```
 
-`represent` converts raw text into a `Document`; `score` returns redundancy scores; `optimize` merges
-near-duplicate pairs into LLM-rewritten candidate edits; and `select` applies acceptable edits in
-ascending `cos_sim_diff` order. For their contracts, extension points, and internal data model, see
-[the design specification](spec.md).
+This is the explicit normal pipeline. Exact duplicates may produce a `Delete` without calling the
+merger; other eligible pairs may produce `Replace` edits. A hard target is available only through the
+end-to-end `reduce` path.
+
+See the [design specification](spec.md) for phase contracts, IR invariants, and registration
+boundaries.
