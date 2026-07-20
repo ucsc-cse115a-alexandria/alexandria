@@ -4,8 +4,9 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 import pytest
+from pydantic import ValidationError
 
-from alexandria.ir.contracts import TargetedMerger, TrackedEmbedder, TrackedMerger
+from alexandria.ir.contracts import Params, TargetedMerger, TrackedEmbedder, TrackedMerger
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -24,6 +25,11 @@ class _CountingEmbedder:
     def embed(self, texts: list[str]) -> list[NDArray[np.float32]]:
         self.embedded.extend(texts)
         return [np.array([text.count("a"), text.count("b"), text.count("c")], dtype=np.float32) for text in texts]
+
+
+def test_required_target_needs_a_token_budget() -> None:
+    with pytest.raises(ValidationError, match="requires max_tokens"):
+        Params(require_target=True)
 
 
 def test_tracked_embedder_caches_repeated_texts() -> None:

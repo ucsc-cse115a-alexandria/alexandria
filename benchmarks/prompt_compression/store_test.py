@@ -41,6 +41,18 @@ def test_run_store_checkpoints_records_and_exact_prompts(tmp_path: Path) -> None
         assert json.loads(source.readline())["prompt"] == "full prompt"
 
 
+def test_run_store_drops_legacy_provider_response_id(tmp_path: Path) -> None:
+    prompt = "full prompt"
+    legacy_payload = _record(prompt).model_dump(mode="json")
+    legacy_payload["response_id"] = "resp_private"
+    record = ConditionRecord.model_validate(legacy_payload)
+
+    store = RunStore(tmp_path / "run")
+    store.append(record, prompt)
+
+    assert "response_id" not in json.loads(store.records_path.read_text())
+
+
 def test_run_store_rejects_wrong_prompt_hash(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="hash"):
         RunStore(tmp_path).append(_record("one"), "two")

@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "implementation_commit": "f89cd5f6f3702f270c13a6332a3c90a126618e67",
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 10 --seed 42 --reductions 10 --data-dir data/ruler_v2 --out benchmarks/ruler_v2/results/2026-07-18-keep90-n10-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 10 --seed 42 --reductions 10 --data-dir data/ruler_v2 --out benchmarks/ruler_v2/results/2026-07-18-keep90-n10-v1",
   "benchmark": "ruler_v2",
   "provenance": {
     "entrypoint": "NVIDIA/RULER@4809570a2a40e803bfe341773e561524224c2e7c",

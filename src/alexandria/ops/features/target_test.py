@@ -64,7 +64,7 @@ class _RecordingReporter:
 
     def __init__(self) -> None:
         self.target_groups: list[tuple[str, int, int]] = []
-        self.target_rounds: list[tuple[int, str | None, tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
+        self.target_rounds: list[tuple[tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
         self.target_group_done_calls: list[tuple[bool, int]] = []
 
     def redundant_pair(self, first: str, second: str, similarity: float) -> None:
@@ -78,13 +78,11 @@ class _RecordingReporter:
 
     def target_round(
         self,
-        round_number: int,
-        base: str | None,
         candidates: tuple[ReportedCandidate, ...],
         selected: ReportedCandidate,
         selected_from_generation: bool,
     ) -> None:
-        self.target_rounds.append((round_number, base, candidates, selected, selected_from_generation))
+        self.target_rounds.append((candidates, selected, selected_from_generation))
 
     def target_group_done(self, applied: bool, document_tokens: int) -> None:
         self.target_group_done_calls.append((applied, document_tokens))
@@ -162,6 +160,12 @@ def test_strict_target_prunes_exact_duplicates_without_merge_calls() -> None:
     assert result.merge_metrics.calls == 0
     assert result.merge_metrics.pruned_sentences == 2
     assert result.merge_metrics.pruned_tokens == 4
+    assert len(result.applied) == 1
+    assert result.applied[0].edit.op == "delete"
+    assert len(result.applied[0].edit.targets) == 2
+    replayed = result.source.apply(result.applied[0])
+    assert replayed is not None and replayed.text == result.text
+    assert result.merge_metrics.applied_edits == len(result.applied)
 
 
 def test_prune_cos_sim_diff_backoff_keeps_the_longest_prefix_within_budget() -> None:
@@ -179,6 +183,15 @@ def test_prune_cos_sim_diff_backoff_keeps_the_longest_prefix_within_budget() -> 
     assert result.merge_metrics.pruned_sentences == 1
     assert result.merge_metrics.pruned_tokens == 2
     assert result.merge_metrics.cos_sim_diff_budget_met is False
+    assert [candidate.edit.op for candidate in result.applied] == ["delete", "replace"]
+    replayed = result.source
+    for candidate in result.applied:
+        next_document = replayed.apply(candidate)
+        assert next_document is not None
+        replayed = next_document
+    assert replayed.text == result.text
+    assert result.merge_metrics.proposed_edits == len(result.applied)
+    assert result.merge_metrics.applied_edits == len(result.applied)
 
 
 def test_prune_may_undershoot_the_target_since_undershoot_is_allowed() -> None:
@@ -241,6 +254,63 @@ def test_strict_target_selects_the_lowest_cos_sim_diff_candidate_from_one_call()
     assert result.merge_metrics.calls == 1
     assert result.merge_metrics.retries == 0
     assert result.merge_metrics.candidates_generated == 3
+    assert len(result.applied) == 1
+    assert result.applied[0].edit.op == "replace"
+    replayed = result.source.apply(result.applied[0])
+    assert replayed is not None and replayed.text == result.text
+
+
+def test_strict_target_merge_preserves_the_last_target_trailing_whitespace() -> None:
+    result = reduce(
+        "aaaa\t\nbbbb\n\n",
+        _CountingEmbedder(),
+        _TargetMerger(("aa bb",) * 3),
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=3, require_target=True),
+    )
+
+    assert result.text == "aa bb\n\n"
+    assert result.applied[0].edit.op == "replace"
+    assert result.applied[0].edit.replacement.text == "aa bb\n\n"
+
+
+@pytest.mark.parametrize(
+    ("prompt", "max_tokens", "expected"),
+    [
+        ("# A\naaaa\nbbbb\n# B\ncccc\nab\n", 10, "# A\na\n# B\na\n"),
+        ("<X>\naaaa\nbbbb\n</X>\n<Y>\ncccc\nab\n</Y>\n", 15, "<X>\na\n</X>\n<Y>\na\n</Y>\n"),
+    ],
+)
+def test_strict_target_multiple_sections_preserve_boundaries_and_replay_every_replace(
+    prompt: str, max_tokens: int, expected: str
+) -> None:
+    merger = _TargetMerger(("a\n",) * 3)
+    result = reduce(
+        prompt,
+        _CountingEmbedder(),
+        merger,
+        params=Params(cos_sim_diff_budget=2.0, max_tokens=max_tokens, require_target=True),
+    )
+
+    assert result.text == expected
+    assert result.reduced_tokens == max_tokens
+    assert len(result.applied) == 2
+    assert merger.max_tokens == [2, 2]
+    assert [candidate.edit.op for candidate in result.applied] == ["replace", "replace"]
+    source_text = {sentence.id: sentence.text for sentence in result.source.sentences}
+    replayed = result.source
+    for candidate in result.applied:
+        assert candidate.edit.op == "replace"
+        suffix = source_text[candidate.edit.targets[-1]][len(source_text[candidate.edit.targets[-1]].rstrip()) :]
+        assert candidate.edit.replacement.text.strip()
+        assert candidate.edit.replacement.text.endswith(suffix)
+        assert candidate.edit.replacement.token_count == 2
+        next_document = replayed.apply(candidate)
+        assert next_document is not None
+        replayed = next_document
+    assert replayed.text == result.text
+    assert result.merge_metrics.proposed_edits == 2
+    assert result.merge_metrics.applied_edits == 2
+    assert len(result.merge_metrics.target_rounds) == 2
 
 
 def test_strict_target_accepts_a_candidate_that_undershoots_the_budget() -> None:
@@ -280,9 +350,7 @@ def test_target_merge_reports_group_round_and_completion_events() -> None:
     assert group_tokens > 0
     assert required_savings > 0
 
-    round_number, base, candidates, selected, selected_from_generation = reporter.target_rounds[0]
-    assert round_number == 1
-    assert base is None
+    candidates, selected, selected_from_generation = reporter.target_rounds[0]
     assert len(candidates) == 3
     assert selected.text == "aa bb\n"
     assert selected_from_generation
@@ -303,14 +371,9 @@ def test_strict_target_records_exactly_one_round_per_group() -> None:
     assert result.text == "aa bb\n"
     rounds = result.merge_metrics.target_rounds
     assert len(rounds) == 1
-    assert rounds[0].round == 1
     assert rounds[0].base_tokens == result.source_tokens  # no pruning: the pre-merge doc is the source
     assert rounds[0].base_cos_sim_diff == pytest.approx(0.0, abs=1e-6)  # the pre-merge doc equals the source
     assert rounds[0].selected_tokens == result.reduced_tokens
-    assert (
-        rounds[0].generated_best_cos_sim_diff == rounds[0].selected_cos_sim_diff
-    )  # the chosen candidate was generated
-    assert rounds[0].generated_best_tokens == rounds[0].selected_tokens
 
 
 def test_strict_target_preserves_markup_structure() -> None:

@@ -64,11 +64,10 @@ def test_target_round_reports_candidates_and_selection() -> None:
     )
     selected = candidates[0]
 
-    reporter.target_round(1, "base text", candidates, selected, True)
+    reporter.target_round(candidates, selected, True)
 
     joined = "\n".join(lines)
-    assert "round 1" in joined
-    assert "base text" in joined
+    assert "candidates:" in joined
     assert "candidate one" in joined
     assert "candidate two" in joined
     assert "[invalid structure]" in joined
@@ -76,16 +75,15 @@ def test_target_round_reports_candidates_and_selection() -> None:
     assert "generated" in joined
 
 
-def test_target_round_with_no_base_omits_the_search_base_line() -> None:
+def test_target_round_reports_a_deterministic_fallback() -> None:
     lines: list[str] = []
     reporter = VerboseReporter(lines.append)
     selected = ReportedCandidate(text="only candidate", token_count=5, cos_sim_diff=0.1, structure_valid=True)
 
-    reporter.target_round(1, None, (selected,), selected, False)
+    reporter.target_round((selected,), selected, False)
 
     joined = "\n".join(lines)
-    assert "search base" not in joined
-    assert "kept base" in joined
+    assert "deterministic fallback" in joined
 
 
 def test_target_group_done_applied_shows_the_new_token_count() -> None:

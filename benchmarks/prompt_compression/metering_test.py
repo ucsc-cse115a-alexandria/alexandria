@@ -92,7 +92,7 @@ def test_usage_meter_flushes_scoped_event_immediately(monkeypatch: MonkeyPatch) 
 
     assert events[0]["case_key"] == "case:1"
     assert events[0]["condition"] == "budget0p02"
-    assert events[0]["response_id"] == "resp_123"
+    assert "response_id" not in events[0]
     assert events[0]["status"] == "completed"
     cost = events[0]["estimated_cost_usd"]
     assert isinstance(cost, int | float)

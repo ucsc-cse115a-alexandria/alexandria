@@ -1,7 +1,7 @@
 Using CPython 3.14.6 interpreter at: /opt/homebrew/opt/python@3.14/bin/python3.14
 Creating virtual environment at: .venv
-   Building alexandria @ file:///Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-cos-budget-ruler
-      Built alexandria @ file:///Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-cos-budget-ruler
+   Building alexandria @ file://<checkout>
+      Built alexandria @ file://<checkout>
 Installed 140 packages in 392ms
 completed mk_niah_basic:7 original
 completed mk_niah_easy:6211 original

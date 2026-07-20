@@ -2,7 +2,7 @@
   "schema_version": 1,
   "implementation_commit": "8bf81efbd970152524c316d6a9cd779edd27c8e1",
   "implementation_dirty": false,
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-results/scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/ruler_v2/results/2026-07-18-luna-keep50-90-n5-v1",
   "benchmark": "ruler_v2",
   "provenance": {
     "entrypoint": "NVIDIA/RULER@4809570a2a40e803bfe341773e561524224c2e7c",

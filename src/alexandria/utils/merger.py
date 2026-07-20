@@ -74,6 +74,10 @@ class OpenAIMerger:
         self._client = OpenAI(api_key=require_api_key(api_key))
         self._model = model
 
+    @property
+    def model_id(self) -> str:
+        return self._model
+
     def merge(self, first: str, second: str, feedback: str | None = None) -> str:  # pragma: no cover
         from openai import OpenAIError
 

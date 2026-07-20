@@ -168,86 +168,86 @@ completed qa_medium:1 keep50
 completed qa_medium:1 keep60
 completed qa_medium:1 keep70
 Traceback (most recent call last):
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 101, in map_httpcore_exceptions
     yield
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 250, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 250, in handle_request
     resp = self._pool.handle_request(req)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
     raise exc from None
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
     response = connection.handle_request(
         pool_request.request
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 101, in handle_request
     raise exc
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 78, in handle_request
     stream = self._connect(request)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 156, in _connect
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_sync/connection.py", line 156, in _connect
     stream = stream.start_tls(**kwargs)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_backends/sync.py", line 154, in start_tls
     with map_exceptions(exc_map):
          ~~~~~~~~~~~~~~^^^^^^^^^
   File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
     self.gen.throw(value)
     ~~~~~~~~~~~~~~^^^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpcore/_exceptions.py", line 14, in map_exceptions
     raise to_exc(exc) from exc
 httpcore.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1037, in request
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1037, in request
     response = self._send_request(
         request,
         stream=stream or self._should_stream_response_body(request=request),
         **kwargs,
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_client.py", line 478, in _send_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_client.py", line 478, in _send_request
     response = self._send_with_auth_retry(request, stream=stream, **kwargs)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_client.py", line 456, in _send_with_auth_retry
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_client.py", line 456, in _send_with_auth_retry
     response = super()._send_request(request, stream=stream, **kwargs)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 964, in _send_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 964, in _send_request
     return self._client.send(request, stream=stream, **kwargs)
            ~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914, in send
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_client.py", line 914, in send
     response = self._send_handling_auth(
         request,
     ...<2 lines>...
         history=[],
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_client.py", line 942, in _send_handling_auth
     response = self._send_handling_redirects(
         request,
         follow_redirects=follow_redirects,
         history=history,
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
     response = self._send_single_request(request)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014, in _send_single_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_client.py", line 1014, in _send_single_request
     response = transport.handle_request(request)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 249, in handle_request
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 249, in handle_request
     with map_httpcore_exceptions():
          ~~~~~~~~~~~~~~~~~~~~~~~^^
   File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/contextlib.py", line 162, in __exit__
     self.gen.throw(value)
     ~~~~~~~~~~~~~~^^^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
+  File "<checkout>/.venv/lib/python3.14/site-packages/httpx/_transports/default.py", line 118, in map_httpcore_exceptions
     raise mapped_exc(message) from exc
 httpx.ConnectTimeout: _ssl.c:1064: The handshake operation timed out
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 112, in _generate
+  File "<checkout>/src/alexandria/utils/merger.py", line 112, in _generate
     response = self._client.responses.create(
         model=self._model,
     ...<3 lines>...
         input=source,
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/benchmarks/prompt_compression/metering.py", line 71, in response_create
+  File "<checkout>/benchmarks/prompt_compression/metering.py", line 71, in response_create
     response = original_create(resource, *args, **kwargs)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/resources/responses/responses.py", line 954, in create
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/resources/responses/responses.py", line 954, in create
     return self._post(
            ~~~~~~~~~~^
         "/responses",
@@ -257,10 +257,10 @@ Traceback (most recent call last):
         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     )
     ^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1332, in post
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1332, in post
     return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
                            ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1055, in request
+  File "<checkout>/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1055, in request
     raise APITimeoutError(request=request) from err
 openai.APITimeoutError: Request timed out.
 
@@ -269,28 +269,28 @@ The above exception was the direct cause of the following exception:
 Traceback (most recent call last):
   File "<frozen runpy>", line 203, in _run_module_as_main
   File "<frozen runpy>", line 88, in _run_code
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 340, in <module>
+  File "<checkout>/scripts/prompt_compression_benchmark.py", line 340, in <module>
     main()
     ~~~~^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 302, in main
+  File "<checkout>/scripts/prompt_compression_benchmark.py", line 302, in main
     ) = compress_parts(case.prompt_parts, reduction, merge_model=args.merge_model)
         ~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/scripts/prompt_compression_benchmark.py", line 64, in compress_parts
+  File "<checkout>/scripts/prompt_compression_benchmark.py", line 64, in compress_parts
     result = reduce(
         parts.context,
     ...<2 lines>...
         params=Params(max_tokens=context_budget, require_target=True),
     )
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ops/pipe.py", line 88, in reduce
+  File "<checkout>/src/alexandria/ops/pipe.py", line 88, in reduce
     outcome = merge_to_target(document, embedder, tracked_merger, params, reporter)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ops/features/target.py", line 180, in merge_to_target
+  File "<checkout>/src/alexandria/ops/features/target.py", line 180, in merge_to_target
     generated = merger.merge_candidates_to_target(source_segment, group_max_tokens)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/ir/contracts.py", line 150, in merge_candidates_to_target
+  File "<checkout>/src/alexandria/ir/contracts.py", line 150, in merge_candidates_to_target
     candidates = self._merger.merge_candidates_to_target(prompt, max_tokens)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 103, in merge_candidates_to_target
+  File "<checkout>/src/alexandria/utils/merger.py", line 103, in merge_candidates_to_target
     return tuple(future.result() for future in futures)
            ^^^^^
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 103, in <genexpr>
+  File "<checkout>/src/alexandria/utils/merger.py", line 103, in <genexpr>
     return tuple(future.result() for future in futures)
                  ~~~~~~~~~~~~~^^
   File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/_base.py", line 454, in result
@@ -302,7 +302,7 @@ Traceback (most recent call last):
     result = ctx.run(self.task)
   File "/opt/homebrew/Cellar/python@3.14/3.14.6/Frameworks/Python.framework/Versions/3.14/lib/python3.14/concurrent/futures/thread.py", line 73, in run
     return fn(*args, **kwargs)
-  File "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-n50-ruler/src/alexandria/utils/merger.py", line 120, in _generate
+  File "<checkout>/src/alexandria/utils/merger.py", line 120, in _generate
     raise ValueError(f"OpenAI target merge request failed: {error}") from error
 ValueError: OpenAI target merge request failed: Request timed out.
 original baseline accuracy: 74.0% (minimum 50.0%)

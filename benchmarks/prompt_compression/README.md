@@ -101,8 +101,8 @@ The output directory is resumable and contains:
 - `summary.json`: aggregate and per-task scores, token reduction, time/cost, paired transitions, bootstrap intervals,
   and release decisions;
 - `report.md`: the benchmark-specific result table and explicit PASS/FAIL statements;
-- `api_events.jsonl`: request-level status, response ID, model, scoped case-condition, latency, usage, and estimated
-  cost, flushed immediately after each response;
+- `api_events.jsonl`: request-level status, model, scoped case-condition, latency, usage, and estimated cost,
+  flushed immediately after each response; provider request and response IDs are intentionally not persisted;
 - `errors.jsonl`: incomplete case-conditions, error type, elapsed time, captured cost, and whether the failure is
   terminal for identical resumes; and
 - `run.log` for committed evidence: progress, baseline-gate output, interruption traces, resume output, and final

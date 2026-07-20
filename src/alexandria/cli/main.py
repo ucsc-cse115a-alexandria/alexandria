@@ -39,6 +39,7 @@ if TYPE_CHECKING:
     from alexandria.ir.contracts import Candidate, Embedder, Plan, SentenceMerger
 
 _DEFAULTS = Params()
+_REDUCTION_SCHEMA_VERSION = 1
 
 _COS_SIM_DIFF_HELP = (
     "max cumulative cos_sim_diff from the original prompt the reduction may accept (default: 0.5 = 50%)"
@@ -90,14 +91,33 @@ def _reduction_json(
 ) -> str:
     reduction_pct = 1.0 - (reduced_tokens / source_tokens) if source_tokens > 0 else 0.0
     payload = {
+        "schema_version": _REDUCTION_SCHEMA_VERSION,
         "text": text,
-        "applied": [candidate.model_dump(mode="json") for candidate in applied],
+        "applied": [_applied_edit_summary(candidate) for candidate in applied],
         "source_tokens": source_tokens,
         "reduced_tokens": reduced_tokens,
         "reduction_pct": reduction_pct,
         "merge_metrics": (merge_metrics or MergeMetrics()).model_dump(),
     }
     return json.dumps(payload, indent=2)
+
+
+def _applied_edit_summary(candidate: Candidate) -> dict[str, object]:
+    """Serialize an applied edit without the embedding needed only by resumable PlanEnvelopes."""
+    edit = candidate.edit
+    summary: dict[str, object] = {
+        "op": edit.op,
+        "targets": edit.targets,
+        "confidence": candidate.confidence,
+        "source": candidate.source,
+        "reason": candidate.reason,
+    }
+    if edit.op == "replace":
+        summary["replacement"] = {
+            "text": edit.replacement.text,
+            "token_count": edit.replacement.token_count,
+        }
+    return summary
 
 
 def _reduce_with_review(

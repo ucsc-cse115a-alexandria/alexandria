@@ -20,7 +20,7 @@ MAX_MERGE_ATTEMPTS = 3  # LLM attempts per pair; each retry feeds back why the l
 _KEEP_FIRST_SIMILARITY = 0.99  # merged ≈ first sentence -> keep the original text, just delete the second
 
 
-@register_optimizer(DEFAULT_OPTIMIZER, requires=("redundancy",))
+@register_optimizer(DEFAULT_OPTIMIZER)
 def merge_rewrite(
     document: Document,
     scores: Scores,
@@ -39,8 +39,6 @@ def merge_rewrite(
     rewritten at most once; after a Delete the unchanged first sentence stays pairable, so a
     triple duplicate collapses fully.
     """
-    # merge_rewrite ranks pairs by the similarity matrix directly; the redundancy scores it
-    # declares as required are validated upstream by optimize() and go unused here.
     del scores
     if embedder.model_id != document.embedding_model:
         raise ValueError(
@@ -113,7 +111,7 @@ def _merge_pair(
 
     feedback: str | None = None
     for _ in range(MAX_MERGE_ATTEMPTS):
-        merged = _with_tail(merger.merge(first.text, second.text, feedback), first.text)
+        merged = _with_tail(merger.merge(first.text, second.text, feedback), second.text)
         embedding = embedder.embed([merged])[0]
         candidate = _candidate_for(first, second, merged, embedding, sim)
         if candidate is None:
@@ -162,7 +160,7 @@ def _candidate_for(
 
 
 def _with_tail(merged: str, original: str) -> str:
-    """Give the merged sentence the first target's trailing whitespace so rollup stays lossless."""
+    """Give a merged span the final target's trailing whitespace so its next boundary stays intact."""
     tail = original[len(original.rstrip()) :]
     return merged.rstrip() + tail
 

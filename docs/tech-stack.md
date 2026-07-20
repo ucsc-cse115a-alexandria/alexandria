@@ -1,34 +1,52 @@
-# Alexandria — Technology Stack Decision
+# Alexandria technology stack
 
-**Product:** Alexandria · **Team:** Alexandria Team · **Revision:** 3 (2026-06-26)
+**Status:** current implementation · **Package version:** `0.1.0` · **Updated:** 2026-07-19
 
-Scoped to what the team can learn in a five-week course and to what the pipeline in
-[`spec.md`](spec.md) actually needs.
+This page records the technologies used by the repository today. See the
+[design specification](spec.md) for component contracts and the [CLI guide](cli.md) for commands.
 
-## Decisions
+## Runtime and packaging
 
-| Area | Choice | Why |
-|---|---|---|
-| Language / packaging | Python 3.14, `uv` | Established in the repo; fast, reproducible envs. |
-| IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't diverge from their children. |
-| Embeddings | `openai` (`text-embedding-3-small` embeddings; `gpt-5.6-luna` merge rewrites) | Hosted embeddings and LLM merge rewrites, isolated inside the utils shell. Requires an API key. |
-| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the `cos_sim_diff` values behind `merge_rewrite`. |
-| Persistence | Parquet via Polars | One row per node; stores embeddings as compact `float32` lists. JSON/JSONL bloat them ~3–5× and round lossily. |
-| Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
-| Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |
-| Plugin discovery | Python entry points | One registry discovers built-in **and** third-party scorers/optimizers by name; adding one never edits Alexandria. |
-| CLI | [`click`](https://github.com/pallets/click) | Verbs `represent` / `score` / `optimize` / `select` / `reduce`; text in, text out, `--json` for machine-readable output. |
-| Quality gates | `ruff`, `pyright` (strict), `pytest` + `pytest-cov` | Configured in `pyproject.toml`; coverage gated at 80%. |
-| CI | GitHub Actions | Runs lint + types + tests. |
+| Area | Current choice | Role |
+| --- | --- | --- |
+| Language | Python 3.14 | Typed library and Click command-line application. |
+| Environment and lockfile | `uv` | Reproducible development and runtime dependency resolution. |
+| Build backend | Hatchling | Builds the source distribution and `src`-layout wheel; co-located tests are excluded. |
+| IR and validation | Pydantic v2 | Frozen `Document` / `Section` / `Sentence` models, edit contracts, envelopes, and reports. |
+| Embeddings and rewrites | OpenAI Python SDK | Default `text-embedding-3-small` embedder and `gpt-5.6-luna` merger, isolated behind protocols. |
+| Numerics | NumPy | `float32` vectors, normalization, cosine similarity, and semantic-change measurements. |
+| Token metric | `tiktoken` | `cl100k_base` token counts used for budgets and reports. |
+| CLI | Click | Phase commands, end-to-end reduction, reporting, review modes, and configuration. |
+| Persistence | Pydantic JSON | Versioned `DocumentEnvelope`, `ScoredEnvelope`, and `PlanEnvelope` streams. |
 
-## Rejected alternatives
+The library can run with injected implementations of its embedder and merger protocols. The included
+`HashEmbedder` supports deterministic offline tests but is not the semantic default.
 
-- **Local embedding model (`sentence-transformers` / `all-MiniLM-L6-v2`):** free, deterministic,
-  and no API key, but lower fidelity than a hosted model. The IR keeps embeddings swappable, so the
-  pipeline adopted the hosted OpenAI embedder when fidelity outweighed determinism.
-- **JSON / JSONL for persistence:** readable, but bloats dense `float32` embeddings and rounds
-  them lossily; Parquet stores typed lists and round-trips exactly.
-- **Hand-built IR / dataclasses:** no validation at the boundary. Pydantic enforces the tree's
-  invariants on construction, so impossible states are unrepresentable.
-- **A hardcoded scorer↔optimizer table:** couples each new strategy to central wiring. The
-  registry lets an optimizer declare what it needs (`requires=(...)`), so selection is data.
+## Development and verification
+
+| Area | Current choice |
+| --- | --- |
+| Tests | pytest and pytest-cov, with co-located `*_test.py` modules and integration tests under `tests/`. |
+| Lint and format | Ruff. |
+| Static types | Pyright in strict mode. |
+| Architecture | import-linter contracts plus layer-specific imports. |
+| CI | GitHub Actions runs repository quality checks. |
+| Benchmark analysis | Repository scripts use NumPy, SciPy, scikit-learn, Matplotlib, UMAP, and HDBSCAN where needed; these are development dependencies, not runtime persistence. |
+
+## Strategy extension status
+
+Scorers, optimizers, and selectors use small in-process registries. Built-ins register when their
+modules are imported. End-to-end composition can ask an optimizer which scorers it requires; the
+default optimizer currently requires none, while the standalone redundancy score remains available
+for inspection.
+
+There is no Python entry-point discovery, installed third-party plugin loading, or CLI flag for
+choosing a strategy. Library callers can select registered names and inject model boundaries.
+
+## Not used by the current implementation
+
+- Polars and Parquet are not runtime dependencies or persistence formats.
+- Apache Arrow is not part of the wire format.
+- Hypothesis is not a test dependency; the test suite uses ordinary pytest cases and fixtures.
+- `.env` loading is not automatic. Only the example program opts into the development dependency
+  `python-dotenv`.
