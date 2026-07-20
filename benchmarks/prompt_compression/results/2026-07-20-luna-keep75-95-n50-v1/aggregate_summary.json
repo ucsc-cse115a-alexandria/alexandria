@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "benchmark": "babilong_8k",
+  "n_cases": 50,
+  "original_accuracy": 0.72,
+  "points": [
+    {
+      "condition": "keep75",
+      "retained_percent": 75.0,
+      "accuracy": 0.48,
+      "token_reduction": 0.2879538433101846
+    },
+    {
+      "condition": "keep80",
+      "retained_percent": 80.0,
+      "accuracy": 0.44,
+      "token_reduction": 0.2378759472947638
+    },
+    {
+      "condition": "keep85",
+      "retained_percent": 85.0,
+      "accuracy": 0.48,
+      "token_reduction": 0.18592590636634887
+    },
+    {
+      "condition": "keep90",
+      "retained_percent": 90.0,
+      "accuracy": 0.64,
+      "token_reduction": 0.13212220432520927
+    },
+    {
+      "condition": "keep95",
+      "retained_percent": 95.0,
+      "accuracy": 0.62,
+      "token_reduction": 0.08005069842359591
+    },
+    {
+      "condition": "original",
+      "retained_percent": 100.0,
+      "accuracy": 0.72,
+      "token_reduction": 0.0
+    }
+  ]
+}
