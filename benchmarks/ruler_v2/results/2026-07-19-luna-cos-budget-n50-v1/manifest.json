@@ -2,13 +2,13 @@
   "schema_version": 1,
   "implementation_commit": "3d5b9b969d36741be10c67ff4c292d41595021c5",
   "implementation_dirty": true,
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-cos-budget-ruler/scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 50 --seed 42 --cos-sim-diff-budgets 0.0025 0.005 0.01 0.015 0.02 --minimum-retained-percent 50 --max-generation-calls-per-condition 30 --max-condition-seconds 300 --max-estimated-cost-usd 20 --data-dir /Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/data/ruler_v2 --model gpt-5.6-luna --merge-model gpt-5.6-luna --out benchmarks/ruler_v2/results/2026-07-19-luna-cos-budget-n50-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark ruler_v2 --n 50 --seed 42 --cos-sim-diff-budgets 0.0025 0.005 0.01 0.015 0.02 --minimum-retained-percent 50 --max-generation-calls-per-condition 30 --max-condition-seconds 300 --max-estimated-cost-usd 20 --data-dir data/ruler_v2 --model gpt-5.6-luna --merge-model gpt-5.6-luna --out benchmarks/ruler_v2/results/2026-07-19-luna-cos-budget-n50-v1",
   "benchmark": "ruler_v2",
   "provenance": {
     "entrypoint": "NVIDIA/RULER@4809570a2a40e803bfe341773e561524224c2e7c",
     "dataset_and_metric": "NVIDIA-NeMo/Skills@74b8649734a6ecc2d3beca89311e1a5e02da48fa"
   },
-  "data_dir": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/data/ruler_v2",
+  "data_dir": "data/ruler_v2",
   "n_cases": 50,
   "case_keys": [
     "mk_niah_basic:7",

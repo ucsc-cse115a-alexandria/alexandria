@@ -2,13 +2,13 @@
   "schema_version": 1,
   "implementation_commit": "3d5b9b969d36741be10c67ff4c292d41595021c5",
   "implementation_dirty": true,
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-cos-budget-run/scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.0025 0.005 0.01 0.015 0.02 --minimum-retained-percent 50 --max-generation-calls-per-condition 30 --max-condition-seconds 300 --max-estimated-cost-usd 5 --data-dir /Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/data/babilong/8k --model gpt-5.6-luna --merge-model gpt-5.6-luna --out benchmarks/babilong_8k/results/2026-07-19-luna-cos-budget-n50-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.0025 0.005 0.01 0.015 0.02 --minimum-retained-percent 50 --max-generation-calls-per-condition 30 --max-condition-seconds 300 --max-estimated-cost-usd 5 --data-dir data/babilong/8k --model gpt-5.6-luna --merge-model gpt-5.6-luna --out benchmarks/babilong_8k/results/2026-07-19-luna-cos-budget-n50-v1",
   "benchmark": "babilong_8k",
   "provenance": {
     "dataset": "RMT-team/babilong@ee0d588794c7ac098062ee0d247c733d62e94fe2",
     "prompt_and_metric": "booydar/babilong@38da79d79519ef87aa46ae804f838e1eab7f86d7"
   },
-  "data_dir": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/data/babilong/8k",
+  "data_dir": "data/babilong/8k",
   "n_cases": 50,
   "case_keys": [
     "qa1:47",

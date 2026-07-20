@@ -164,7 +164,7 @@ def _generate(client: OpenAI, model: str, reasoning: str, prompt: str) -> Genera
         reasoning=cast("Reasoning", {"effort": reasoning}),
         input=prompt,
     )
-    return GenerationResult(text=response.output_text, model=str(response.model), response_id=response.id)
+    return GenerationResult(text=response.output_text, model=str(response.model))
 
 
 def _record(
@@ -199,7 +199,6 @@ def _record(
         prompt_sha256=_prompt_hash(prompt),
         response=generation.text,
         response_model=generation.model,
-        response_id=generation.response_id,
         verdict=verdict,
         configured_cos_sim_diff_budget=configured_cos_sim_diff_budget,
         context_embedding_cosine_difference=context_cosine_difference,
