@@ -464,6 +464,18 @@ def extract_summary_metrics(summary: dict[str, object], sweep_point: str) -> dic
     metrics["compressed_accuracy"] = compressed.get("accuracy")
     metrics["mean_token_reduction"] = compressed.get("token_reduction")
     metrics["mean_prompt_cosine_difference"] = compressed.get("mean_prompt_embedding_cosine_difference")
+    metrics["estimated_cost_usd"] = compressed.get("estimated_cost_usd")
+    compression_seconds = compressed.get("compression_seconds")
+    answer_seconds = compressed.get("answer_seconds")
+    if isinstance(compression_seconds, (int, float)) and isinstance(answer_seconds, (int, float)):
+        metrics["wall_clock_seconds"] = float(compression_seconds) + float(answer_seconds)
+    comparisons = summary.get("comparisons")
+    if isinstance(comparisons, dict):
+        comparison = comparisons.get(compressed_name)
+        if isinstance(comparison, dict):
+            accuracy_retention = comparison.get("accuracy_retention")
+            if isinstance(accuracy_retention, dict):
+                metrics["accuracy_retention"] = accuracy_retention.get("retention")
     return metrics
 
 
@@ -474,6 +486,9 @@ def collect_artifacts(out_dir: Path) -> dict[str, object]:
     return {
         "manifest": (out_dir / "manifest.json").is_file(),
         "summary": (out_dir / "summary.json").is_file(),
+        "prompts": (out_dir / "prompts.jsonl.gz").is_file(),
+        "report": (out_dir / "report.md").is_file(),
+        "api_events": (out_dir / "api_events.jsonl").is_file(),
         "records_count": len(records),
         "errors_count": len(errors),
     }
@@ -615,7 +630,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if error:
                 print(f"  note: {error}", flush=True)
 
-    index = build_sweep_index(SWEEP_POINTS, run_results=run_results or None)
+    index = build_sweep_index(points, run_results=run_results or None)
     write_sweep_index(index, args.index_out)
     print(f"Wrote sweep index to {args.index_out}", flush=True)
     return 0
