@@ -133,7 +133,11 @@ shown alongside it so the effective coverage remains visible.
 
 ![Quality and prompt reduction by semantic-change budget](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/quality_and_reduction_vs_budget.png)
 
-![Task accuracy versus measured prompt reduction](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/accuracy_vs_token_reduction.png)
+A separate hard-target study used 50 cases per benchmark to retain 50%, 60%, 70%, 80%, and 90% of each prompt,
+with the uncompressed prompt shown at 100%. This provides the broader compression-quality curve independently of
+the semantic-change budget above.
+
+![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
 
 See the
 [detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for
