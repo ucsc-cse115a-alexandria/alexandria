@@ -191,7 +191,7 @@ def test_build_index_entry_marks_p0_original_only(tmp_path: Path) -> None:
     assert entry["summary_metrics"]["original_accuracy"] == 0.68  # type: ignore[index]
 
 
-def test_main_dry_run(capsys) -> None:
+def test_main_dry_run(capsys: pytest.CaptureFixture[str]) -> None:
     from benchmarks.prompt_compression.sweep_runner import main
 
     assert main(["--dry-run", "--points", "P0,P1"]) == 0

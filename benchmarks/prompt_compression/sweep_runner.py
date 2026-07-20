@@ -36,7 +36,7 @@ from scripts.prompt_compression_benchmark import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
+    from collections.abc import Mapping, Sequence
 
 RUNBOOK_PATH = Path("benchmarks/prompt_compression/sweep-matrix-runbook.md")
 SWEEP_INDEX_PATH = Path("benchmarks/babilong_8k/results/2026-07-20-sweep-index-v1.json")
@@ -439,14 +439,14 @@ def _object_list(value: object) -> list[object] | None:
     return cast("list[object]", value)
 
 
-def _compressed_conditions(summary: dict[str, object]) -> list[str]:
+def _compressed_conditions(summary: Mapping[str, object]) -> list[str]:
     conditions = _object_dict(summary.get("conditions"))
     if conditions is None:
         return []
     return [name for name in conditions if name != "original"]
 
 
-def _primary_compressed_condition(summary: dict[str, object], sweep_point: str) -> str | None:
+def _primary_compressed_condition(summary: Mapping[str, object], sweep_point: str) -> str | None:
     compressed = _compressed_conditions(summary)
     if not compressed:
         return None
@@ -462,7 +462,7 @@ def _primary_compressed_condition(summary: dict[str, object], sweep_point: str) 
     return compressed[0]
 
 
-def extract_summary_metrics(summary: dict[str, object], sweep_point: str) -> dict[str, object] | None:
+def extract_summary_metrics(summary: Mapping[str, object], sweep_point: str) -> dict[str, object] | None:
     conditions = _object_dict(summary.get("conditions"))
     if conditions is None:
         return None
