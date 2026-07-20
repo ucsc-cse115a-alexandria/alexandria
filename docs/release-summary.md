@@ -5,12 +5,13 @@
 **Date:** 2026-07-20 ·
 **Release:** 1.0 (target 2026-07-21, end of Sprint 4)
 
-Alexandria is a label-free prompt optimizer. It shortens instruction-heavy prompts while preserving
-their meaning, using sentence embeddings to find overlapping instructions (redundancy is the cosine
-similarity of an instruction to its most similar peer) and merging each near-duplicate pair into one
-LLM-rewritten sentence. Every rewrite is checked against a whole-document `cos_sim_diff` budget. It
-runs on Python 3.14 with OpenAI `text-embedding-3-small` (embeddings) and `gpt-5.6-luna` (merging),
-and ships as a CLI (`alexandria`) and a Python library (`import alexandria`).
+Alexandria is a label-free prompt optimizer. It shortens instruction-heavy prompts while keeping
+their meaning: it uses sentence embeddings to find overlapping instructions, then merges each
+near-duplicate pair into one sentence rewritten by an LLM. Redundancy means the cosine similarity of
+an instruction to its closest peer, and every rewrite is checked against a whole-document
+`cos_sim_diff` budget. It runs on Python 3.14 with OpenAI `text-embedding-3-small` (embeddings) and
+`gpt-5.6-luna` (merging), and ships as a CLI (`alexandria`) and a Python library
+(`import alexandria`).
 
 ## Key user stories and acceptance criteria
 
@@ -46,7 +47,7 @@ policy, there is no penalty for the failures listed here.
    separate hard-target study that forced a BABILong prompt to 75% through 95% of its length also
    failed, with every setting's accuracy-retention confidence interval below the release threshold
    (original 72%, keep75 48%, keep90 64%). On these benchmarks Alexandria does not yet meet the G2
-   promise, and no more aggressive default was adopted to hide that.
+   promise. We did not adopt a more aggressive default to mask this.
 2. **Quality-monitoring CI is not on `main`.** `CONTRIBUTING.md` describes an "Optimization
    quality" workflow (`.github/workflows/optimization-quality.yml`) and a committed
    `benchmarks/optimization_baseline.json`, but neither file is on `main`. CI currently runs lint,

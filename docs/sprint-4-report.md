@@ -11,7 +11,7 @@ Jul 20 and will be finalized after the last sprint day.
 - Stop letting docs describe infrastructure that is planned but not merged. `CONTRIBUTING.md`
   documents an "Optimization quality" CI workflow and a committed baseline, but neither the workflow
   file (`.github/workflows/optimization-quality.yml`) nor `benchmarks/optimization_baseline.json`
-  is on `main`. Documentation should describe what is actually merged, not what we intend to merge.
+  is on `main`. Docs should describe what is merged.
 
 ## Actions to start doing
 
@@ -45,8 +45,8 @@ Jul 20 and will be finalized after the last sprint day.
   were added and run over retained-percent (keep50–90 n50, keep75–95 n50) and `cos_sim_diff` budget
   (cos-budget n50). Supporting compression work landed: the hard-target guarantee (#106),
   `--target-reduction` (#101), `--keep` percent (#99), prune-first target compression (#104),
-  parallel best-of-3 target merge (#109), and semantic-merge compression (#98). The outcome is the
-  sprint's key finding: no stronger default was kept. Every operating point failed the
+  parallel best-of-3 target merge (#109), and semantic-merge compression (#98). The main result: no
+  stronger default was kept. Every operating point failed the
   accuracy-retention threshold. The original ~76% average accuracy dropped to ~56–63% at
   `cos_sim_diff` budgets of 0.0025–0.02, for only 0.40–0.51% token reduction, and keep75–95 failed
   the same way. The default stays conservative. Counting this story as done means the measurement and
@@ -77,9 +77,9 @@ Jul 20 and will be finalized after the last sprint day.
 - Cached embeddings in `TrackedEmbedder` and vectorized the similarity hot paths.
 - Added a sentence segmenter (#107) and an embedding-cluster analysis notebook (#108), and stripped
   notebook outputs (#114).
-- Late in the sprint (Jul 20, likely a follow-up PR): a Team Working Agreement, a Test Plan and
-  Report, a Release Summary, and live end-to-end tests behind a pytest `ai` marker that skip without
-  an OpenAI key.
+- Late in the sprint: a Team Working Agreement, a Test Plan and Report, a Release Summary, a
+  consolidated `CONTRIBUTING.md`, and live end-to-end tests behind a pytest `ai` marker (skipped
+  without an OpenAI key).
 
 ## Work completion rate
 

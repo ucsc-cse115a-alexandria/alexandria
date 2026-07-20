@@ -50,7 +50,7 @@ adopt it, so that I can switch with confidence. Acceptance: `reduce --interactiv
 --browser`, `score --table`, and phase-by-phase JSON with `--out` all work.
 
 D. **User story D (Sprint 3/4):** As an engineer, I want to compress harder while a benchmark checks
-accuracy and inspect quality metrics, so that I only keep edits the metrics back. Acceptance: the
+accuracy and inspect quality metrics, so that I only keep the edits the metrics support. Acceptance: the
 multi-optimizer pass keeps only budget-backed edits, and `report` emits token and quality metrics.
 
 E. **User story E (Sprint 4):** As an engineer, I want to install Alexandria outside the checkout and
@@ -152,7 +152,7 @@ The Pass rows are backed by automated end-to-end tests that ran green on 2026-07
 `tests/ai_e2e_test.py` reduced two verbose sample prompts through the real pipeline against
 `gpt-5.6-luna` (both cases passed), and `tests/pipeline_e2e_test.py` exercised the offline
 deterministic path (passed). Scenarios 4 through 7 are written from the released feature set but have
-not been run for this report; they are ready to run at the review.
+not been run for this report. They are ready to run at the review.
 
 ## Unit tests
 

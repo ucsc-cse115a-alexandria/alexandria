@@ -27,7 +27,7 @@ A user story or task is done when all of these hold:
 - CI is green across all five checks (lint, format, types, import layering, tests).
 - Branch coverage is at least 80%.
 - User-facing docs are updated when behavior or the CLI changes.
-- At least one teammate has reviewed and approved. (draft: confirm the required reviewer count.)
+- At least one teammate has reviewed and approved.
 - Every behavior change is covered by a test that fails without the change.
 
 ## Style guide
