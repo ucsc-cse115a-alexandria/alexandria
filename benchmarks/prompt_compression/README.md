@@ -62,9 +62,10 @@ uv run python -m scripts.prompt_compression_benchmark \
   --out benchmarks/babilong_8k/results/<run-name>
 ```
 
-This mode treats `cos_sim_diff` as a ceiling and never breaks it merely to reach the token floor. The retained
-percentage is therefore an observed result, not a guaranteed target. Request-level usage is flushed before the
-case checkpoint, and terminal safety-limit outcomes are preserved and skipped on identical resumes.
+This mode uses `cos_sim_diff` as a best-effort candidate-selection budget and remeasures the returned context and
+complete prompt. The retained percentage and final budget compliance are therefore observed results, not
+guarantees. Request-level usage is flushed before the case checkpoint, and terminal safety-limit outcomes are
+preserved and skipped on identical resumes.
 
 Recompute a summary from saved outcomes without API calls:
 
@@ -76,8 +77,11 @@ uv run python -m scripts.summarize_prompt_compression_benchmark \
 
 ## Published reports
 
-- [Current 50-case Luna report](results/2026-07-19-luna-keep50-90-n50-v1/report.md): complete conditions,
-  confidence intervals, figures, time/cost, reproduction commands, caveats, and raw evidence links.
+- [Current 50-case Luna semantic-budget report](results/2026-07-19-luna-cos-budget-n50-v1/report.md): accuracy,
+  reduction, final budget compliance, completion, confidence intervals, figures, time/cost, exact commands, and
+  raw evidence links.
+- [Archived 50-case hard-target report](results/2026-07-19-luna-keep50-90-n50-v1/report.md): retained-context
+  targets from 50% through 90%.
 - [Archived five-case aggregate](results/2026-07-18-luna-keep50-90-n5-v1/): machine-readable aggregate and smoke
   figures.
 - Benchmark-specific reports and historical pilots:
@@ -96,7 +100,7 @@ The output directory is resumable and contains:
 - `prompts.jsonl.gz`: exact model-visible original and compressed prompts keyed by case and condition;
 - `summary.json`: aggregate and per-task scores, token reduction, time/cost, paired transitions, bootstrap intervals,
   and release decisions;
-- `report.md`: the benchmark-specific result table and explicit PASS/FAIL statements; and
+- `report.md`: the benchmark-specific result table and explicit PASS/FAIL statements;
 - `api_events.jsonl`: request-level status, response ID, model, scoped case-condition, latency, usage, and estimated
   cost, flushed immediately after each response;
 - `errors.jsonl`: incomplete case-conditions, error type, elapsed time, captured cost, and whether the failure is
@@ -116,6 +120,10 @@ with zero original accuracy are excluded because their retention ratio is undefi
 A condition passes only when the interval's lower endpoint is at least the release threshold, 90% by default. A
 point estimate above 90% is not sufficient. Original and compressed accuracy, score change, all four paired
 outcome transitions, assumptions, and the decision remain available in the versioned report and raw summary.
+
+Semantic-budget runs additionally require at least 10% token reduction, 95% final context-budget compliance, and
+98% case-condition completion. Their summary reports each check separately and passes publication only when all
+four thresholds clear.
 
 ## Benchmark adapters
 

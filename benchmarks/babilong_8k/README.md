@@ -79,6 +79,14 @@ uv run python -m scripts.summarize_prompt_compression_benchmark \
 
 The legacy phase-one commands below remain available for reproducing the previously published keep90 run.
 
+## Current 50-case semantic-budget run
+
+The current publication run selected 50 cases with seed 42 and evaluated the original plus five best-effort
+context `cos_sim_diff` budgets from 0.0025 through 0.02 using `gpt-5.6-luna`. The complete raw evidence is in
+[`results/2026-07-19-luna-cos-budget-n50-v1/`](results/2026-07-19-luna-cos-budget-n50-v1/). See the
+[cross-benchmark report](../prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for the
+figures, paired intervals, reliability analysis, time/cost, exact commands, and caveats.
+
 ## Shared-run 10-case keep90 pilot
 
 This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 42, `gpt-5.6-luna`, answer reasoning `none`, and a full-prompt target of at most 90% of each original prompt. The complete original prompts ranged from 7,251 to 7,883 `cl100k_base` tokens. Execution measures only the answer-model call after its prompt is ready. Reduction is separate and includes compression plus the whole-prompt cosine measurement with `text-embedding-3-small`.

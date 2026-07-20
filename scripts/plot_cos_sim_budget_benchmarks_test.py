@@ -9,6 +9,7 @@ from scripts.plot_cos_sim_budget_benchmarks import aggregate_summaries, configur
 
 def _condition(accuracy: float, reduction: float, difference: float) -> dict[str, float]:
     return {
+        "n_cases": 50.0,
         "accuracy": accuracy,
         "official_score": accuracy,
         "token_reduction": reduction,
@@ -28,8 +29,18 @@ def _summary(benchmark: str, accuracy: float) -> dict[str, Any]:
             "budget0p02": _condition(accuracy, 0.4, 0.015),
         },
         "comparisons": {
-            "budget0p0025": {"completion_rate": 1.0, "context_budget_compliance": 0.9},
-            "budget0p02": {"completion_rate": 0.98, "context_budget_compliance": 1.0},
+            "budget0p0025": {
+                "completed_cases": 50,
+                "expected_cases": 50,
+                "completion_rate": 1.0,
+                "context_budget_compliance": 0.9,
+            },
+            "budget0p02": {
+                "completed_cases": 49,
+                "expected_cases": 50,
+                "completion_rate": 0.98,
+                "context_budget_compliance": 1.0,
+            },
         },
     }
 
@@ -55,6 +66,7 @@ def test_aggregate_summaries_equal_weights_benchmarks() -> None:
     assert aggregate["points"][1]["average"]["token_reduction"] == pytest.approx(0.2)
     assert aggregate["points"][1]["average"]["budget_compliance"] == pytest.approx(0.9)
     assert aggregate["points"][2]["average"]["completion_rate"] == pytest.approx(0.98)
+    assert aggregate["points"][2]["benchmarks"]["ruler_v2"]["completed_cases"] == 49
 
 
 def test_aggregate_summaries_requires_matching_conditions() -> None:

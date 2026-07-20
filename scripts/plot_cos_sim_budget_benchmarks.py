@@ -79,11 +79,17 @@ def aggregate_summaries(summaries: dict[str, dict[str, Any]]) -> dict[str, Any]:
             if condition == "original":
                 completion_rate = 1.0
                 budget_compliance = 1.0
+                completed_cases = int(_number(raw, "n_cases"))
+                expected_cases = completed_cases
             else:
                 comparison = summaries[benchmark]["comparisons"][condition]
                 completion_rate = _number(comparison, "completion_rate")
                 budget_compliance = _number(comparison, "context_budget_compliance")
+                completed_cases = int(_number(comparison, "completed_cases"))
+                expected_cases = int(_number(comparison, "expected_cases"))
             benchmark_points[benchmark] = {
+                "completed_cases": completed_cases,
+                "expected_cases": expected_cases,
                 "accuracy": _number(raw, "accuracy"),
                 "official_score": _number(raw, "official_score"),
                 "token_reduction": _number(raw, "token_reduction"),
@@ -193,7 +199,8 @@ def _plot_quality_and_reduction(aggregate: dict[str, Any], path: Path) -> None:
         percent_y=True,
     )
     accuracy_axis.set_ylim(-0.03, 1.03)
-    reduction_axis.set_ylim(bottom=-0.03)
+    reduction_axis.set_ylim(bottom=0.0)
+    reduction_axis.yaxis.set_major_formatter(lambda value, _position: f"{value * 100:.1f}%")
     accuracy_axis.set_title("Downstream quality", loc="left", fontsize=14, fontweight="bold")
     reduction_axis.set_title("Prompt reduction", loc="left", fontsize=14, fontweight="bold")
     _legend_average_first(accuracy_axis)
@@ -220,7 +227,7 @@ def _plot_pareto(aggregate: dict[str, Any], path: Path) -> None:
                 annotation = "original" if budget == 0 else f"≤ {budget:g}"
                 axis.annotate(annotation, (reduction, accuracy), xytext=(6, 6), textcoords="offset points", fontsize=8)
     _style_axis(axis, xlabel="Mean prompt token reduction", ylabel="Task accuracy", percent_y=True)
-    axis.xaxis.set_major_formatter(lambda value, _position: f"{value * 100:.0f}%")
+    axis.xaxis.set_major_formatter(lambda value, _position: f"{value * 100:.1f}%")
     axis.set_ylim(-0.03, 1.03)
     axis.set_title("Accuracy vs. prompt reduction", loc="left", fontsize=17, fontweight="bold", pad=14)
     _legend_average_first(axis)
@@ -242,7 +249,8 @@ def _plot_semantic_tradeoff(aggregate: dict[str, Any], path: Path) -> None:
         percent_y=True,
     )
     accuracy_axis.set_ylim(-0.03, 1.03)
-    reduction_axis.set_ylim(bottom=-0.03)
+    reduction_axis.set_ylim(bottom=0.0)
+    reduction_axis.yaxis.set_major_formatter(lambda value, _position: f"{value * 100:.1f}%")
     accuracy_axis.set_title("Semantic change vs. quality", loc="left", fontsize=14, fontweight="bold")
     reduction_axis.set_title("Semantic change vs. reduction", loc="left", fontsize=14, fontweight="bold")
     _legend_average_first(accuracy_axis)

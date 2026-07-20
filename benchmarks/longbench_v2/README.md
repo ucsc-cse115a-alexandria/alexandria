@@ -81,6 +81,9 @@ or missing-log error. The adapter remains supported, and the complete original-o
 [`results/2026-07-19-luna-keep50-90-short-n50-v1/`](results/2026-07-19-luna-keep50-90-short-n50-v1/), including
 the manifest, 50 records, 50 exact prompts, summary, report, and console log.
 
+The subsequent n=50 semantic-budget study also excludes LongBench v2; it makes no new LongBench model calls and
+publishes only paired BABILong 8k and RULERv2 curves.
+
 ## Measured 10-case keep90 pilot
 
 This pilot filtered the pinned dataset to complete prompts between 16,000 and 128,000 `cl100k_base` tokens, then selected ten cases deterministically across the six top-level domains with seed 42. The selected original prompts ranged from 22,676 to 123,954 tokens, with a mean of 68,824.7 tokens.

@@ -114,34 +114,31 @@ direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
 
 ## Benchmark
 
-The current evidence quantifies how prompt reduction, semantic change, and task accuracy move together across the
-tested operating points. The benchmark measured 50 samples each from BABILong 8k and RULERv2 with seed 42, using
-`gpt-5.6-luna` for both compression and answers. The 90%-retained condition achieved a 13.5% token reduction with
-86.7% accuracy retention.
+The current study measures 50 cases each from BABILong 8k and RULERv2 with seed 42, using `gpt-5.6-luna` for both
+compression and answers. It tests best-effort context `cos_sim_diff` budgets from 0.0025 through 0.02. Within this
+range, completed prompts were reduced by 0.40%–0.51% on average while mean realized full-prompt `cos_sim_diff`
+remained between 0.0019 and 0.0024.
 
-| Adoption signal | Original | 90%-retained condition |
-|---|---:|---:|
-| Prompt retained target | 100% | 90% |
-| Average task accuracy | 71.0% | 61.0% |
-| Accuracy retention | 100% | 86.7% |
-| Achieved token reduction | 0.0% | 13.5% |
-| Mean `cos_sim_diff` | 0.000000 | 0.016461 |
-| Measured benchmark work | 116.8s | 901.5s |
+| Configured budget | Average task accuracy | Mean token reduction | Complete case-condition pairs |
+|---:|---:|---:|---:|
+| Original | 76.0% | 0.00% | 100.0% |
+| 0.0025 | 63.3% | 0.40% | 79.0% |
+| 0.005 | 60.9% | 0.43% | 80.0% |
+| 0.01 | 58.3% | 0.46% | 78.0% |
+| 0.015 | 56.0% | 0.48% | 79.0% |
+| 0.02 | 63.4% | 0.51% | 79.0% |
 
-`Average` is the equal-weight mean of the two benchmarks. The full curve shows how task accuracy changes as more
-of the prompt is retained:
+`Average` is the equal-weight mean of the two benchmarks. Accuracy uses completed paired cases; completion is
+shown alongside it so the effective coverage remains visible.
 
-![Task accuracy by retained prompt percentage](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/accuracy_vs_retained.png)
+![Quality and prompt reduction by semantic-change budget](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/quality_and_reduction_vs_budget.png)
 
-`cos_sim_diff` is the semantic-change guard exposed as `--cos-sim-diff-budget`. This figure connects the measured
-semantic change directly to downstream quality:
-
-![Accuracy and retention versus semantic change](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/semantic_change_vs_accuracy.png)
+![Task accuracy versus measured prompt reduction](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/accuracy_vs_token_reduction.png)
 
 See the
-[detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1/report.md) for
-every condition, paired-bootstrap confidence intervals and release decisions, timing and cost breakdowns, exact
-reproduction commands, caveats, and links to the append-only raw records. The
+[detailed benchmark report](benchmarks/prompt_compression/results/2026-07-19-luna-cos-budget-n50-v1/report.md) for
+benchmark-specific results, paired-bootstrap intervals and decisions, compliance and completion analysis, exact
+reproduction commands, timing and cost, caveats, and links to every append-only raw artifact. The
 [benchmark runner guide](benchmarks/prompt_compression/README.md) documents the shared evidence format and how to
 execute a new run.
 
