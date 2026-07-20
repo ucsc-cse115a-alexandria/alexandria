@@ -11,11 +11,23 @@ See [the design specification](docs/spec.md) for the implementation architecture
 
 ## Install
 
-Requires Python 3.14 and [uv](https://docs.astral.sh/uv/).
+Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14 and
+[uv](https://docs.astral.sh/uv/). Install the command directly from the public repository:
 
 ```bash
-uv sync
+uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
+alexandria --help
 ```
+
+For development from a checkout, install the locked environment and run the command through `uv`:
+
+```bash
+uv sync --frozen
+uv run alexandria --help
+```
+
+The examples below use the installed `alexandria` command. From a development checkout, substitute
+`uv run alexandria`.
 
 ## Setup
 
@@ -23,7 +35,7 @@ Alexandria uses OpenAI for embeddings (`text-embedding-3-small`) and merging (`g
 needs an API key. Store it once:
 
 ```bash
-uv run alexandria config set openai-api-key
+alexandria config set openai-api-key
 ```
 
 This prompts with hidden input and saves the key to `~/.config/alexandria/config.toml` (owner-only,
@@ -39,14 +51,14 @@ OpenAI API key not found. Set it with `alexandria config set openai-api-key` or 
 Run the full optimization pipeline with one command:
 
 ```bash
-uv run alexandria reduce prompt.txt > reduced.txt
+alexandria reduce prompt.txt > reduced.txt
 ```
 
 Use `--save-tokens N` to stop once N tokens are saved and `--cos-sim-diff-budget` to cap the cumulative
 whole-document `cos_sim_diff` (`1 - cosine_similarity`) the reduction may accept (default: `0.5`):
 
 ```bash
-uv run alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
+alexandria reduce prompt.txt --save-tokens 200 > reduced.txt
 ```
 
 Use `--target-reduction P` when the reduction percentage is a requirement rather than a best-effort
@@ -54,7 +66,7 @@ budget. The returned prompt is always at or below the derived token ceiling. The
 calling the merge model only when protected Markdown/XML structure alone cannot fit:
 
 ```bash
-uv run alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
+alexandria reduce prompt.txt --target-reduction 10 > reduced.txt
 ```
 
 Strict targets keep Markdown/XML boundaries fixed and, for each content group, fire three generation requests in
@@ -72,25 +84,31 @@ waiting for the final summary.
 quality scores:
 
 ```bash
-uv run alexandria report prompt.txt --cos-sim-diff-budget 2.0
+alexandria report prompt.txt --cos-sim-diff-budget 2.0
 ```
 
 The `tokens` object reports source, reduced, and saved tokens. The `quality` object reports the
 token-weighted mean and minimum best-match cosine similarity for every source instruction. To fail
-when a report is worse than a committed baseline, pass the baseline file:
+when a report is worse than a report you saved earlier, pass that file as the baseline:
 
 ```bash
-uv run alexandria report benchmarks/optimization_prompt.txt \
+alexandria report prompt.txt \
   --cos-sim-diff-budget 2.0 \
-  --baseline benchmarks/optimization_baseline.json
+  --baseline .cache/alexandria/optimization-baseline.json
 ```
 
 The command exits with status 1 when reduced token count rises or either monitored quality score
 falls beyond its tolerance. Use `--token-tolerance` and `--quality-tolerance` for expected numerical
-variation. Regenerate the baseline manually (it needs an API key and is not committed by CI):
+variation. No baseline is included in the repository or checked by CI. To make one for local
+comparisons (an API key is required), write it to an ignored local directory and pass that same path
+to later runs:
 
 ```bash
-uv run alexandria report benchmarks/optimization_prompt.txt > benchmarks/optimization_baseline.json
+mkdir -p .cache/alexandria
+alexandria report prompt.txt \
+  > .cache/alexandria/optimization-baseline.json
+alexandria report prompt.txt \
+  --baseline .cache/alexandria/optimization-baseline.json
 ```
 
 For phase-by-phase execution, saving and resuming JSON envelopes, and the full option reference, see
@@ -99,8 +117,8 @@ For phase-by-phase execution, saving and resuming JSON envelopes, and the full o
 ## Library
 
 The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python (it builds the
-OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use a
-`.env` file):
+OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use the
+saved config file):
 
 ```python
 import alexandria
@@ -110,7 +128,8 @@ print(result.text)
 ```
 
 See [the library guide](docs/library.md) for injecting your own embedder and merger for offline tests,
-direct phase composition, and a runnable example in `examples/reduce_prompt.py`.
+direct phase composition, and a runnable example in `examples/reduce_prompt.py`. The core library does
+not load `.env` files automatically; that example opts into `python-dotenv` for local development.
 
 ## Benchmark
 
@@ -148,10 +167,14 @@ execute a new run.
 
 ## How it works
 
-Four pure phases over one intermediate representation (`Document` → `Section` → `Sentence`):
+The composable API and CLI expose four phases over one validated intermediate representation
+(`Document` → `Section` → `Sentence`). The default end-to-end reduction does not need a standalone
+Score result: `merge_rewrite` ranks pairs directly from their embeddings, so `reduce` skips Score
+unless a selected optimizer declares that it needs a scorer.
 
 1. **Represent** — split the prompt into instructions, tokenize, and embed each one.
-2. **Score** — rate each instruction's redundancy (its cosine similarity to the most similar other).
+2. **Score** — optionally inspect each instruction's redundancy (its cosine similarity to the most
+   similar other) or supply scores required by another registered optimizer.
 3. **Optimize** — for each near-duplicate pair the LLM rewrites both sentences as one minimal-token
    sentence, kept at the first occurrence (the second is removed). Every rewrite is checked by
    applying it and measuring the whole-document `cos_sim_diff`; if it exceeds the `cos_sim_diff` budget the
@@ -171,6 +194,3 @@ uv run pytest        # tests + coverage
 uv run ruff check .  # lint
 uv run pyright       # types
 ```
-
-See [the contributing guide](docs/contributing.md) for the optimization-quality CI command, the
-committed report baseline, and the review process for intentional baseline updates.

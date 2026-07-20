@@ -4,6 +4,9 @@ Each command reads either its optional `FILE` argument or standard input, writes
 output, and sends diagnostics to standard error. Run `uv run alexandria --help` or
 `uv run alexandria COMMAND --help` for the complete option reference.
 
+These examples use a development checkout. If Alexandria was installed with `uv tool install`, run
+the same commands as `alexandria ...` without the `uv run` prefix.
+
 ## Set your API key
 
 Alexandria uses OpenAI for embeddings and merging, so every command that runs the pipeline needs a key.
@@ -23,7 +26,9 @@ OpenAI API key not found. Set it with `alexandria config set openai-api-key` or 
 
 ## Reduce a prompt
 
-`reduce` is the usual entry point. It runs all four phases in one process and writes the reduced prompt.
+`reduce` is the usual entry point. It represents the prompt, runs only the scorers required by the
+selected optimizer, then optimizes and selects in one process. The built-in optimizer currently
+requires no standalone scorer, so the default path skips that call and writes the reduced prompt.
 
 ```bash
 uv run alexandria reduce prompt.txt > reduced.txt
