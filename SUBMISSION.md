@@ -24,7 +24,7 @@ repository.
 | **Release docs — dependencies** | [`pyproject.toml`](pyproject.toml), [`uv.lock`](uv.lock) |
 | **Release docs — user guides** | [`docs/cli.md`](docs/cli.md), [`docs/library.md`](docs/library.md), [`examples/reduce_prompt.py`](examples/reduce_prompt.py) |
 | **Release docs — design docs** | [`docs/spec.md`](docs/spec.md), [`docs/tech-stack.md`](docs/tech-stack.md) |
-| **Release docs — contribution guide** | [`CONTRIBUTING.md`](CONTRIBUTING.md), [`docs/contributing.md`](docs/contributing.md) (quality-report gate) |
+| **Release docs — contribution guide** | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | **Benchmark evidence** | [`README.md`](README.md) "Benchmark" section; raw runs under `benchmarks/*/results/` |
 
 ## Known gaps
@@ -34,7 +34,7 @@ for the review:
 
 - Accuracy retention is **not yet proven** at the release threshold (see the [Test Plan and
   Report](docs/test-plan-and-report.md) and the benchmark numbers).
-- The quality-monitoring CI gate documented in [`docs/contributing.md`](docs/contributing.md) is
+- The quality-monitoring CI gate documented in [`CONTRIBUTING.md`](CONTRIBUTING.md) is
   **not on `main`** yet.
 
 The Sprint 4 report and a few Test Plan scenarios are drafts pending the final sprint day (Jul 21)

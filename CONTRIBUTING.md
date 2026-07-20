@@ -85,9 +85,45 @@ Measured over `src/alexandria` with branch coverage on. CI fails below 80%. `__i
   resolvable. Run them on purpose with `uv run pytest -m ai`.
 - Decide the test cases when you define the task: know what must pass before you start.
 
-A separate prompt-quality regression report is described in
-[`docs/contributing.md`](docs/contributing.md). Its CI workflow is not yet on `main` (see the known
-problems in the [Release Summary](docs/release-summary.md)).
+## Prompt-quality regression report
+
+Alexandria has a deterministic quality check that guards against optimization regressions: it runs
+`alexandria report` on a fixed prompt and compares the result against a committed baseline. The
+report command and its prompt ([`benchmarks/optimization_prompt.txt`](benchmarks/optimization_prompt.txt))
+are on `main`; the CI workflow (`.github/workflows/optimization-quality.yml`) and the committed
+`benchmarks/optimization_baseline.json` are not on `main` yet (see the known problems in the [Release
+Summary](docs/release-summary.md)). Once the baseline is committed, run the same check locally:
+
+```bash
+uv run alexandria report benchmarks/optimization_prompt.txt \
+  --model deterministic \
+  --optimizer greedy_pairwise \
+  --selector auto \
+  --threshold 0.85 \
+  --drift-budget 2.0 \
+  --baseline benchmarks/optimization_baseline.json \
+  --token-tolerance 0 \
+  --quality-tolerance 0.0
+```
+
+The command exits with status 1 when the reduced token count rises above the baseline or either
+monitored quality score falls below it. Zero tolerance is safe because the deterministic embedder and
+locked dependencies make the fixture reproducible.
+
+Update the baseline only when a metric change is intentional and explained by the same pull request
+(an approved optimizer or selector change, a report-calculation fix, or a deliberate change to the
+prompt or configuration). Do not update it to make an unexplained regression pass. Generate a
+candidate, review the diff, then replace it and rerun the check:
+
+```bash
+uv run alexandria report benchmarks/optimization_prompt.txt \
+  --model deterministic --optimizer greedy_pairwise --selector auto \
+  --threshold 0.85 --drift-budget 2.0 > benchmarks/optimization_baseline.json.new
+git diff --no-index benchmarks/optimization_baseline.json benchmarks/optimization_baseline.json.new || true
+mv benchmarks/optimization_baseline.json.new benchmarks/optimization_baseline.json
+```
+
+Commit the baseline together with the change that justified it.
 
 ## Pull requests
 

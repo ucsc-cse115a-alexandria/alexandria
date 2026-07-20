@@ -8,7 +8,7 @@ Jul 20 and will be finalized after the last sprint day.
 
 ## Actions to stop doing
 
-- Stop letting docs describe infrastructure that is planned but not merged. `docs/contributing.md`
+- Stop letting docs describe infrastructure that is planned but not merged. `CONTRIBUTING.md`
   documents an "Optimization quality" CI workflow and a committed baseline, but neither the workflow
   file (`.github/workflows/optimization-quality.yml`) nor `benchmarks/optimization_baseline.json`
   is on `main`. Documentation should describe what is actually merged, not what we intend to merge.
@@ -56,7 +56,8 @@ Jul 20 and will be finalized after the last sprint day.
   identifiers. PyPI publication was not done; install is via the git URL for now.
 - **User story 5: prepare the project for open-source contributors.** Implementation-aligned docs
   (#117) landed. The README was rewritten for OSS readers, and `docs/cli.md`, `docs/library.md`,
-  `docs/contributing.md`, and `docs/tech-stack.md` were refreshed.
+  and `docs/tech-stack.md` were refreshed. The contribution guide was consolidated into a root
+  `CONTRIBUTING.md`.
 - **Enabler A: reproducible benchmark artifacts.** The results-directory convention and the
   `report.md` format are established, a benchmark runner guide was added, and a deterministic
   benchmark smoke test landed.
@@ -64,7 +65,7 @@ Jul 20 and will be finalized after the last sprint day.
 ### Not completed (planned but unfinished)
 
 - **User story 3: monitor optimization quality in CI.** Quality monitoring was worked on and merged
-  on a branch (#115), and `docs/contributing.md` documents the workflow and baseline, but the CI
+  on a branch (#115), and `CONTRIBUTING.md` documents the workflow and baseline, but the CI
   regression gate did not land on `main`. The workflow file and the baseline JSON are not on `main`,
   and CI still runs only lint, format, pyright, import-linter, and pytest. The regression check does
   not run on push or pull request yet.

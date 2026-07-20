@@ -47,7 +47,7 @@ policy, there is no penalty for the failures listed here.
    failed, with every setting's accuracy-retention confidence interval below the release threshold
    (original 72%, keep75 48%, keep90 64%). On these benchmarks Alexandria does not yet meet the G2
    promise, and no more aggressive default was adopted to hide that.
-2. **Quality-monitoring CI is not on `main`.** `docs/contributing.md` describes an "Optimization
+2. **Quality-monitoring CI is not on `main`.** `CONTRIBUTING.md` describes an "Optimization
    quality" workflow (`.github/workflows/optimization-quality.yml`) and a committed
    `benchmarks/optimization_baseline.json`, but neither file is on `main`. CI currently runs lint,
    format, pyright, import-linter, and pytest only. The docs and the actual CI need to be reconciled.
@@ -69,7 +69,7 @@ High-priority follow-on work, ordered by priority.
 1. **Reach accuracy retention at the release threshold.** Tune the default operating point and widen
    benchmark coverage so the G2 promise holds. This is the one release goal not met.
 2. **Land the quality-monitoring CI.** Commit the `optimization-quality.yml` workflow and the
-   `optimization_baseline.json` baseline, then reconcile `docs/contributing.md`.
+   `optimization_baseline.json` baseline, then reconcile `CONTRIBUTING.md`.
 3. **Publish to PyPI** so install is a single command instead of a git URL.
 4. **Add a hosted embedding API backend** as an alternative to the OpenAI-only path.
 5. **Add per-model exact tokenizers** for accurate counts across models.
