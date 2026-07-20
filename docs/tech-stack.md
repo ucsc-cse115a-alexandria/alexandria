@@ -1,34 +1,43 @@
-# Alexandria — Technology Stack Decision
+# Alexandria technology stack
 
-**Product:** Alexandria · **Team:** Alexandria Team · **Revision:** 3 (2026-06-26)
+This page summarizes the current implementation. `pyproject.toml` is authoritative for package
+metadata and dependencies. See the
+[design specification](spec.md) for component contracts and the [CLI guide](cli.md) for commands.
 
-Scoped to what the team can learn in a five-week course and to what the pipeline in
-[`spec.md`](spec.md) actually needs.
+## Runtime and packaging
 
-## Decisions
+| Area | Current choice | Role |
+| --- | --- | --- |
+| Language | Python 3.14+ | Typed library and Click command-line application. |
+| Environment and lockfile | `uv` | Reproducible development and runtime dependency resolution. |
+| Build backend | Hatchling | Builds the source distribution and `src`-layout wheel; co-located tests are excluded. |
+| IR and validation | Pydantic v2 | Frozen `Document` / `Section` / `Sentence` models, edit contracts, envelopes, and reports. |
+| Embeddings and rewrites | OpenAI API via the Python SDK | `text-embedding-3-small` embeddings and `gpt-5.6-luna` rewrites, isolated behind protocols. |
+| Numerics | NumPy | `float32` vectors, normalization, cosine similarity, and semantic-change measurements. |
+| Token metric | `tiktoken` | `cl100k_base` token counts used for budgets and reports. |
+| CLI | Click | Phase commands, end-to-end reduction, reporting, review modes, and configuration. |
+| Persistence | Pydantic JSON | Versioned `DocumentEnvelope`, `ScoredEnvelope`, and `PlanEnvelope` streams. |
 
-| Area | Choice | Why |
-|---|---|---|
-| Language / packaging | Python 3.14, `uv` | Established in the repo; fast, reproducible envs. |
-| IR / validation | Pydantic v2 | The `Document` / `Section` / `Sentence` tree. Validates on build and freezes nodes, so stored `text` / `token_count` / `embedding` can't diverge from their children. |
-| Embeddings | `openai` (`text-embedding-3-small` embeddings; `gpt-5.6-luna` merge rewrites) | Hosted embeddings and LLM merge rewrites, isolated inside the utils shell. Requires an API key. |
-| Numerics | NumPy | `float32` vectors, the cosine-similarity matrix, and the `cos_sim_diff` values behind `merge_rewrite`. |
-| Persistence | Parquet via Polars | One row per node; stores embeddings as compact `float32` lists. JSON/JSONL bloat them ~3–5× and round lossily. |
-| Reporting | Polars | Benchmark tables; lighter than pandas, already used for Parquet I/O. |
-| Token metric | `tiktoken` | A **model-independent proxy** for token reduction, not an exact Claude count. |
-| Plugin discovery | Python entry points | One registry discovers built-in **and** third-party scorers/optimizers by name; adding one never edits Alexandria. |
-| CLI | [`click`](https://github.com/pallets/click) | Verbs `represent` / `score` / `optimize` / `select` / `reduce`; text in, text out, `--json` for machine-readable output. |
-| Quality gates | `ruff`, `pyright` (strict), `pytest` + `pytest-cov` | Configured in `pyproject.toml`; coverage gated at 80%. |
-| CI | GitHub Actions | Runs lint + types + tests. |
+Library callers can inject implementations of the embedder and merger protocols.
 
-## Rejected alternatives
+## Development and verification
 
-- **Local embedding model (`sentence-transformers` / `all-MiniLM-L6-v2`):** free, deterministic,
-  and no API key, but lower fidelity than a hosted model. The IR keeps embeddings swappable, so the
-  pipeline adopted the hosted OpenAI embedder when fidelity outweighed determinism.
-- **JSON / JSONL for persistence:** readable, but bloats dense `float32` embeddings and rounds
-  them lossily; Parquet stores typed lists and round-trips exactly.
-- **Hand-built IR / dataclasses:** no validation at the boundary. Pydantic enforces the tree's
-  invariants on construction, so impossible states are unrepresentable.
-- **A hardcoded scorer↔optimizer table:** couples each new strategy to central wiring. The
-  registry lets an optimizer declare what it needs (`requires=(...)`), so selection is data.
+| Area | Current choice |
+| --- | --- |
+| Tests | pytest and pytest-cov, with co-located `*_test.py` modules and integration tests under `tests/`. |
+| Lint and format | Ruff. |
+| Static types | Pyright in strict mode. |
+| Architecture | import-linter contracts plus layer-specific imports. |
+| CI | GitHub Actions runs repository quality checks. |
+| Analysis scripts | NumPy, SciPy, and Matplotlib. |
+| Research notebooks | JupyterLab, IPykernel, Matplotlib, UMAP, HDBSCAN, and scikit-learn analyze embeddings produced through Alexandria's OpenAI-backed default. |
+
+## Strategy extension status
+
+Scorers, optimizers, and selectors use small in-process registries. Built-ins register when their
+modules are imported. End-to-end composition can ask an optimizer which scorers it requires; the
+default optimizer currently requires none, while the standalone redundancy score remains available
+for inspection.
+
+There is no installed third-party plugin loading or CLI flag for choosing a strategy. Library callers
+can select registered names and inject model boundaries.

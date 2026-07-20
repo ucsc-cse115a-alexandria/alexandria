@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from alexandria.ir.contracts import Params
+from alexandria.ir.registry import register_optimizer
 from alexandria.ops.features.optimize import MAX_MERGE_ATTEMPTS, optimize
 from alexandria.ops.features.represent import represent
 from alexandria.ops.features.score import score
@@ -15,7 +16,7 @@ from alexandria.utils.tokens import count_tokens
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from alexandria.ir.contracts import ReportedCandidate, Scores
+    from alexandria.ir.contracts import Embedder, Plan, ReductionReporter, ReportedCandidate, Scores, SentenceMerger
     from alexandria.ir.document import Document
 
 _PROMPT = "repeat me and me\nrepeat me and me\nunique line\n"
@@ -68,7 +69,7 @@ class _RecordingReporter:
         self.redundant_pairs: list[tuple[str, str, float]] = []
         self.pair_merges: list[tuple[str | None, str]] = []
         self.target_groups: list[tuple[str, int, int]] = []
-        self.target_rounds: list[tuple[int, str | None, tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
+        self.target_rounds: list[tuple[tuple[ReportedCandidate, ...], ReportedCandidate, bool]] = []
         self.target_group_done_calls: list[tuple[bool, int]] = []
 
     def redundant_pair(self, first: str, second: str, similarity: float) -> None:
@@ -82,13 +83,11 @@ class _RecordingReporter:
 
     def target_round(
         self,
-        round_number: int,
-        base: str | None,
         candidates: tuple[ReportedCandidate, ...],
         selected: ReportedCandidate,
         selected_from_generation: bool,
     ) -> None:
-        self.target_rounds.append((round_number, base, candidates, selected, selected_from_generation))
+        self.target_rounds.append((candidates, selected, selected_from_generation))
 
     def target_group_done(self, applied: bool, document_tokens: int) -> None:
         self.target_group_done_calls.append((applied, document_tokens))
@@ -110,8 +109,19 @@ def test_a_shorter_merge_becomes_a_replace_kept_at_the_first_occurrence() -> Non
     first, second = document.sentences[0], document.sentences[1]
     assert candidate.edit.op == "replace"
     assert candidate.edit.targets == (first.id, second.id)
-    assert candidate.edit.replacement.text == "a\n"  # first target's trailing newline restored
+    assert candidate.edit.replacement.text == "a\n"
     assert candidate.edit.replacement.token_count == count_tokens("a\n")
+
+
+def test_a_merge_preserves_the_last_target_trailing_whitespace() -> None:
+    embedder = _CountingEmbedder()
+    document = represent("aa bb\t\naaa bb\n\ncc\n", embedder)
+
+    plan = optimize(document, {}, embedder, _CannedMerger("a"), params=_GENEROUS)
+
+    (candidate,) = plan
+    assert candidate.edit.op == "replace"
+    assert candidate.edit.replacement.text == "a\n\n"
 
 
 def test_a_merge_equal_to_the_first_sentence_becomes_a_delete_of_the_second() -> None:
@@ -278,9 +288,30 @@ def test_optimize_rejects_an_embedder_model_mismatch() -> None:
         optimize(document, scores, HashEmbedder(dim=32), _CannedMerger("x"))
 
 
-def test_optimize_rejects_missing_required_scores() -> None:
+def test_default_optimizer_accepts_an_empty_score_bundle() -> None:
+    embedder = HashEmbedder()
+    document = represent(_PROMPT, embedder)
+
+    plan = optimize(document, {}, embedder, _CannedMerger("x"), params=_GENEROUS)
+
+    assert plan
+
+
+def test_extension_optimizer_rejects_missing_required_scores() -> None:
+    def requires_redundancy(
+        document: Document,
+        scores: Scores,
+        embedder: Embedder,
+        merger: SentenceMerger,
+        params: Params,
+        reporter: ReductionReporter,
+    ) -> Plan:
+        del document, scores, embedder, merger, params, reporter
+        return ()
+
+    register_optimizer("test_requires_redundancy", requires=("redundancy",))(requires_redundancy)
     embedder = HashEmbedder()
     document = represent(_PROMPT, embedder)
 
     with pytest.raises(ValueError, match="requires scorer"):
-        optimize(document, {}, embedder, _CannedMerger("x"))
+        optimize(document, {}, embedder, _CannedMerger("x"), names=("test_requires_redundancy",))

@@ -20,7 +20,7 @@ from alexandria.utils.tokens import count_tokens, truncate_tokens
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
-    from alexandria.ir.contracts import Embedder, MergeMetrics, Params, ReductionReporter, TrackedMerger
+    from alexandria.ir.contracts import Embedder, MergeMetrics, Params, Plan, ReductionReporter, TrackedMerger
     from alexandria.ir.document import SentenceId
 
 PRUNE_VERIFY_MAX_STEPS = 12  # cos_sim_diff search probe cap
@@ -88,6 +88,7 @@ class _PendingCandidate:
 @dataclass(frozen=True)
 class _TargetCandidate:
     text: str
+    candidate: Candidate
     document: Document
     cos_sim_diff: float
     minimum_coverage: float
@@ -102,7 +103,7 @@ class TargetMergeOutcome:
     """A finished target merge: the reduced document plus the work both phases performed."""
 
     document: Document
-    applied_groups: int
+    applied: Plan
     pruned_sentences: int
     pruned_tokens: int
     repaired_tokens: int
@@ -135,14 +136,14 @@ def merge_to_target(
         raise InfeasibleTargetError(
             f"protected structure uses {protected_tokens} tokens, exceeding the {params.max_tokens}-token target"
         )
-    expected_structure = tuple(sentence.text.strip() for sentence in document.sentences if not sentence.optimizable)
-    current = _prune_to_target(document, embedder, params, params.max_tokens)
+    current, prune_plan = _prune_to_target(document, embedder, params, params.max_tokens)
+    applied = list(prune_plan)
     pruned_sentences = len(document.sentences) - len(current.sentences)
     pruned_tokens = document.token_count - current.token_count
     repaired_tokens = 0
 
-    def merge_metrics(applied_groups: int, *, final_cos_sim_diff: float | None = None) -> MergeMetrics:
-        return merger.metrics(proposed_edits=applied_groups, applied_edits=applied_groups).model_copy(
+    def merge_metrics(*, final_cos_sim_diff: float | None = None) -> MergeMetrics:
+        return merger.metrics(proposed_edits=len(applied), applied_edits=len(applied)).model_copy(
             update={
                 "pruned_sentences": pruned_sentences,
                 "pruned_tokens": pruned_tokens,
@@ -154,7 +155,6 @@ def merge_to_target(
             }
         )
 
-    applied_groups = 0
     while current.token_count > params.max_tokens:
         groups = _compressible_groups(current)
         if not groups:
@@ -171,7 +171,9 @@ def merge_to_target(
         )
         group_tokens = sum(sentence.token_count for sentence in group)
         fixed_tokens = current.token_count - group_tokens
-        group_max_tokens = max(1, params.max_tokens - fixed_tokens)
+        suffix = _trailing_whitespace(group[-1].text)
+        minimum_group_tokens = 1 + count_tokens(suffix)
+        group_max_tokens = max(minimum_group_tokens, params.max_tokens - fixed_tokens)
         source_segment = "".join(sentence.text for sentence in group)
         reporter.target_group(source_segment, group_tokens, required_savings)
         base_tokens = current.token_count
@@ -187,14 +189,12 @@ def merge_to_target(
             max_document_tokens=params.max_tokens,
             group_max_tokens=group_max_tokens,
             cos_sim_diff_budget=params.cos_sim_diff_budget,
-            expected_structure=expected_structure,
         )
         generated_selectable = [
             candidate
             for candidate in evaluated
             if candidate.structure_valid and candidate.document.token_count < current.token_count
         ]
-        generated_best = min(generated_selectable, key=_target_candidate_rank) if generated_selectable else None
         if generated_selectable:
             pool = generated_selectable
         else:
@@ -208,7 +208,6 @@ def merge_to_target(
                 max_document_tokens=params.max_tokens,
                 group_max_tokens=group_max_tokens,
                 cos_sim_diff_budget=params.cos_sim_diff_budget,
-                expected_structure=expected_structure,
             )
             pool = [
                 candidate
@@ -218,7 +217,7 @@ def merge_to_target(
         if not pool:
             reporter.target_group_done(applied=False, document_tokens=current.token_count)
             details = "; ".join(dict.fromkeys(issue for c in evaluated for issue in c.issues))
-            metrics = merge_metrics(applied_groups, final_cos_sim_diff=base_cos_sim_diff)
+            metrics = merge_metrics(final_cos_sim_diff=base_cos_sim_diff)
             raise TargetMergeError(
                 f"target merge made no progress after {merger.calls} calls: "
                 f"{details or 'no shorter structure-valid candidate'}",
@@ -230,17 +229,10 @@ def merge_to_target(
         improved = chosen.document.token_count < base_tokens and chosen.cos_sim_diff < base_cos_sim_diff
         merger.record_target_round(
             TargetMergeRoundMetrics(
-                round=1,
                 base_tokens=base_tokens,
                 selected_tokens=chosen.document.token_count,
                 base_cos_sim_diff=base_cos_sim_diff,
                 selected_cos_sim_diff=chosen.cos_sim_diff,
-                generated_best_tokens=(
-                    generated_best.document.token_count if generated_best is not None else chosen.document.token_count
-                ),
-                generated_best_cos_sim_diff=(
-                    generated_best.cos_sim_diff if generated_best is not None else chosen.cos_sim_diff
-                ),
                 improved=improved,
             )
         )
@@ -259,15 +251,15 @@ def merge_to_target(
             cos_sim_diff=chosen.cos_sim_diff,
             structure_valid=chosen.structure_valid,
         )
-        reporter.target_round(1, None, candidate_list, selected, generated_best is not None)
+        reporter.target_round(candidate_list, selected, bool(generated_selectable))
         current = chosen.document
+        applied.append(chosen.candidate)
         repaired_tokens += chosen.repaired_tokens
         reporter.target_group_done(applied=True, document_tokens=current.token_count)
-        applied_groups += 1
     final_cos_sim_diff = compute_cos_sim_diff(current.embedding, document.embedding)
     return TargetMergeOutcome(
         document=current,
-        applied_groups=applied_groups,
+        applied=tuple(applied),
         pruned_sentences=pruned_sentences,
         pruned_tokens=pruned_tokens,
         repaired_tokens=repaired_tokens,
@@ -276,7 +268,7 @@ def merge_to_target(
     )
 
 
-def _prune_to_target(document: Document, embedder: Embedder, params: Params, max_tokens: int) -> Document:
+def _prune_to_target(document: Document, embedder: Embedder, params: Params, max_tokens: int) -> tuple[Document, Plan]:
     """Delete redundant sentences toward the token target without any merge-model call.
 
     The plan orders deletions by descending redundancy; the whole plan's cos_sim_diff is then verified
@@ -286,12 +278,12 @@ def _prune_to_target(document: Document, embedder: Embedder, params: Params, max
     """
     deletions = _prune_plan(document, params.threshold, max_tokens)
     if not deletions:
-        return document
+        return document, ()
     pruned = _apply_prune_prefix(document, deletions, len(deletions))
     pruned_embedding = embedder.embed([pruned.text])[0]
     cos_sim_diff = compute_cos_sim_diff(pruned_embedding, document.embedding)
     if cos_sim_diff <= params.cos_sim_diff_budget:
-        return pruned.model_copy(update={"embedding": pruned_embedding})
+        return pruned.model_copy(update={"embedding": pruned_embedding}), (_prune_candidate(deletions),)
     passing, failing = 0, len(deletions)
     passing_document = document
     for _ in range(PRUNE_VERIFY_MAX_STEPS):
@@ -306,7 +298,8 @@ def _prune_to_target(document: Document, embedder: Embedder, params: Params, max
             passing_document = trial.model_copy(update={"embedding": trial_embedding})
         else:
             failing = middle
-    return passing_document
+    plan = (_prune_candidate(deletions[:passing]),) if passing else ()
+    return passing_document, plan
 
 
 def _prune_plan(document: Document, threshold: float, max_tokens: int) -> tuple[SentenceId, ...]:
@@ -363,16 +356,19 @@ def _sentence_ancestors(document: Document) -> tuple[dict[SentenceId, tuple[int,
 
 
 def _apply_prune_prefix(document: Document, deletions: tuple[SentenceId, ...], count: int) -> Document:
-    candidate = Candidate(
-        edit=Delete(targets=deletions[:count]),
+    applied = document.apply(_prune_candidate(deletions[:count]))
+    if applied is None or applied is document:
+        raise ValueError("prune plan produced an inapplicable deletion prefix")
+    return applied
+
+
+def _prune_candidate(deletions: tuple[SentenceId, ...]) -> Candidate:
+    return Candidate(
+        edit=Delete(targets=deletions),
         confidence=1.0,
         source="target_prune",
         reason="deleted redundant sentences to approach the token target",
     )
-    applied = document.apply(candidate)
-    if applied is None or applied is document:
-        raise ValueError("prune plan produced an inapplicable deletion prefix")
-    return applied
 
 
 def _repair_chunks(text: str) -> tuple[str, ...]:
@@ -438,6 +434,25 @@ def _repair_text_variants(text: str, max_tokens: int) -> tuple[_RepairVariant, .
     return tuple(dict.fromkeys(sampled))
 
 
+def _trailing_whitespace(text: str) -> str:
+    return text[len(text.rstrip()) :]
+
+
+def _fit_with_suffix(text: str, suffix: str, max_tokens: int) -> str | None:
+    """Fit nonblank text within max_tokens while preserving suffix exactly, or reject it."""
+    body = text.rstrip()
+    if not body:
+        return None
+    candidate = body + suffix
+    if count_tokens(candidate) <= max_tokens:
+        return candidate
+    for body_limit in range(min(count_tokens(body), max_tokens), 0, -1):
+        candidate = truncate_tokens(body, body_limit).rstrip() + suffix
+        if candidate.strip() and count_tokens(candidate) <= max_tokens:
+            return candidate
+    return None
+
+
 def _evaluate_target_candidates(
     generated: tuple[str, ...],
     *,
@@ -448,19 +463,25 @@ def _evaluate_target_candidates(
     max_document_tokens: int,
     group_max_tokens: int,
     cos_sim_diff_budget: float,
-    expected_structure: tuple[str, ...],
 ) -> tuple[_TargetCandidate, ...]:
     """Repair one generation round, then embed all segments, documents, and local chunks in one batch."""
-    suffix = group[0].text[len(group[0].text.rstrip()) :]
+    suffix = _trailing_whitespace(group[-1].text)
     variants: dict[str, _RepairVariant] = {}
     for generated_text in generated:
         if not generated_text.strip():
             continue
         text = generated_text.rstrip() + suffix
         for variant in _repair_text_variants(text, group_max_tokens):
-            existing = variants.get(variant.text)
-            if existing is None or variant.repaired_tokens < existing.repaired_tokens:
-                variants[variant.text] = variant
+            fitted_text = _fit_with_suffix(variant.text, suffix, group_max_tokens)
+            if fitted_text is None:
+                continue
+            fitted = _RepairVariant(
+                text=fitted_text,
+                repaired_tokens=max(0, count_tokens(text) - count_tokens(fitted_text)),
+            )
+            existing = variants.get(fitted.text)
+            if existing is None or fitted.repaired_tokens < existing.repaired_tokens:
+                variants[fitted.text] = fitted
     if not variants:
         return ()
 
@@ -540,15 +561,12 @@ def _evaluate_target_candidates(
             issues.append(f"deterministic repair removed {variant.repaired_tokens} tokens to enforce the hard limit")
         if not structure_valid:
             issues.append("candidate introduced an XML or Markdown boundary line")
-        actual_structure = tuple(sentence.text.strip() for sentence in candidate.sentences if not sentence.optimizable)
-        if actual_structure != expected_structure:
-            structure_valid = False
-            issues.append("XML/Markdown boundary lines changed")
         if cos_sim_diff > cos_sim_diff_budget:
             issues.append(f"whole-prompt cos_sim_diff was {cos_sim_diff:.4f}; maximum is {cos_sim_diff_budget:.4f}")
         evaluated.append(
             _TargetCandidate(
                 text=variant.text,
+                candidate=edit,
                 document=candidate,
                 cos_sim_diff=cos_sim_diff,
                 minimum_coverage=coverage,

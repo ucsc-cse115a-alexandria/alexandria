@@ -8,20 +8,23 @@ into a single rewritten sentence — no labels, no training, no target output to
 
 ## Install
 
-Requires Python 3.14+ and [uv](https://docs.astral.sh/uv/).
+Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14
+and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 # CLI
-uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria
+uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
 
 # or run once without installing
-uvx --from git+https://github.com/ucsc-cse115a-alexandria/alexandria alexandria reduce prompt.txt
+uvx --from git+https://github.com/ucsc-cse115a-alexandria/alexandria.git alexandria reduce prompt.txt
 
 # as a library dependency
-uv add git+https://github.com/ucsc-cse115a-alexandria/alexandria
+uv add git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
 ```
 
-The package is distributed as `alexandria-prompt`; the import name is `alexandria`.
+The package is distributed as `alexandria-prompt`; the import name is `alexandria`. The examples
+below use the installed `alexandria` command; from a development checkout, substitute
+`uv run alexandria`.
 
 ## Set your API key
 
@@ -49,20 +52,21 @@ Common options:
 - `--json` — emit a machine-readable summary; `-v` streams progress to stderr.
 
 `report` runs the same pipeline and emits JSON with token and quality metrics, optionally failing
-against a committed baseline:
+against a baseline report you saved earlier (no baseline is included in the repository or checked
+by CI):
 
 ```bash
 alexandria report prompt.txt
 ```
 
 See [the CLI guide](docs/cli.md) for phase-by-phase execution, saving and resuming JSON envelopes,
-and the full option reference, and [the contributing guide](docs/contributing.md) for the
-report-baseline quality gate.
+baseline comparisons with `--baseline`, and the full option reference.
 
 ## Library
 
-The CLI is a thin wrapper; everything is importable. An OpenAI key must be resolvable (pass
-`api_key=`, export `OPENAI_API_KEY`, or use a `.env` file):
+The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python (it builds
+the OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use
+the saved config file):
 
 ```python
 import alexandria
@@ -76,7 +80,8 @@ print(result.text)
 ```
 
 See [the library guide](docs/library.md) for injecting your own embedder and merger for offline
-tests, and a runnable example in `examples/reduce_prompt.py`.
+tests, and a runnable example in `examples/reduce_prompt.py`. The core library does not load `.env`
+files automatically; that example opts into `python-dotenv` for local development.
 
 ## Benchmark
 
@@ -94,14 +99,19 @@ per-task results, timing, cost, and append-only raw artifacts, earlier studies u
 
 ## How it works
 
-Four pure phases over one intermediate representation (`Document` → `Section` → `Sentence`):
+The composable API and CLI expose four phases over one validated intermediate representation
+(`Document` → `Section` → `Sentence`). The default end-to-end reduction does not need a standalone
+Score result: `merge_rewrite` ranks pairs directly from their embeddings, so `reduce` skips Score
+unless a selected optimizer declares that it needs a scorer.
 
 1. **Represent** — split the prompt into instructions, tokenize, and embed each one.
-2. **Score** — rate each instruction's redundancy (cosine similarity to its most similar other).
+2. **Score** — optionally rate each instruction's redundancy (cosine similarity to its most similar
+   other) when a selected optimizer needs scores.
 3. **Optimize** — an LLM rewrites each near-duplicate pair as one minimal-token sentence, re-checked
    against the semantic budget with up to 3 attempts.
 4. **Select** — apply accepted edits in ascending `cos_sim_diff` order under the cumulative budget,
-   stopping at the requested token budget.
+   stopping at the requested token budget; `--target-reduction` uses a hard-target path that repairs
+   model overshoot deterministically.
 
 See [the design specification](docs/spec.md) for the implementation architecture.
 
@@ -116,6 +126,3 @@ uv run pytest        # tests + coverage
 uv run ruff check .  # lint
 uv run pyright       # types
 ```
-
-See [the contributing guide](docs/contributing.md) for the optimization-quality CI command and the
-review process for baseline updates.

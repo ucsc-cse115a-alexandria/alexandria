@@ -2,7 +2,7 @@
   "schema_version": 1,
   "implementation_commit": "8bf81efbd970152524c316d6a9cd779edd27c8e1",
   "implementation_dirty": false,
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-issue-78-benchmark-results/scripts/prompt_compression_benchmark.py --benchmark longbench_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 --data-dir data/longbench_v2/short.json --max-source-tokens 128000 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark longbench_v2 --n 5 --seed 42 --reductions 50 40 30 20 10 --data-dir data/longbench_v2/short.json --max-source-tokens 128000 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/longbench_v2/results/2026-07-18-luna-keep50-90-short-n5-v1",
   "benchmark": "longbench_v2",
   "provenance": {
     "dataset": "zai-org/LongBench-v2@2b48e494f2c7a2f0af81aae178e05c7e1dde0fe9",

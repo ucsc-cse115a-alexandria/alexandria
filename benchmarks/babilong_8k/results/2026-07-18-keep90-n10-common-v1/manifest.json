@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "implementation_commit": "f89cd5f6f3702f270c13a6332a3c90a126618e67",
-  "command": "/Users/masaishi/ghq/github.com/ucsc-cse115a-alexandria/alexandria-prompt-compression-benchmarks/scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 10 --seed 42 --reductions 10 --data-dir data/babilong/8k --out benchmarks/babilong_8k/results/2026-07-18-keep90-n10-common-v1",
+  "command": "scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 10 --seed 42 --reductions 10 --data-dir data/babilong/8k --out benchmarks/babilong_8k/results/2026-07-18-keep90-n10-common-v1",
   "benchmark": "babilong_8k",
   "provenance": {
     "dataset": "RMT-team/babilong@ee0d588794c7ac098062ee0d247c733d62e94fe2",

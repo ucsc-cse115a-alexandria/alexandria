@@ -38,22 +38,18 @@ class VerboseReporter:
 
     def target_round(
         self,
-        round_number: int,
-        base: str | None,
         candidates: tuple[ReportedCandidate, ...],
         selected: ReportedCandidate,
         selected_from_generation: bool,
     ) -> None:
-        self._write(f"  round {round_number}:")
-        if base is not None:
-            self._write(f"    search base: {_clip(base)}")
+        self._write("  candidates:")
         for index, candidate in enumerate(candidates, start=1):
             structure_note = "" if candidate.structure_valid else " [invalid structure]"
             self._write(
                 f"    candidate {index}: {candidate.token_count} tok, cos_sim_diff {candidate.cos_sim_diff:.4f}"
                 f"{structure_note}: {_clip(candidate.text)}"
             )
-        origin = "generated" if selected_from_generation else "kept base"
+        origin = "generated" if selected_from_generation else "deterministic fallback"
         self._write(f"    → selected ({origin}): {selected.token_count} tok, cos_sim_diff {selected.cos_sim_diff:.4f}")
 
     def target_group_done(self, applied: bool, document_tokens: int) -> None:

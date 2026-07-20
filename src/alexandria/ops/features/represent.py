@@ -6,7 +6,7 @@ from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from itertools import pairwise
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 from alexandria.ir.document import Document, Node, Section, SectionKind, Sentence, SentenceId
 from alexandria.utils.embedders import default_embedder
@@ -86,14 +86,6 @@ class RawSection:
     children: tuple[RawSentence | RawSection, ...]
 
 
-def _new_children() -> list[_Open | RawSentence]:
-    return []
-
-
-def _new_sections() -> list[_Open]:
-    return []
-
-
 @dataclass
 class _Open:
     """A section still being built while parsing; frozen into a RawSection at the end."""
@@ -102,15 +94,15 @@ class _Open:
     header: str
     depth: int | None  # markdown header depth (number of '#'); read only by the markdown rule
     tag: str | None  # xml tag to match its closing tag; read only by the xml rules
-    children: list[_Open | RawSentence] = field(default_factory=_new_children)
+    children: list[_Open | RawSentence] = field(default_factory=lambda: cast("list[_Open | RawSentence]", []))
 
 
 @dataclass
 class _Builder:
     """The parse state a rule manipulates: the section stack and the completed roots."""
 
-    roots: list[_Open] = field(default_factory=_new_sections)
-    stack: list[_Open] = field(default_factory=_new_sections)
+    roots: list[_Open] = field(default_factory=lambda: cast("list[_Open]", []))
+    stack: list[_Open] = field(default_factory=lambda: cast("list[_Open]", []))
 
     def open(self, section: _Open) -> None:
         (self.stack[-1].children if self.stack else self.roots).append(section)

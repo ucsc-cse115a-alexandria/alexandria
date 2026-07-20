@@ -151,7 +151,6 @@ class OpenAIUsageMeter:
                     elapsed_seconds=time.monotonic() - started,
                 ),
                 request_kind="embedding",
-                response_id=str(getattr(response, "_request_id", "") or "") or None,
             )
             return response
 
@@ -184,7 +183,7 @@ class OpenAIUsageMeter:
             raise UsageLimitExceeded(f"condition reached {generation_limit} generation-call limit")
         self._scope_generation_calls += 1
 
-    def _append(self, record: UsageRecord, *, request_kind: str, response_id: str | None) -> None:
+    def _append(self, record: UsageRecord, *, request_kind: str) -> None:
         with self._lock:
             self.records.append(record)
             self.estimated_cost_usd += estimate_cost((record,))
@@ -194,7 +193,6 @@ class OpenAIUsageMeter:
                 status="completed",
                 elapsed_seconds=record.elapsed_seconds,
                 model=record.model,
-                response_id=response_id,
                 usage=record,
             )
         if self._event_sink is not None:
@@ -216,7 +214,6 @@ class OpenAIUsageMeter:
                 elapsed_seconds=elapsed_seconds,
             ),
             request_kind=request_kind,
-            response_id=str(getattr(response, "id", "") or "") or None,
         )
 
     def _record_error(
@@ -229,7 +226,6 @@ class OpenAIUsageMeter:
                 status="limit" if isinstance(error, UsageLimitExceeded) else "error",
                 elapsed_seconds=elapsed_seconds,
                 model=str(kwargs.get("model", request_kind)),
-                response_id=None,
                 error=error,
             )
         if self._event_sink is not None:
@@ -242,7 +238,6 @@ class OpenAIUsageMeter:
         status: str,
         elapsed_seconds: float,
         model: str,
-        response_id: str | None,
         usage: UsageRecord | None = None,
         error: Exception | None = None,
     ) -> dict[str, object]:
@@ -254,7 +249,6 @@ class OpenAIUsageMeter:
             "category": self._category,
             "status": status,
             "model": model,
-            "response_id": response_id,
             "elapsed_seconds": elapsed_seconds,
             "case_key": self._scope.get("case_key"),
             "condition": self._scope.get("condition"),

@@ -83,16 +83,17 @@ def reduce(
     tracked_merger = TrackedMerger(merger)
     document = represent(prompt, embedder)
 
-    if params is not None and params.require_target and params.max_tokens is not None:
+    if params is not None and params.require_target:
         try:
             outcome = merge_to_target(document, embedder, tracked_merger, params, reporter)
         except TargetMergeError as error:
             error.metrics = _finalize_metrics(error.metrics, embedder, started)
             raise
-        selection = Selection(document=outcome.document, applied=())
+        selection = Selection(document=outcome.document, applied=outcome.applied)
         base_metrics = _target_merge_metrics(tracked_merger, outcome)
     else:
-        scores = score(document, names=_required_scorers(optimizers))
+        required = _required_scorers(optimizers)
+        scores = score(document, names=required) if required else {}
         plan = optimize(document, scores, embedder, tracked_merger, names=optimizers, params=params, reporter=reporter)
         selection = select(document, plan, embedder, selector, params=params)
         if params is not None and params.max_tokens is not None and selection.document.token_count > params.max_tokens:
@@ -129,9 +130,7 @@ def _retry_exhaustively(
 
 def _target_merge_metrics(tracked_merger: TrackedMerger, outcome: TargetMergeOutcome) -> MergeMetrics:
     """Merger counters plus the prune, repair, and cos_sim_diff figures a target run produced."""
-    return tracked_merger.metrics(
-        proposed_edits=outcome.applied_groups, applied_edits=outcome.applied_groups
-    ).model_copy(
+    return tracked_merger.metrics(proposed_edits=len(outcome.applied), applied_edits=len(outcome.applied)).model_copy(
         update={
             "pruned_sentences": outcome.pruned_sentences,
             "pruned_tokens": outcome.pruned_tokens,
@@ -170,7 +169,8 @@ def propose(
     embedder = embedder if embedder is not None else default_embedder(api_key)
     merger = merger if merger is not None else default_merger(api_key)
     document = represent(prompt, embedder)
-    scores = score(document, names=_required_scorers(optimizers))
+    required = _required_scorers(optimizers)
+    scores = score(document, names=required) if required else {}
     plan = optimize(document, scores, embedder, merger, names=optimizers, params=params)
     return Proposal(document=document, diffs=diffs(document, plan))
 

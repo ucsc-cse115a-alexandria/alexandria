@@ -1,6 +1,13 @@
 # Python-generated files
 __pycache__/
 *.py[oc]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.pyright/
+.tox/
+.nox/
+.ipynb_checkpoints/
 build/
 dist/
 wheels/
@@ -19,6 +26,12 @@ wheels/
 .coverage*
 coverage.*
 .cache/
+htmlcov/
+
+# Local agent and editor state
+.Codex/
+.idea/
+.vscode/
 
 # Generated artifacts from scripts/
 data/

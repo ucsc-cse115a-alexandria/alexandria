@@ -10,7 +10,8 @@ Key methods, techniques, or candidates discovered.
 Evaluation setups and metrics used by the sources.
 
 ## Relevance to our project
-How we apply this to Alexandria (`InstructionSet`, redundancy scoring, accuracy validation).
+How the source relates to Alexandria's current `Document` model, optimization behavior, or benchmark
+evidence. Separate implemented behavior from possible future work.
 
 ## Related papers
 - [Author — Title (year)] — one-line summary
