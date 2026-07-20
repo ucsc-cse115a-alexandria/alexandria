@@ -12,14 +12,13 @@ metadata and dependencies. See the
 | Environment and lockfile | `uv` | Reproducible development and runtime dependency resolution. |
 | Build backend | Hatchling | Builds the source distribution and `src`-layout wheel; co-located tests are excluded. |
 | IR and validation | Pydantic v2 | Frozen `Document` / `Section` / `Sentence` models, edit contracts, envelopes, and reports. |
-| Embeddings and rewrites | OpenAI Python SDK | Default `text-embedding-3-small` embedder and `gpt-5.6-luna` merger, isolated behind protocols. |
+| Embeddings and rewrites | OpenAI API via the Python SDK | `text-embedding-3-small` embeddings and `gpt-5.6-luna` rewrites, isolated behind protocols. |
 | Numerics | NumPy | `float32` vectors, normalization, cosine similarity, and semantic-change measurements. |
 | Token metric | `tiktoken` | `cl100k_base` token counts used for budgets and reports. |
 | CLI | Click | Phase commands, end-to-end reduction, reporting, review modes, and configuration. |
 | Persistence | Pydantic JSON | Versioned `DocumentEnvelope`, `ScoredEnvelope`, and `PlanEnvelope` streams. |
 
-The library can run with injected implementations of its embedder and merger protocols. The included
-`HashEmbedder` supports deterministic offline tests but is not the semantic default.
+Library callers can inject implementations of the embedder and merger protocols.
 
 ## Development and verification
 
@@ -30,7 +29,8 @@ The library can run with injected implementations of its embedder and merger pro
 | Static types | Pyright in strict mode. |
 | Architecture | import-linter contracts plus layer-specific imports. |
 | CI | GitHub Actions runs repository quality checks. |
-| Benchmark and research analysis | Repository tooling uses NumPy, SciPy, scikit-learn, Matplotlib, UMAP, and HDBSCAN where needed; these are development dependencies. |
+| Analysis scripts | NumPy, SciPy, and Matplotlib. |
+| Research notebooks | JupyterLab, IPykernel, Matplotlib, UMAP, HDBSCAN, and scikit-learn analyze embeddings produced through Alexandria's OpenAI-backed default. |
 
 ## Strategy extension status
 
