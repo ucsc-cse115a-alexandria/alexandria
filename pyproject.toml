@@ -1,5 +1,9 @@
+[build-system]
+requires = ["uv_build>=0.10,<0.11"]
+build-backend = "uv_build"
+
 [project]
-name = "alexandria"
+name = "alexandria-prompt"
 version = "0.1.0"
 description = "Label-free prompt optimization library using text embeddings to compress prompts while preserving meaning."
 readme = "README.md"
@@ -47,6 +51,10 @@ scripts = [
 
 [tool.uv]
 package = true
+
+# Distribution name is alexandria-prompt (PyPI "alexandria" is taken); the import stays alexandria.
+[tool.uv.build-backend]
+module-name = "alexandria"
 
 [tool.pytest.ini_options]
 testpaths = ["src", "tests", "scripts", "benchmarks"]
