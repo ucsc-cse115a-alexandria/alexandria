@@ -541,9 +541,7 @@ def build_sweep_index(
             exit_code = None
             status = classify_point_status(point, exit_code=exit_code, out_dir=point.out_dir)
             error = None
-        entries.append(
-            build_index_entry(point, exit_code=exit_code, status=status, error=error)
-        )
+        entries.append(build_index_entry(point, exit_code=exit_code, status=status, error=error))
     return {
         "schema_version": 1,
         "runbook_path": str(RUNBOOK_PATH),
