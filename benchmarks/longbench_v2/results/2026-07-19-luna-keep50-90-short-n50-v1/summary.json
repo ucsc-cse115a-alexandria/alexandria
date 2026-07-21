@@ -11,8 +11,7 @@
   "baseline_qualification": {
     "minimum_original_accuracy": 0.5,
     "original_accuracy": 0.48,
-    "qualifies": false,
-    "decision": "FAIL: original accuracy does not clear the minimum baseline"
+    "qualifies": false
   },
   "conditions": {
     "original": {

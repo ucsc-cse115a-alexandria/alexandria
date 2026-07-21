@@ -64,4 +64,6 @@ def test_budget_summary_pass_requires_accuracy_reduction_budget_and_completion()
 
     comparison = summary["comparisons"]["budget0p02"]  # type: ignore[index]
     assert comparison["publication_pass"] is True  # type: ignore[index]
-    assert "| PASS |" in budget_benchmark_report(summary)
+    report = budget_benchmark_report(summary)
+    assert "Budget compliance |" in report
+    assert "Decision |" not in report

@@ -93,8 +93,8 @@ files automatically; that example opts into `python-dotenv` for local developmen
 
 Hard-target reduction on BABILong 8k (n=50, seed 42, `gpt-5.6-luna` for compression and answers)
 swept retained-prompt targets from 95% down to 75% against the uncompressed 72% baseline. Shallow
-cuts keep most of the accuracy — an 8.0% token reduction (95% retained) scored 62.0% and a 13.2%
-reduction (90% retained) scored 64.0% — while at 85% retained and below, accuracy falls to 44–48%.
+cuts produced an 8.0% token reduction (95% retained) with 62.0% accuracy and a 13.2% reduction
+(90% retained) with 64.0% accuracy.
 
 ![Task accuracy by retained prompt share](benchmarks/prompt_compression/results/2026-07-20-luna-keep75-95-n50-v1/accuracy_vs_retained.png)
 

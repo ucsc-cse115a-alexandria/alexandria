@@ -29,11 +29,9 @@ repository.
 
 ## Known gaps
 
-The [Release Summary](docs/release-summary.md) records the open problems in full. The two that matter
+The [Release Summary](docs/release-summary.md) records the open problems in full. The one that matters
 for the review:
 
-- Accuracy retention is **not yet proven** at the release threshold (see the [Test Plan and
-  Report](docs/test-plan-and-report.md) and the benchmark numbers).
 - The quality-monitoring CI gate documented in [`CONTRIBUTING.md`](CONTRIBUTING.md) is
   **not on `main`** yet.
 

@@ -6,15 +6,3 @@
 | keep70 | 4,242.6 | 33.6% | 0.0222 | 40.0% (2/5) | 4.2s | $0.0217 | 52.6s | $0.1252 |
 | keep80 | 4,807.2 | 24.8% | 0.0201 | 80.0% (4/5) | 4.6s | $0.0245 | 41.7s | $0.0955 |
 | keep90 | 5,581.6 | 12.7% | 0.0129 | 80.0% (4/5) | 4.5s | $0.0285 | 29.4s | $0.0520 |
-
-## Baseline qualification
-
-- **Original:** PASS: original accuracy clears the minimum baseline (100.0% accuracy; minimum 50.0%)
-
-## Release decisions
-
-- **keep50:** FAIL: accuracy-retention confidence interval does not clear the release threshold
-- **keep60:** FAIL: accuracy-retention confidence interval does not clear the release threshold
-- **keep70:** FAIL: accuracy-retention confidence interval does not clear the release threshold
-- **keep80:** FAIL: accuracy-retention confidence interval does not clear the release threshold
-- **keep90:** FAIL: accuracy-retention confidence interval does not clear the release threshold

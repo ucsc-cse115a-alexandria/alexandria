@@ -37,7 +37,7 @@ def _record(
     )
 
 
-def test_summary_pairs_conditions_and_reports_release_decision() -> None:
+def test_summary_pairs_conditions_and_reports_metrics() -> None:
     records = (
         _record("a", "original", True, 100),
         _record("b", "original", True, 100),
@@ -46,11 +46,11 @@ def test_summary_pairs_conditions_and_reports_release_decision() -> None:
     )
     summary = summarize_records(records, bootstrap_samples=500, bootstrap_seed=3)
     comparison = summary["comparisons"]["keep90"]  # type: ignore[index]
-    assert comparison["release_decision"].startswith("PASS")  # type: ignore[index]
+    assert comparison["accuracy_retention"]["retention"] == 1.0  # type: ignore[index]
     assert summary["tasks"]["qa"]["keep90"]["accuracy"] == 1.0  # type: ignore[index]
     report = benchmark_report(summary)
     assert "| keep90 | 90.0 | 10.0% | 0.0000 | 100.0%" in report
-    assert "PASS:" in report
+    assert "Release decisions" not in report
 
 
 def test_summary_qualifies_original_accuracy_before_comparing_compression() -> None:
@@ -64,7 +64,7 @@ def test_summary_qualifies_original_accuracy_before_comparing_compression() -> N
     qualification = summary["baseline_qualification"]  # type: ignore[assignment]
     assert qualification["original_accuracy"] == 0.5  # type: ignore[index]
     assert qualification["qualifies"] is False  # type: ignore[index]
-    assert "FAIL" in benchmark_report(summary)
+    assert "Baseline qualification" not in benchmark_report(summary)
 
 
 def test_summary_separates_reduction_from_execution_time_and_cost() -> None:

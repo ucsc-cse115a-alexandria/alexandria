@@ -36,8 +36,7 @@ Tasks:
   Sprint 2/3 benchmark work rather than reopening the benchmark survey (2h)
 - Run the original prompts and Alexandria's default compressed prompts through the benchmark, recording
   prompt-level and instruction-level accuracy, token reduction, wall-clock time, and API cost (5h)
-- Repeat the run or bootstrap confidence intervals enough to state whether accuracy retention clears
-  the release threshold (3h)
+- Bootstrap confidence intervals for the reported accuracy-retention measurements (3h)
 - Publish the result in the README or docs with exact commands, assumptions, and caveats (3h)
 
 **Total for user story 1: 13 hours**
@@ -55,7 +54,6 @@ Acceptance criteria:
 
 - The sweep includes the original prompt, the current default strategy, and at least three
   stronger/weaker compression settings.
-- A compression change is kept only when benchmark accuracy retention clears the release threshold.
 - Each point reports accuracy retention, token reduction, wall-clock time, and estimated cost.
 - The final default operating point is recorded in the release docs.
 

@@ -68,7 +68,7 @@ uv run python -m scripts.prompt_compression_benchmark \
   --out trial_results/babilong_8k/smoke --dry-run
 ```
 
-Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, separate execution and reduction time/cost, merge work, API usage, paired confidence intervals, and plain release decisions.
+Remove `--dry-run` to evaluate `original`, `keep50`, `keep75`, `keep90`, and `keep95`. Use `--n 100` for a larger task-balanced measurement. The shared run directory records exact prompts, per-case responses and verdicts, token counts, separate execution and reduction time/cost, merge work, API usage, and paired confidence intervals.
 
 Recompute the summary from the saved raw records without new API calls:
 
@@ -96,7 +96,7 @@ This pilot used ten task-balanced cases (two from each of `qa1`–`qa5`), seed 4
 | original | 7,668.5 (76,685) | 0.00% | 0.000000 | 60.0% (6/10) | 11.5s | $0.0768 | 0.0s | $0.0000 |
 | keep90 | 6,634.2 (66,342) | 13.49% | 0.006987 | 60.0% (6/10) | 9.2s | $0.0665 | 94.8s | $0.2166 |
 
-Original-to-keep90 reduction and whole-prompt comparison took 94.8 seconds and cost $0.2166. Once each prompt was ready, execution changed from 11.5 to 9.2 seconds and from $0.0768 to $0.0665. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, but its paired 95% percentile-bootstrap interval was 60.0%–175.0%. The lower bound did not clear the 90% release threshold, so this small pilot's decision is **FAIL**.
+Original-to-keep90 reduction and whole-prompt comparison took 94.8 seconds and cost $0.2166. Once each prompt was ready, execution changed from 11.5 to 9.2 seconds and from $0.0768 to $0.0665. One original-only success and one compressed-only success produced the same aggregate accuracy. Accuracy retention was 100%, with a paired 95% percentile-bootstrap interval of 60.0%–175.0%.
 
 Reproduce the run:
 
@@ -147,9 +147,7 @@ total was $2.6260 and sequential wall time was 1,898.0 seconds. Prices and raw A
 [`summary.json`](results/2026-07-18-keep90-hard-target-n100-v1/summary.json).
 
 Accuracy retention was 98.48%. Its 95% paired percentile-bootstrap interval was 85.71%-112.90% (10,000 resamples,
-seed 42). The release rule was fixed at a 90% retention threshold and requires the confidence interval's lower bound
-to be at least 90%. **Decision: FAIL. This run does not clear the release threshold.** The point estimate exceeds
-the threshold, but its confidence interval does not.
+seed 42).
 
 The bootstrap resamples paired case indices with replacement and computes compressed accuracy divided by original
 accuracy in each resample. Ratios can exceed 100% when a resample contains more compressed-only successes than

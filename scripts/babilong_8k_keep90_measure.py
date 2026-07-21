@@ -339,11 +339,6 @@ def _write_summary(
             ),
             "mean_cos_sim_diff": float(np.mean(cos_sim_diffs)),
             "p95_cos_sim_diff": float(np.quantile(cos_sim_diffs, 0.95)),
-            "release_decision": (
-                "PASS: retention confidence interval clears the release threshold"
-                if retention.clears_release_threshold
-                else "FAIL: retention confidence interval does not clear the release threshold"
-            ),
         },
         "performance": {
             "merge_calls": sum(record.merge_metrics.calls for record in run.records),

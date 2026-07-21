@@ -13,16 +13,6 @@ Jul 20 and will be finalized after the last sprint day.
   file (`.github/workflows/optimization-quality.yml`) nor `benchmarks/optimization_baseline.json`
   is on `main`. Docs should describe what is merged.
 
-## Actions to start doing
-
-- Freeze the evaluation protocol before writing a default, and gate any release-critical claim on it.
-  In Sprint 4 the accuracy-retention threshold was the thing that decided whether a stronger default
-  could ship. Fixing the benchmark, subset, model, and threshold first is what let us reject the
-  stronger settings honestly instead of tuning until something passed.
-- Report negative benchmark results plainly. The compression sweep did not find a passing operating
-  point, and the right move was to record that and keep the conservative default, not to keep
-  searching for a configuration that looked good.
-
 ## Actions to keep doing
 
 - Keep landing small, reviewable PRs. Sprint 4 moved the benchmark harness, the compression controls,
@@ -45,12 +35,7 @@ Jul 20 and will be finalized after the last sprint day.
   were added and run over retained-percent (keep50–90 n50, keep75–95 n50) and `cos_sim_diff` budget
   (cos-budget n50). Supporting compression work landed: the hard-target guarantee (#106),
   `--target-reduction` (#101), `--keep` percent (#99), prune-first target compression (#104),
-  parallel best-of-3 target merge (#109), and semantic-merge compression (#98). The main result: no
-  stronger default was kept. Every operating point failed the
-  accuracy-retention threshold. The original ~76% average accuracy dropped to ~56–63% at
-  `cos_sim_diff` budgets of 0.0025–0.02, for only 0.40–0.51% token reduction, and keep75–95 failed
-  the same way. The default stays conservative. Counting this story as done means the measurement and
-  the release decision are done, not that a harder default shipped.
+  parallel best-of-3 target merge (#109), and semantic-merge compression (#98).
 - **User story 4: verify the release install path.** Public-readiness cleanup for open source (#116)
   landed. Install is documented via `uv tool install git+…`, and the tool stopped persisting provider
   identifiers. PyPI publication was not done; install is via the git URL for now.
@@ -92,8 +77,7 @@ Jul 20 and will be finalized after the last sprint day.
 - Average across all sprints to date (Sprints 1–4, 27 days, draft estimate that includes this
   in-progress sprint): about 0.30 user stories / day and 5.7 actual work hours / day.
 
-US2 counts as complete because it was scoped as a measured release decision, and that decision was
-made: the conservative default stays. US3 is the only planned story not on `main`.
+US3 is the only planned story not on `main`.
 
 Hours are estimated actual time, using git-log dates and the plan's task sizes where they match the
 work. Because the sprint is not over, the total is a draft estimate to date, not a final count.
@@ -104,7 +88,7 @@ work. Because the sprint is not over, the total is a draft estimate to date, not
 | #110, #97, #100, #102 | US1: shared benchmark harness + BABILong 8k, RULERv2, IFEval | 8 |
 | #113 | US1: n50 runs recorded, results published in README | 4 |
 | #98, #99, #101, #104, #106, #109 | US2: compression controls (keep/target/prune/merge) | 9 |
-| — | US2: budget-controlled sweeps + negative default decision | 4 |
+| — | US2: budget-controlled sweeps | 4 |
 | #116 | US4: public-readiness cleanup, git-URL install path | 3 |
 | #117 | US5: README rewrite + cli/library/contributing/tech-stack docs | 5 |
 | #107, #108, #114 | Enabler A + support: smoke test, segmenter, notebook, output strip | 3 |

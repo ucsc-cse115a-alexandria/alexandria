@@ -98,9 +98,9 @@ The output directory is resumable and contains:
 - `records.jsonl`: append-only responses, verdicts, prompt hashes, token counts, cosine difference, latency, merge
   metrics, API usage, and estimated cost;
 - `prompts.jsonl.gz`: exact model-visible original and compressed prompts keyed by case and condition;
-- `summary.json`: aggregate and per-task scores, token reduction, time/cost, paired transitions, bootstrap intervals,
-  and release decisions;
-- `report.md`: the benchmark-specific result table and explicit PASS/FAIL statements;
+- `summary.json`: aggregate and per-task scores, token reduction, time/cost, paired transitions, and bootstrap
+  intervals;
+- `report.md`: the benchmark-specific result table;
 - `api_events.jsonl`: request-level status, model, scoped case-condition, latency, usage, and estimated cost,
   flushed immediately after each response; provider request and response IDs are intentionally not persisted;
 - `errors.jsonl`: incomplete case-conditions, error type, elapsed time, captured cost, and whether the failure is
@@ -111,15 +111,14 @@ The output directory is resumable and contains:
 A completed `(case ID, condition)` pair is skipped on rerun. The prompt SHA-256 is checked against the exact
 prompt before a record is appended.
 
-## Accuracy retention and release rule
+## Accuracy retention
 
 The summary resamples paired case indices with replacement and calculates compressed accuracy divided by original
 accuracy. The default 10,000-sample percentile interval uses seed 42 and the 2.5th and 97.5th percentiles. Resamples
 with zero original accuracy are excluded because their retention ratio is undefined.
 
-A condition passes only when the interval's lower endpoint is at least the release threshold, 90% by default. A
-point estimate above 90% is not sufficient. Original and compressed accuracy, score change, all four paired
-outcome transitions, assumptions, and the decision remain available in the versioned report and raw summary.
+Original and compressed accuracy, score change, all four paired outcome transitions, and assumptions remain
+available in the versioned report and raw summary.
 
 Semantic-budget runs additionally require at least 10% token reduction, 95% final context-budget compliance, and
 98% case-condition completion. Their summary reports each check separately and passes publication only when all

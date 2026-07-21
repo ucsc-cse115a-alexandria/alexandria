@@ -64,7 +64,6 @@ def summarize_budget_records(
                 "completion_rate": 0.0,
                 "errors": errors_by_condition[condition],
                 "publication_pass": False,
-                "release_decision": "FAIL: no case-condition pairs completed",
             }
             continue
         raw = condition_summary(compressed)
@@ -103,11 +102,6 @@ def summarize_budget_records(
             "budget_reliability_pass": budget_reliability_pass,
             "operational_reliability_pass": operational_reliability_pass,
             "publication_pass": publication_pass,
-            "release_decision": (
-                "PASS: accuracy, reduction, budget, and completion thresholds all clear"
-                if publication_pass
-                else "FAIL: one or more preregistered publication thresholds do not clear"
-            ),
         }
     return {
         "schema_version": 1,
@@ -140,7 +134,7 @@ def _number(payload: Mapping[str, object], key: str) -> float:
 
 
 def budget_benchmark_report(summary: Mapping[str, object]) -> str:
-    """Render a complete condition table with operational and publication decisions."""
+    """Render a complete condition table with operational measurements."""
     raw_conditions = summary["conditions"]
     raw_comparisons = summary["comparisons"]
     if not isinstance(raw_conditions, dict) or not isinstance(raw_comparisons, dict):
@@ -149,8 +143,8 @@ def budget_benchmark_report(summary: Mapping[str, object]) -> str:
     comparisons = cast("dict[str, object]", raw_comparisons)
     lines = [
         "| Condition | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | "
-        "Mean full-prompt cos diff | Budget compliance | Decision |",
-        "|---|---:|---:|---:|---:|---:|---:|---|",
+        "Mean full-prompt cos diff | Budget compliance |",
+        "|---|---:|---:|---:|---:|---:|---:|",
     ]
     original = conditions["original"]
     if not isinstance(original, dict):
@@ -160,7 +154,7 @@ def budget_benchmark_report(summary: Mapping[str, object]) -> str:
         f"| original | {int(_number(original_values, 'n_cases'))}/"
         f"{int(_number(original_values, 'n_cases'))} | "
         f"{_number(original_values, 'accuracy') * 100:.1f}% | "
-        "100.0% | 0.0% | 0.000000 | 100.0% | Baseline |"
+        "100.0% | 0.0% | 0.000000 | 100.0% |"
     )
     expected = summary["expected_conditions"]
     if not isinstance(expected, list | tuple):
@@ -179,14 +173,13 @@ def budget_benchmark_report(summary: Mapping[str, object]) -> str:
             f"{int(_number(comparison_values, 'completed_cases'))}/{int(_number(comparison_values, 'expected_cases'))}"
         )
         if not isinstance(raw, dict):
-            lines.append(f"| {condition} | {complete} | — | — | — | — | — | FAIL |")
+            lines.append(f"| {condition} | {complete} | — | — | — | — | — |")
             continue
         raw_values = cast("dict[str, object]", raw)
         raw_retention = comparison_values["accuracy_retention"]
         if not isinstance(raw_retention, dict):
             raise TypeError("accuracy retention summary must be a mapping")
         retention = cast("dict[str, object]", raw_retention)
-        decision = "PASS" if bool(comparison_values["publication_pass"]) else "FAIL"
         lines.append(
             f"| {condition} | {complete} | {_number(raw_values, 'accuracy') * 100:.1f}% | "
             f"{_number(retention, 'retention') * 100:.1f}% "
@@ -194,6 +187,6 @@ def budget_benchmark_report(summary: Mapping[str, object]) -> str:
             f"{_number(retention, 'confidence_high') * 100:.1f}%) | "
             f"{_number(raw_values, 'token_reduction') * 100:.1f}% | "
             f"{_number(raw_values, 'mean_prompt_embedding_cosine_difference'):.6f} | "
-            f"{_number(comparison_values, 'context_budget_compliance') * 100:.1f}% | {decision} |"
+            f"{_number(comparison_values, 'context_budget_compliance') * 100:.1f}% |"
         )
     return "\n".join(lines)

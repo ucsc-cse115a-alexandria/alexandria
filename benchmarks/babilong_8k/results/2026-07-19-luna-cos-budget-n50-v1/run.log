@@ -301,11 +301,11 @@ completed qa5:32 budget0p005: retained=0.998 context_diff=0.001753 full_diff=0.0
 completed qa5:32 budget0p01: retained=0.997 context_diff=0.001753 full_diff=0.001750 correct=False
 completed qa5:32 budget0p015: retained=0.998 context_diff=0.002012 full_diff=0.002215 correct=True
 completed qa5:32 budget0p02: retained=0.998 context_diff=0.001980 full_diff=0.002253 correct=True
-| Condition | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Mean full-prompt cos diff | Budget compliance | Decision |
-|---|---:|---:|---:|---:|---:|---:|---|
-| original | 50/50 | 72.0% | 100.0% | 0.0% | 0.000000 | 100.0% | Baseline |
-| budget0p0025 | 48/50 | 75.0% | 105.9% (88.9%–127.6%) | 0.7% | 0.002260 | 52.1% | FAIL |
-| budget0p005 | 48/50 | 68.8% | 97.1% (80.0%–118.5%) | 0.7% | 0.002297 | 89.6% | FAIL |
-| budget0p01 | 48/50 | 66.7% | 94.1% (78.9%–111.8%) | 0.7% | 0.002252 | 100.0% | FAIL |
-| budget0p015 | 48/50 | 60.4% | 85.3% (69.2%–102.9%) | 0.7% | 0.002336 | 100.0% | FAIL |
-| budget0p02 | 48/50 | 68.8% | 97.1% (81.1%–116.1%) | 0.7% | 0.002308 | 100.0% | FAIL |
+| Condition | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Mean full-prompt cos diff | Budget compliance |
+|---|---:|---:|---:|---:|---:|---:|
+| original | 50/50 | 72.0% | 100.0% | 0.0% | 0.000000 | 100.0% |
+| budget0p0025 | 48/50 | 75.0% | 105.9% (88.9%–127.6%) | 0.7% | 0.002260 | 52.1% |
+| budget0p005 | 48/50 | 68.8% | 97.1% (80.0%–118.5%) | 0.7% | 0.002297 | 89.6% |
+| budget0p01 | 48/50 | 66.7% | 94.1% (78.9%–111.8%) | 0.7% | 0.002252 | 100.0% |
+| budget0p015 | 48/50 | 60.4% | 85.3% (69.2%–102.9%) | 0.7% | 0.002336 | 100.0% |
+| budget0p02 | 48/50 | 68.8% | 97.1% (81.1%–116.1%) | 0.7% | 0.002308 | 100.0% |

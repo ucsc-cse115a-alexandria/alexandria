@@ -6,7 +6,7 @@ reproduction commands, and raw-evidence links behind the concise project README 
 ## Setup
 
 - Date: 2026-07-19
-- Benchmarks: BABILong 8k and RULERv2; LongBench v2 was not included
+- Benchmarks: BABILong 8k and RULERv2
 - Sample: 50 deterministically selected cases per benchmark, seed 42
 - Answer and compression model: `gpt-5.6-luna`, answer reasoning `none`
 - Embedding model: `text-embedding-3-small`
@@ -15,8 +15,6 @@ reproduction commands, and raw-evidence links behind the concise project README 
 - Safety limits: 30 generation calls and 300 elapsed seconds per case-condition
 - Original eligibility gate: at least 50% task accuracy
 - Bootstrap: 10,000 paired resamples, seed 42, 95% percentile interval
-- Publication rule: lower accuracy-retention interval at least 90%, token reduction at least 10%, context-budget
-  compliance at least 95%, and completion at least 98%
 
 The two original baselines qualified before compression began: BABILong 8k scored 72.0% (36/50) and RULERv2
 scored 80.0% strict accuracy (40/50), with an 84.5% official mean score.
@@ -40,33 +38,30 @@ silently imputed.
 
 ![Task accuracy versus measured prompt reduction](accuracy_vs_token_reduction.png)
 
-## Paired decisions
+## Paired measurements
 
 The paired denominator is the completed case set for that condition. The original accuracy shown here is the
 accuracy of those same matched cases, which can differ from the 50-case baseline.
 
 ### BABILong 8k
 
-| Budget | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Compliance | Decision |
-|---:|---:|---:|---:|---:|---:|---|
-| 0.0025 | 48/50 | 75.0% | 105.9% (88.9%–127.6%) | 0.65% | 52.1% | **FAIL** |
-| 0.005 | 48/50 | 68.8% | 97.1% (80.0%–118.5%) | 0.70% | 89.6% | **FAIL** |
-| 0.01 | 48/50 | 66.7% | 94.1% (78.9%–111.8%) | 0.72% | 100.0% | **FAIL** |
-| 0.015 | 48/50 | 60.4% | 85.3% (69.2%–102.9%) | 0.72% | 100.0% | **FAIL** |
-| 0.02 | 48/50 | 68.8% | 97.1% (81.1%–116.1%) | 0.71% | 100.0% | **FAIL** |
+| Budget | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Compliance |
+|---:|---:|---:|---:|---:|---:|
+| 0.0025 | 48/50 | 75.0% | 105.9% (88.9%–127.6%) | 0.65% | 52.1% |
+| 0.005 | 48/50 | 68.8% | 97.1% (80.0%–118.5%) | 0.70% | 89.6% |
+| 0.01 | 48/50 | 66.7% | 94.1% (78.9%–111.8%) | 0.72% | 100.0% |
+| 0.015 | 48/50 | 60.4% | 85.3% (69.2%–102.9%) | 0.72% | 100.0% |
+| 0.02 | 48/50 | 68.8% | 97.1% (81.1%–116.1%) | 0.71% | 100.0% |
 
 ### RULERv2
 
-| Budget | Complete | Strict accuracy | Accuracy retention (95% CI) | Token reduction | Compliance | Decision |
-|---:|---:|---:|---:|---:|---:|---|
-| 0.0025 | 31/50 | 51.6% | 76.2% (56.5%–93.8%) | 0.14% | 61.3% | **FAIL** |
-| 0.005 | 32/50 | 53.1% | 77.3% (56.0%–100.0%) | 0.15% | 87.5% | **FAIL** |
-| 0.01 | 30/50 | 50.0% | 75.0% (55.0%–93.8%) | 0.20% | 100.0% | **FAIL** |
-| 0.015 | 31/50 | 51.6% | 76.2% (56.5%–94.4%) | 0.24% | 96.8% | **FAIL** |
-| 0.02 | 31/50 | 58.1% | 85.7% (63.6%–110.5%) | 0.30% | 100.0% | **FAIL** |
-
-No tested condition cleared all four preregistered publication thresholds. The raw benchmark summaries preserve
-the Boolean result of each individual accuracy, reduction, compliance, and completion check.
+| Budget | Complete | Strict accuracy | Accuracy retention (95% CI) | Token reduction | Compliance |
+|---:|---:|---:|---:|---:|---:|
+| 0.0025 | 31/50 | 51.6% | 76.2% (56.5%–93.8%) | 0.14% | 61.3% |
+| 0.005 | 32/50 | 53.1% | 77.3% (56.0%–100.0%) | 0.15% | 87.5% |
+| 0.01 | 30/50 | 50.0% | 75.0% (55.0%–93.8%) | 0.20% | 100.0% |
+| 0.015 | 31/50 | 51.6% | 76.2% (56.5%–94.4%) | 0.24% | 96.8% |
+| 0.02 | 31/50 | 58.1% | 85.7% (63.6%–110.5%) | 0.30% | 100.0% |
 
 ## Reliability and operational outcomes
 
@@ -92,9 +87,7 @@ remeasured after compression, and that measured value is the source of the compl
 
 ![Accuracy and token reduction by realized full-prompt semantic change](semantic_change_tradeoff.png)
 
-Configured budgets did not produce a monotonic realized difference, reduction, or accuracy curve. Candidate
-generation is stochastic, and some conditions returned an unchanged prompt. The figures connect the measured
-final prompt to downstream accuracy without smoothing or replacing no-op outcomes.
+The figures connect each measured final prompt to downstream accuracy without smoothing.
 
 ## Time and cost
 

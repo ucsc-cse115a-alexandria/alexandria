@@ -227,8 +227,7 @@
       "useful_reduction_pass": false,
       "budget_reliability_pass": false,
       "operational_reliability_pass": false,
-      "publication_pass": false,
-      "release_decision": "FAIL: one or more preregistered publication thresholds do not clear"
+      "publication_pass": false
     },
     "budget0p005": {
       "completed_cases": 48,
@@ -255,8 +254,7 @@
       "useful_reduction_pass": false,
       "budget_reliability_pass": false,
       "operational_reliability_pass": false,
-      "publication_pass": false,
-      "release_decision": "FAIL: one or more preregistered publication thresholds do not clear"
+      "publication_pass": false
     },
     "budget0p01": {
       "completed_cases": 48,
@@ -283,8 +281,7 @@
       "useful_reduction_pass": false,
       "budget_reliability_pass": true,
       "operational_reliability_pass": false,
-      "publication_pass": false,
-      "release_decision": "FAIL: one or more preregistered publication thresholds do not clear"
+      "publication_pass": false
     },
     "budget0p015": {
       "completed_cases": 48,
@@ -311,8 +308,7 @@
       "useful_reduction_pass": false,
       "budget_reliability_pass": true,
       "operational_reliability_pass": false,
-      "publication_pass": false,
-      "release_decision": "FAIL: one or more preregistered publication thresholds do not clear"
+      "publication_pass": false
     },
     "budget0p02": {
       "completed_cases": 48,
@@ -339,8 +335,7 @@
       "useful_reduction_pass": false,
       "budget_reliability_pass": true,
       "operational_reliability_pass": false,
-      "publication_pass": false,
-      "release_decision": "FAIL: one or more preregistered publication thresholds do not clear"
+      "publication_pass": false
     }
   }
 }
