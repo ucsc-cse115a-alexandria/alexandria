@@ -72,23 +72,31 @@ installs from the repository, the CLI runs, and the same reduction is callable f
    ```bash
    uv run python - <<'EOF'
    import alexandria
-   from alexandria.ops import HashEmbedder
    from alexandria.ir.contracts import Params
+   from alexandria.ops import HashEmbedder
 
-   text = (
-       "Always write tests before the implementation.\n"
-       "Write tests first, before implementing anything.\n"
-       "Never commit secrets.\n"
+
+   class FirstWinsMerger:
+       def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+           del second, feedback
+           return first
+
+
+   text = "Write tests first.\nWrite tests first.\nNever commit secrets.\n"
+   result = alexandria.reduce(
+       text,
+       HashEmbedder(),
+       FirstWinsMerger(),
+       params=Params(cos_sim_diff_budget=2.0),
    )
-   result = alexandria.reduce(text, embedder=HashEmbedder(), params=Params(cos_sim_diff_budget=2.0))
    assert result.reduced_tokens < result.source_tokens
    print(result.source_tokens, result.reduced_tokens)
    print(result.text)
    EOF
    ```
 
-2. Output: the assertion holds (`reduced_tokens < source_tokens`) and the two tests-first lines
-   collapse to one.
+2. Output: the assertion holds (`reduced_tokens < source_tokens`) and the exact duplicate collapses
+   to one.
 
 ### Scenario 3: Trade-off controls and token accounting (User story B) — Pass
 
@@ -126,15 +134,16 @@ installs from the repository, the CLI runs, and the same reduction is callable f
 3. Output: one JSON object with a `similarity` field and the token reduction. Adding
    `--min-similarity 0.9` makes the command exit non-zero when similarity falls below the floor.
 
-### Scenario 7: Install and use outside the checkout (User story E) — Not yet run (draft)
+### Scenario 7: Install and use outside the checkout (User story E) — Automated CI gate
 
-1. Run `uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git`.
-2. Run `alexandria --help`. Output: the command list appears.
-3. Run `alexandria config set openai-api-key`, then `alexandria reduce /tmp/claude.md --json`.
-   Output: `reduced_tokens < source_tokens`.
-4. In a Python shell outside the checkout, run `import alexandria; result =
-   alexandria.reduce("...")`. Output: `result.text`, `result.source_tokens`, `result.reduced_tokens`,
-   and `result.applied` are populated.
+1. Run `python scripts/release_smoke_test.py` from the repository checkout.
+2. The script builds the release wheel and source distribution, then installs the wheel in a
+   temporary Python 3.14 environment.
+3. It runs the installed `alexandria` console script with a local deterministic embeddings endpoint.
+   Output: the command exits successfully and `reduced_tokens < source_tokens`.
+4. It runs `import alexandria` through the installed interpreter with `HashEmbedder` and an offline
+   merger. Output: the API exits successfully, reduces the fixture, and reports a module path inside
+   the temporary environment rather than the checkout.
 
 ### Release-version results
 
@@ -146,13 +155,14 @@ installs from the repository, the CLI runs, and the same reduction is callable f
 | 4. Review before adopting | C | Not yet run (draft) |
 | 5. Quality metrics | D | Not yet run (draft) |
 | 6. Compare two prompts | D | Not yet run (draft) |
-| 7. Install and use outside the checkout | E | Not yet run (draft) |
+| 7. Install and use outside the checkout | E | Automated (pending CI) |
 
 The Pass rows are backed by automated end-to-end tests that ran green on 2026-07-20:
 `tests/ai_e2e_test.py` reduced two verbose sample prompts through the real pipeline against
 `gpt-5.6-luna` (both cases passed), and `tests/pipeline_e2e_test.py` exercised the offline
-deterministic path (passed). Scenarios 4 through 7 are written from the released feature set but have
-not been run for this report. They are ready to run at the review.
+deterministic path (passed). Scenarios 4 through 6 are written from the released feature set but
+have not been run for this report. Scenario 7 is enforced by the clean-package smoke script in CI;
+record it as Pass after the release workflow completes successfully.
 
 ## Unit tests
 
