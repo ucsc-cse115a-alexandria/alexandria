@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Alexandria — Clean Architecture</title>
+  <title>Alexandria — Layered Architecture</title>
   <style>
     :root {
       --ink: #172033;
@@ -125,17 +125,17 @@
 </head>
 <body>
   <main>
-    <div class="eyebrow">Alexandria · Product Structure</div>
-    <h1>Clean Architecture: dependencies point inward</h1>
-    <p class="subtitle">Each package has one reason to change; model providers remain replaceable at the boundary.</p>
+    <div class="eyebrow">Alexandria · System Design</div>
+    <h1>Layered Architecture: Alexandria system design</h1>
+    <p class="subtitle">Four packages separate user interaction, optimization workflows, infrastructure support, and shared contracts.</p>
 
     <section class="architecture" aria-label="Alexandria layer diagram">
       <div class="role role-cli"><b>Interface</b><span>Input, output, review UI, command handling</span></div>
       <div class="layer layer-cli">
         <div class="layer-title"><code>cli/</code><span>user interface</span></div>
-        <div class="module"><b>main.py</b><small>Click commands and envelopes</small></div>
-        <div class="module"><b>interactive.py</b><small>terminal review</small></div>
-        <div class="module"><b>browser_review.py</b><small>local browser review</small></div>
+        <div class="module"><b>main.py</b><small>Click commands and orchestration</small></div>
+        <div class="module"><b>envelope.py</b><small>phase wire formats</small></div>
+        <div class="module"><b>review UIs</b><small>terminal and local browser</small></div>
         <i class="arrow"></i><span class="arrow-label">uses ops</span>
       </div>
       <div class="outside outside-empty"></div>
@@ -157,18 +157,18 @@
         </div>
         <i class="arrow"></i><span class="arrow-label">defaults via utils</span>
       </div>
-      <div class="outside"><b>Injected ports</b><small>Algorithms accept <code>Embedder</code> and <code>SentenceMerger</code>; tests supply deterministic doubles.</small></div>
+      <div class="outside"><b>Ports defined in ir/</b><small>Core algorithms accept <code>Embedder</code> and merger protocols; strict targets also require <code>TargetedMerger</code>.</small></div>
 
       <div class="role role-utils"><b>Infrastructure</b><span>Configuration, tokenization, and provider adapters</span></div>
       <div class="layer layer-utils">
-        <div class="layer-title"><code>utils/</code><span>external connections</span></div>
+        <div class="layer-title"><code>utils/</code><span>infrastructure support</span></div>
         <div class="module"><b>embedders.py</b><small>OpenAIEmbedder · HashEmbedder</small></div>
         <div class="module"><b>merger.py</b><small>OpenAIMerger · target generation</small></div>
-        <div class="module"><b>tokens.py</b><small>tiktoken boundary</small></div>
+        <div class="module"><b>tokens.py</b><small>token counting + truncation</small></div>
         <div class="module"><b>config.py</b><small>API key configuration</small></div>
-        <i class="arrow"></i><span class="arrow-label">implements IR ports</span>
+        <i class="arrow"></i><span class="arrow-label">uses shared IR</span>
       </div>
-      <div class="outside provider-arrow"><b>OpenAI</b><small>Replaceable provider implementation; isolated from <code>cli</code>, <code>ops</code>, and <code>ir</code>.</small></div>
+      <div class="outside provider-arrow"><b>OpenAI</b><small>External service accessed through adapters in <code>utils</code>; OpenAI SDK imports and client construction stay there.</small></div>
 
       <div class="role role-ir"><b>Domain</b><span>Validated data and provider-neutral contracts</span></div>
       <div class="layer layer-ir">
@@ -182,24 +182,24 @@
           <div class="protocol"><code>TargetedMerger</code><small>Protocol</small></div>
         </div>
       </div>
-      <div class="outside"><b>Stable center</b><small>Importable from every layer; depends on no other Alexandria package.</small></div>
+      <div class="outside"><b>Shared foundation</b><small>Imported directly by <code>cli</code>, <code>ops</code>, and <code>utils</code>; depends on no other Alexandria package.</small></div>
 
-      <div class="legend"><span>allowed dependency direction</span><span class="dashed">system boundary</span></div>
+      <div class="legend"><span>primary package dependency path</span><span class="dashed">system boundary</span></div>
     </section>
 
     <section class="principles">
       <div class="card srp">
-        <h2>SRP · one responsibility per package</h2>
-        <p><b>ir</b> defines data, <b>ops</b> performs optimization, <b>cli</b> handles users, and <b>utils</b> connects external services.</p>
+        <h2>SRP-inspired responsibility boundaries</h2>
+        <p><b>ir</b> owns shared data and contracts, <b>ops</b> owns optimization workflows, <b>cli</b> owns user interaction, and <b>utils</b> owns configuration, token helpers, and provider adapters.</p>
       </div>
       <div class="card dip">
-        <h2>DIP · policy depends on protocols</h2>
-        <p>Processing code targets <b>Embedder</b> and <b>SentenceMerger</b>, not OpenAI classes. Providers and test doubles can be swapped without changing the algorithms.</p>
-        <div class="swap"><code>HashEmbedder</code> ↔ <code>OpenAIEmbedder</code> ↔ <code>another provider</code></div>
+        <h2>DIP-inspired algorithm boundary</h2>
+        <p>Core algorithms accept <b>Embedder</b> and merger protocols from <b>ir</b>. Injected adapters and test doubles can change without changing those algorithms; <b>ops</b> uses <b>utils</b> to construct defaults.</p>
+        <div class="swap"><code>test double</code> ↔ <code>OpenAI adapters</code> ↔ <code>custom adapters</code></div>
       </div>
       <div class="card enforcement">
         <h2>Architecture enforcement · import-linter</h2>
-        <p>CI checks layer direction, feature independence, and provider isolation.</p>
+        <p>CI checks package direction, feature independence, and that <code>cli</code>, <code>ops</code>, and <code>ir</code> never import the OpenAI SDK directly.</p>
         <div class="terminal">$ uv run lint-imports<br><span class="ok">Layered architecture KEPT</span><br><span class="ok">CLI reaches utils only through ops KEPT</span><br><span class="ok">Pipe composes features KEPT</span><br><span class="ok">Features are independent KEPT</span><br><span class="ok">OpenAI client isolated to the shell KEPT</span><br><br><span class="ok">Contracts: 5 kept, 0 broken.</span></div>
       </div>
     </section>
