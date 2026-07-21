@@ -4,6 +4,11 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Alexandria — Layered Architecture</title>
+  <script>
+    if (new URLSearchParams(window.location.search).get("view") === "diagram") {
+      document.documentElement.classList.add("diagram-only");
+    }
+  </script>
   <style>
     :root {
       --ink: #172033;
@@ -121,6 +126,15 @@
     }
     .terminal .ok { color: #83e3af; }
     .footnote { margin-top: 17px; color: var(--muted); text-align: right; font-size: 11px; }
+
+    /* Standalone export: keep the layer map as the single visual subject. */
+    .diagram-only main { min-height: 0; padding: 8px; }
+    .diagram-only main > .eyebrow,
+    .diagram-only main > h1,
+    .diagram-only main > .subtitle,
+    .diagram-only main > .principles,
+    .diagram-only main > .footnote,
+    .diagram-only .legend { display: none; }
   </style>
 </head>
 <body>

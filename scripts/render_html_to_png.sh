@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Render an HTML file to a PNG via headless Chrome.
-# Usage: scripts/render_html_to_png.sh <input.html> [output.png] [width]
+# Usage: scripts/render_html_to_png.sh <input.html> [output.png] [width] [page|diagram]
 set -euo pipefail
 
-input="${1:?usage: render_html_to_png.sh <input.html> [output.png] [width]}"
+input="${1:?usage: render_html_to_png.sh <input.html> [output.png] [width] [page|diagram]}"
 output="${2:-${input%.html}.png}"
 width="${3:-1400}"
-height="${RENDER_HEIGHT:-1150}"
+view="${4:-page}"
 
 if [[ ! -f "$input" ]]; then
   echo "error: input file not found: $input" >&2
@@ -31,6 +31,21 @@ chrome="$(find_chrome)" || { echo "error: Chrome/Chromium not found" >&2; exit 1
 
 absolute_path() { [[ "$1" = /* ]] && echo "$1" || echo "$PWD/$1"; }
 
+case "$view" in
+  page)
+    height="${RENDER_HEIGHT:-1150}"
+    page_url="file://$(absolute_path "$input")"
+    ;;
+  diagram)
+    height="${RENDER_HEIGHT:-560}"
+    page_url="file://$(absolute_path "$input")?view=diagram"
+    ;;
+  *)
+    echo "error: view must be 'page' or 'diagram', got: $view" >&2
+    exit 1
+    ;;
+esac
+
 "$chrome" \
   --headless=new \
   --disable-gpu \
@@ -38,6 +53,6 @@ absolute_path() { [[ "$1" = /* ]] && echo "$1" || echo "$PWD/$1"; }
   --force-device-scale-factor=2 \
   --window-size="${width},${height}" \
   --screenshot="$(absolute_path "$output")" \
-  "file://$(absolute_path "$input")"
+  "$page_url"
 
 echo "wrote $output"
