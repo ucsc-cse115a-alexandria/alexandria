@@ -9,11 +9,19 @@ from alexandria.ir.contracts import Params
 from alexandria.ir.document import Sentence, SentenceId
 from alexandria.ops.features.target import (
     InfeasibleTargetError,
+    _apply_prune_prefix,  # pyright: ignore[reportPrivateUsage]
+    _content_terms,  # pyright: ignore[reportPrivateUsage]
+    _coverage_chunks,  # pyright: ignore[reportPrivateUsage]
+    _evaluate_target_candidates,  # pyright: ignore[reportPrivateUsage]
+    _fit_with_suffix,  # pyright: ignore[reportPrivateUsage]
+    _repair_chunks,  # pyright: ignore[reportPrivateUsage]
+    _repair_text_variants,  # pyright: ignore[reportPrivateUsage]
+    _target_anchor_terms,  # pyright: ignore[reportPrivateUsage]
     _target_merge_window,  # pyright: ignore[reportPrivateUsage]
 )
-from alexandria.ops.pipe import reduce
+from alexandria.ops.pipe import reduce, represent
 from alexandria.utils.embedders import HashEmbedder
-from alexandria.utils.tokens import count_tokens
+from alexandria.utils.tokens import count_tokens, truncate_tokens
 
 if TYPE_CHECKING:
     from numpy.typing import NDArray
@@ -449,3 +457,72 @@ def test_strict_target_rejects_an_immutable_structure_that_exceeds_the_budget_be
         )
 
     assert merger.prompts == []
+
+
+def test_target_candidate_helpers_reject_empty_input_and_preserve_suffix() -> None:
+    assert _fit_with_suffix("   ", "\n", 2) is None
+    assert _fit_with_suffix("one two three", "\n", 2) == "one\n"
+    assert _coverage_chunks("\n\n") == ("\n\n",)
+    assert _repair_chunks("First. \n\nSecond.   ") == ("First. \n\n", "Second.   ")
+
+
+def test_repair_variants_are_bounded_and_keep_the_exact_fallback() -> None:
+    text = "".join(f"sentence {index}. " for index in range(10))
+    variants = _repair_text_variants(text, count_tokens(text) - 4)
+
+    assert len(variants) <= 6
+    assert all(count_tokens(variant.text) <= count_tokens(text) - 4 for variant in variants)
+    assert truncate_tokens(text, count_tokens(text) - 4) in {variant.text for variant in variants}
+
+
+def test_target_helpers_extract_content_terms_and_find_outside_anchor() -> None:
+    document = represent("generic line\nWhere did Mary travel?\n", HashEmbedder())
+    group = (document.sentences[0],)
+
+    assert _content_terms("Where did Mary travel after the office?") == frozenset({"mary", "travel", "office"})
+    assert _target_anchor_terms(document, group) == frozenset({"mary", "travel"})
+    assert _target_anchor_terms(document, document.sentences) == frozenset()
+
+
+def test_evaluate_target_candidates_ignores_blank_generation() -> None:
+    document = represent("aaaa\nbbbb\n", _CountingEmbedder())
+
+    assert (
+        _evaluate_target_candidates(
+            ("", "   "),
+            current=document,
+            source=document,
+            group=document.sentences,
+            embedder=_CountingEmbedder(),
+            max_document_tokens=3,
+            group_max_tokens=3,
+            cos_sim_diff_budget=0.0,
+        )
+        == ()
+    )
+
+
+def test_evaluate_target_candidates_flags_generated_markup_and_repairs() -> None:
+    document = represent("aaaa\nbbbb\n", _CountingEmbedder())
+
+    candidates = _evaluate_target_candidates(
+        ("<tag>\nextra words",),
+        current=document,
+        source=document,
+        group=document.sentences,
+        embedder=_CountingEmbedder(),
+        max_document_tokens=3,
+        group_max_tokens=10,
+        cos_sim_diff_budget=0.0,
+    )
+
+    assert candidates
+    assert any(not candidate.structure_valid for candidate in candidates)
+    assert any(candidate.issues for candidate in candidates)
+
+
+def test_apply_prune_prefix_rejects_an_inapplicable_deletion() -> None:
+    document = represent("first\nsecond\n", HashEmbedder())
+
+    with pytest.raises(ValueError, match="inapplicable deletion prefix"):
+        _apply_prune_prefix(document, (SentenceId("missing"),), 1)

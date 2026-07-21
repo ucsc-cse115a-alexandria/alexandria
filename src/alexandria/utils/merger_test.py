@@ -1,6 +1,9 @@
 from __future__ import annotations
 
-from alexandria.utils.merger import trim_to_last_sentence
+from alexandria.utils.merger import (
+    _target_instructions,  # pyright: ignore[reportPrivateUsage]
+    trim_to_last_sentence,
+)
 
 
 def test_trim_keeps_text_already_ending_on_final_punctuation() -> None:
@@ -35,3 +38,13 @@ def test_trim_returns_stripped_text_when_no_boundary_found() -> None:
     text = "  one unbroken clause with no terminal punctuation  "
 
     assert trim_to_last_sentence(text) == "one unbroken clause with no terminal punctuation"
+
+
+def test_target_instructions_include_budget_and_optional_strategy() -> None:
+    baseline = _target_instructions(42, "")
+    strategic = _target_instructions(42, "Prefer exact wording.")
+
+    assert "at most 42 cl100k_base tokens" in baseline
+    assert "Prefer exact wording." not in baseline
+    assert "Prefer exact wording." in strategic
+    assert "return only the rewritten passage" in strategic
