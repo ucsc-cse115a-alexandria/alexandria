@@ -46,6 +46,9 @@ jobs:
       - name: Run tests
         run: uv run pytest
 
+      - name: Verify release installation
+        run: python scripts/release_smoke_test.py
+
       # Posts the coverage comment on PRs and updates the badge branch on main.
       # Runs even when the fail_under gate fails so the report still shows up.
       - name: Coverage comment

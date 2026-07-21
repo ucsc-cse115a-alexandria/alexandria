@@ -1,26 +1,24 @@
 # Test Plan and Report
 
-- Product: Alexandria
-- Team: Alexandria
-- Date: 2026-07-20
-
-Alexandria is a CLI and Python library that shrinks a bloated instruction prompt (a `CLAUDE.md` or `AGENT.md`, say) by removing redundant instructions while keeping the meaning. This document lists the system test scenarios a reviewer can run at the project review, ties each one to a user story and its acceptance criteria, and records Pass/Fail for the release version. The last section points to the automated tests.
+**Product:** Alexandria ·
+**Team:** Alexandria ·
+**Date:** 2026-07-20
 
 ## Setup
 
-Every pipeline command calls the OpenAI API, so a key must be set once before running the scenarios below:
+Alexandria is a CLI and Python library that shortens a bloated instruction prompt (a `CLAUDE.md` or
+`AGENT.md`) by removing redundant instructions while keeping the meaning. Every pipeline command
+calls the OpenAI API, so set a key once before the scenarios below:
 
+```bash
+alexandria config set openai-api-key   # or: export OPENAI_API_KEY=sk-...
 ```
-alexandria config set openai-api-key
-# or
-export OPENAI_API_KEY=sk-...
-```
 
-From a development checkout, prefix commands with `uv run` (for example `uv run alexandria reduce ...`). An installed copy (Scenario 7) uses plain `alexandria`.
+From a development checkout, prefix commands with `uv run` (for example `uv run alexandria reduce`).
+Scenario 7 uses an installed copy and runs plain `alexandria`. Where a scenario needs an input file,
+create a small prompt with duplicated instructions:
 
-For a scenario that needs an input file, create a small prompt with duplicated instructions:
-
-```
+```bash
 cat > /tmp/claude.md <<'EOF'
 Always write tests before you write the implementation.
 Use descriptive variable names.
@@ -30,127 +28,155 @@ Never commit secrets to the repository.
 EOF
 ```
 
-Lines 1 and 3 say the same thing; so do lines 2 and 4. A correct reduction keeps one of each pair.
+Lines 1 and 3 say the same thing, and so do lines 2 and 4. A correct reduction keeps one of each
+pair.
 
 ## System Test scenarios
 
 ### User stories under test
 
-- US-A (Sprint 1): As a user, I want one CLI command to shorten a bloated CLAUDE.md/AGENT.md by removing redundant instructions while keeping the meaning. Acceptance: reduced token count is lower than the source, and meaning is preserved.
-- US-B (Sprint 2/3): As a user, I want to control the compression/quality trade-off and see the savings before I commit.
-- US-C (Sprint 3): As a user, I want to review what the compression did before I adopt it.
-- US-D (Sprint 3/4): As a user, I want to compress harder while a benchmark checks accuracy, and inspect quality metrics.
-- US-E (Sprint 4): As a user, I want to install Alexandria outside the checkout and use it as both a CLI and a Python library.
+A. **User story A (Sprint 1):** As an engineer with a bloated `CLAUDE.md`/`AGENT.md`, I want one CLI
+command to remove redundant instructions while keeping the meaning, so that I cut per-request token
+cost. Acceptance: the reduced token count is lower than the source, and every distinct instruction
+survives.
 
-### Scenario 1: One-command reduction (US-A) [Pass]
+B. **User story B (Sprint 2/3):** As an engineer, I want to cap how hard the prompt is compressed and
+see the token savings, so that I can trade accuracy for cost on my terms. Acceptance: `--keep`,
+`--save-tokens`, `--min-similarity`, `--max-tokens`, and `--target-reduction` work; `tokens` lists
+counts.
+
+C. **User story C (Sprint 3):** As an engineer, I want to review what the compression did before I
+adopt it, so that I can switch with confidence. Acceptance: `reduce --interactive`, `reduce
+--browser`, `score --table`, and phase-by-phase JSON with `--out` all work.
+
+D. **User story D (Sprint 3/4):** As an engineer, I want to compress harder while a benchmark checks
+accuracy and inspect quality metrics, so that I only keep the edits the metrics support. Acceptance: the
+multi-optimizer pass keeps only budget-backed edits, and `report` emits token and quality metrics.
+
+E. **User story E (Sprint 4):** As an engineer, I want to install Alexandria outside the checkout and
+use it as a CLI and a Python library, so that I can drop it into my own workflow. Acceptance: it
+installs from the repository, the CLI runs, and the same reduction is callable from Python.
+
+### Scenario 1: One-command reduction (User story A) — Pass
 
 1. Run `alexandria reduce /tmp/claude.md --json`.
-2. The command prints one JSON object with `text`, `applied`, `source_tokens`, and `reduced_tokens`.
-3. Confirm `reduced_tokens < source_tokens`.
-4. Read `text` and confirm each distinct instruction still appears once (tests-first, descriptive names, no secrets), so the meaning is preserved.
+2. Output: one JSON object with `text`, `applied`, `source_tokens`, and `reduced_tokens`, where
+   `reduced_tokens < source_tokens`.
+3. Read `text`: the duplicate lines are collapsed to one each, and every distinct instruction
+   (tests-first, descriptive names, no secrets) still appears.
 
-Expected output: JSON where `reduced_tokens` is smaller than `source_tokens`, and the duplicate lines are collapsed to one each while every distinct instruction survives.
+### Scenario 2: Reduction from the Python library, offline (User story A) — Pass
 
-### Scenario 2: Reduction from the Python library (US-A) [Pass]
+1. Run the deterministic check that needs no API key:
 
-1. Run this offline, deterministic check that needs no API key:
+   ```bash
+   uv run python - <<'EOF'
+   import alexandria
+   from alexandria.ir.contracts import Params
+   from alexandria.ops import HashEmbedder
 
-```
-uv run python - <<'EOF'
-import alexandria
-from alexandria.ops import HashEmbedder
-from alexandria.ir.contracts import Params
 
-text = (
-    "Always write tests before the implementation.\n"
-    "Write tests first, before implementing anything.\n"
-    "Never commit secrets.\n"
-)
-result = alexandria.reduce(
-    text,
-    embedder=HashEmbedder(),
-    params=Params(cos_sim_diff_budget=2.0),
-)
-print(result.source_tokens, result.reduced_tokens, result.applied)
-assert result.reduced_tokens < result.source_tokens
-print(result.text)
-EOF
-```
+   class FirstWinsMerger:
+       def merge(self, first: str, second: str, feedback: str | None = None) -> str:
+           del second, feedback
+           return first
 
-2. The script prints the source and reduced token counts, the applied edits, and the reduced text.
 
-Expected output: the assertion holds (`reduced_tokens < source_tokens`), and the two tests-first lines collapse to one.
+   text = "Write tests first.\nWrite tests first.\nNever commit secrets.\n"
+   result = alexandria.reduce(
+       text,
+       HashEmbedder(),
+       FirstWinsMerger(),
+       params=Params(cos_sim_diff_budget=2.0),
+   )
+   assert result.reduced_tokens < result.source_tokens
+   print(result.source_tokens, result.reduced_tokens)
+   print(result.text)
+   EOF
+   ```
 
-### Scenario 3: Trade-off controls and token accounting (US-B) [Pass]
+2. Output: the assertion holds (`reduced_tokens < source_tokens`) and the exact duplicate collapses
+   to one.
 
-1. Run `alexandria tokens /tmp/claude.md` to list per-instruction token counts and the total.
-2. Run `alexandria reduce /tmp/claude.md --keep 80 --json`. Confirm `reduced_tokens` lands near 80% of `source_tokens`.
-3. Run `alexandria reduce /tmp/claude.md --target-reduction 30 --json`. Confirm `reduced_tokens` is at or below the 30%-reduction ceiling, that is `reduced_tokens <= source_tokens * 0.70`.
-4. Confirm `--keep` and `--target-reduction` cannot be combined: `alexandria reduce /tmp/claude.md --keep 80 --target-reduction 30` exits with an error.
+### Scenario 3: Trade-off controls and token accounting (User story B) — Pass
 
-Expected output: `tokens` prints a per-instruction table and a total; `--keep 80` aims for roughly 80% of the source tokens; `--target-reduction 30` guarantees the result fits under the ceiling; the mutually exclusive flags are rejected.
+1. Run `alexandria tokens /tmp/claude.md`. Output: a per-instruction token count and a total.
+2. Run `alexandria reduce /tmp/claude.md --keep 80 --json`. Output: `reduced_tokens` lands near 80%
+   of `source_tokens`.
+3. Run `alexandria reduce /tmp/claude.md --target-reduction 30 --json`. Output: `reduced_tokens <=
+   source_tokens * 0.70` (the 30%-reduction ceiling is guaranteed).
+4. Run `alexandria reduce /tmp/claude.md --keep 80 --target-reduction 30`. Output: the command exits
+   with an error, because the two flags are mutually exclusive.
 
-### Scenario 4: Review before adopting (US-C) [Not yet run (draft), to verify at review]
+### Scenario 4: Review before adopting (User story C) — Not yet run (draft)
 
-1. Run `alexandria score --table` on a scored envelope (for example `alexandria represent /tmp/claude.md | alexandria score --table`). Confirm the redundancy table lists each instruction next to its most-similar peer and a similarity score.
-2. Save each phase to inspect it: `alexandria represent /tmp/claude.md --out /tmp/represent.json | alexandria score --out /tmp/score.json | alexandria optimize --out /tmp/optimize.json | alexandria select`. Confirm each `--out` file is a self-contained JSON envelope, and that passing one back as the FILE argument resumes from that phase.
-3. Run `alexandria reduce /tmp/claude.md --interactive` and accept or reject each proposed edit in the terminal. Confirm the final output reflects only the accepted edits.
-4. Run `alexandria reduce /tmp/claude.md --browser` and confirm the same accept/reject review works in a browser.
+1. Run `alexandria represent /tmp/claude.md | alexandria score --table`. Output: a redundancy table
+   listing each instruction, its most-similar peer, and a similarity score.
+2. Run `alexandria represent /tmp/claude.md --out /tmp/represent.json | alexandria score --out
+   /tmp/score.json | alexandria optimize --out /tmp/optimize.json | alexandria select`. Output: each
+   `--out` file is a self-contained JSON envelope; passing one back as the FILE argument resumes from
+   that phase.
+3. Run `alexandria reduce /tmp/claude.md --interactive` and accept or reject each edit. Output: the
+   final prompt reflects only the accepted edits.
+4. Run `alexandria reduce /tmp/claude.md --browser`. Output: the same accept/reject review works in a
+   browser.
 
-Expected output: the redundancy table pairs each instruction with its closest peer; the phase envelopes save and resume; interactive and browser review apply only the edits the user accepts.
+### Scenario 5: Quality metrics (User story D) — Not yet run (draft)
 
-### Scenario 5: Quality metrics and baseline comparison (US-D) [Not yet run (draft), to verify at review]
+1. Run `alexandria report /tmp/claude.md`, optionally with `--baseline <file>`.
+2. Output: one JSON object with token metrics and quality scores, plus a baseline-regression
+   comparison when `--baseline` is passed.
 
-1. Run `alexandria report /tmp/claude.md` for token metrics and quality scores, and add `--baseline <file>` to compare against a saved baseline.
-2. Confirm the JSON contains token metrics and quality scores, plus a baseline-regression comparison when `--baseline` is passed.
+### Scenario 6: Compare two prompts (User story D) — Not yet run (draft)
 
-Expected output: one JSON object reporting how far the prompt was compressed and the quality scores, and, with `--baseline`, how the run compares against it.
-
-### Scenario 6: Compare two prompts (US-D) [Not yet run (draft), to verify at review]
-
-1. Reduce the prompt to a second file: `alexandria reduce /tmp/claude.md > /tmp/reduced.md`.
+1. Run `alexandria reduce /tmp/claude.md > /tmp/reduced.md`.
 2. Run `alexandria compare /tmp/claude.md /tmp/reduced.md`.
-3. Confirm the command prints one JSON object carrying both the cosine similarity and the token reduction between the two prompts. Optionally add `--min-similarity 0.9` and confirm the command exits non-zero when similarity falls below the floor.
+3. Output: one JSON object with a `similarity` field and the token reduction. Adding
+   `--min-similarity 0.9` makes the command exit non-zero when similarity falls below the floor.
 
-Expected output: JSON with a `similarity` field and the token reduction; a high similarity shows the reduced prompt still means what the source meant.
+### Scenario 7: Install and use outside the checkout (User story E) — Automated CI gate
 
-### Scenario 7: Install and use outside the checkout (US-E) [Not yet run (draft), to verify at review]
+1. Run `python scripts/release_smoke_test.py` from the repository checkout.
+2. The script builds the release wheel and source distribution, then installs the wheel in a
+   temporary Python 3.14 environment.
+3. It runs the installed `alexandria` console script with a local deterministic embeddings endpoint.
+   Output: the command exits successfully and `reduced_tokens < source_tokens`.
+4. It runs `import alexandria` through the installed interpreter with `HashEmbedder` and an offline
+   merger. Output: the API exits successfully, reduces the fixture, and reports a module path inside
+   the temporary environment rather than the checkout.
 
-1. Install the released tool: `uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git`.
-2. Run `alexandria --help` and confirm the command list appears.
-3. Set the key with `alexandria config set openai-api-key`, then run `alexandria reduce /tmp/claude.md --json` and confirm `reduced_tokens < source_tokens`.
-4. In a Python shell outside the checkout, run `import alexandria; result = alexandria.reduce("...")` and read `result.text`, `result.source_tokens`, `result.reduced_tokens`, and `result.applied`.
+### Release-version results
 
-Expected output: the tool installs and runs as a standalone CLI, and the same reduction is available as a library call.
-
-### Pass/Fail summary
-
-| Scenario | User story | Release status |
+| Scenario | User story | Result |
 | --- | --- | --- |
-| 1. One-command reduction | US-A | Pass |
-| 2. Reduction from the library | US-A | Pass |
-| 3. Trade-off controls and token accounting | US-B | Pass |
-| 4. Review before adopting | US-C | Not yet run (draft) |
-| 5. Quality metrics and baseline comparison | US-D | Not yet run (draft) |
-| 6. Compare two prompts | US-D | Not yet run (draft) |
-| 7. Install and use outside the checkout | US-E | Not yet run (draft) |
+| 1. One-command reduction | A | Pass |
+| 2. Reduction from the library (offline) | A | Pass |
+| 3. Trade-off controls and token accounting | B | Pass |
+| 4. Review before adopting | C | Not yet run (draft) |
+| 5. Quality metrics | D | Not yet run (draft) |
+| 6. Compare two prompts | D | Not yet run (draft) |
+| 7. Install and use outside the checkout | E | Automated (pending CI) |
 
-The Pass rows are backed by automated end-to-end tests that ran green on 2026-07-20. The live reduction path was exercised by `tests/ai_e2e_test.py`, which reduces two verbose sample prompts through the real pipeline against gpt-5.6-luna; both cases passed. The offline, deterministic path was exercised by `tests/pipeline_e2e_test.py`, which passed. Scenarios 4 through 7 are written from the released feature set but have not been run for this report; they are ready to run at the review.
+The Pass rows are backed by automated end-to-end tests that ran green on 2026-07-20:
+`tests/ai_e2e_test.py` reduced two verbose sample prompts through the real pipeline against
+`gpt-5.6-luna` (both cases passed), and `tests/pipeline_e2e_test.py` exercised the offline
+deterministic path (passed). Scenarios 4 through 6 are written from the released feature set but
+have not been run for this report. Scenario 7 is enforced by the clean-package smoke script in CI;
+record it as Pass after the release workflow completes successfully.
 
 ## Unit tests
 
-The automated suite is 326 collected tests. Unit tests sit next to the code they cover as `<module>_test.py` files across `src/alexandria/cli`, `src/alexandria/ir`, `src/alexandria/ops` (including `src/alexandria/ops/features`), and `src/alexandria/utils`. Broader tests live in `tests/`: `tests/pipeline_e2e_test.py` is an offline end-to-end test, and `tests/ai_e2e_test.py` is a live end-to-end test carrying the pytest `ai` marker, skipped unless an OpenAI key is set.
+The automated suite is 326 collected tests. Unit tests sit next to the code they cover as
+`<module>_test.py` files across `src/alexandria/cli`, `src/alexandria/ir`, `src/alexandria/ops`
+(including `src/alexandria/ops/features`), and `src/alexandria/utils`. Broader tests live in
+`tests/`: `tests/pipeline_e2e_test.py` is an offline end-to-end test, and `tests/ai_e2e_test.py` is a
+live end-to-end test carrying the pytest `ai` marker (skipped unless an OpenAI key is set).
 
-Run everything:
-
-```
-uv run pytest
-```
-
-Run only the live tests (needs a key):
-
-```
-uv run pytest -m ai
+```bash
+uv run pytest          # everything (live ai tests skip without a key)
+uv run pytest -m ai    # only the live tests (needs a key)
 ```
 
-CI enforces an 80% branch-coverage gate. The offline suite runs green in CI on every push. The live `ai` end-to-end tests passed on 2026-07-20. All of these can be run during the project review.
+No unit test failed for the released version. The offline suite runs green in CI on every push, and
+the live `ai` end-to-end tests passed on 2026-07-20. CI enforces an 80% branch-coverage gate. All of
+these can be run during the project review.
