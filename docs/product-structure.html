@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Alexandria — Layered Architecture</title>
+  <script>
+    const pageParams = new URLSearchParams(window.location.search);
+    if (pageParams.get("view") === "diagram") {
+      document.documentElement.classList.add("diagram-only");
+    }
+    if (pageParams.get("theme") === "dark") {
+      document.documentElement.classList.add("dark-theme");
+    }
+  </script>
+  <style>
+    :root {
+      --ink: #172033;
+      --muted: #61708a;
+      --line: #cbd5e1;
+      --canvas: #f7f9fc;
+      --blue: #3157c8;
+      --blue-soft: #edf2ff;
+      --green: #257b56;
+      --green-soft: #eaf8f1;
+      --orange: #bd6818;
+      --orange-soft: #fff3e5;
+      --purple: #7043a5;
+      --purple-soft: #f5edff;
+      --slate: #334155;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; background: white; color: var(--ink); }
+    body {
+      font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.35;
+    }
+    main { width: 1400px; min-height: 1150px; margin: 0 auto; padding: 52px 64px 48px; }
+    h1 { margin: 0; font-size: 36px; letter-spacing: -.03em; }
+    .subtitle { margin: 7px 0 30px; color: var(--muted); font-size: 17px; }
+    .eyebrow { color: var(--blue); font-size: 13px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+
+    .architecture {
+      display: grid;
+      grid-template-columns: 176px minmax(0, 1fr) 238px;
+      gap: 12px 16px;
+      align-items: stretch;
+    }
+    .role, .layer, .outside {
+      border: 2px solid;
+      border-radius: 14px;
+      position: relative;
+    }
+    .role { padding: 16px; display: flex; flex-direction: column; justify-content: center; }
+    .role b { font-size: 18px; }
+    .role span { margin-top: 5px; color: var(--muted); font-size: 13px; }
+    .layer { padding: 13px 15px; display: flex; gap: 10px; align-items: stretch; }
+    .layer-title { flex: 0 0 122px; display: flex; flex-direction: column; justify-content: center; }
+    .layer-title code { font-size: 20px; font-weight: 800; }
+    .layer-title span { margin-top: 4px; font-size: 12px; color: var(--muted); }
+    .module {
+      flex: 1; min-width: 0; padding: 10px 12px; border: 1px solid currentColor;
+      border-radius: 9px; background: rgba(255,255,255,.86);
+      display: flex; flex-direction: column; justify-content: center;
+    }
+    .module b, .module code { font-size: 14px; font-weight: 750; }
+    .module small { display: block; margin-top: 3px; color: var(--muted); font-size: 11.5px; }
+    .arrow {
+      position: absolute; z-index: 2; bottom: -23px; left: 50%; width: 2px; height: 21px; background: var(--slate);
+    }
+    .arrow::after {
+      content: ""; position: absolute; left: -4px; bottom: -1px;
+      width: 8px; height: 8px; border-right: 2px solid var(--slate); border-bottom: 2px solid var(--slate);
+      transform: rotate(45deg);
+    }
+    .arrow-label {
+      position: absolute; z-index: 3; left: calc(50% + 10px); bottom: -20px;
+      color: var(--muted); background: white; padding: 1px 5px; font-size: 10px; white-space: nowrap;
+    }
+
+    .role-cli, .layer-cli { border-color: var(--blue); background: var(--blue-soft); color: var(--blue); }
+    .role-ops, .layer-ops { border-color: var(--green); background: var(--green-soft); color: var(--green); }
+    .role-utils, .layer-utils { border-color: var(--orange); background: var(--orange-soft); color: var(--orange); }
+    .role-ir, .layer-ir { border-color: var(--purple); background: var(--purple-soft); color: var(--purple); }
+    .role span, .layer-title span, .module small { color: var(--muted); }
+
+    .outside {
+      border-style: dashed; border-color: #8c99ad; color: var(--slate); background: var(--canvas);
+      padding: 14px; display: flex; flex-direction: column; justify-content: center;
+    }
+    .outside b { font-size: 15px; }
+    .outside small { margin-top: 5px; color: var(--muted); }
+    .outside-empty { border: 0; background: transparent; }
+    .provider-arrow::before {
+      content: ""; position: absolute; width: 17px; height: 2px; top: 50%; left: -18px; background: var(--slate);
+    }
+    .provider-arrow::after {
+      content: ""; position: absolute; top: calc(50% - 4px); left: -2px; width: 8px; height: 8px;
+      border-top: 2px solid var(--slate); border-right: 2px solid var(--slate); transform: rotate(45deg);
+    }
+
+    .features { flex: 2.4; display: grid; grid-template-columns: repeat(4, 1fr); gap: 7px; }
+    .feature {
+      padding: 7px 8px; border: 1px solid #73a98e; border-radius: 7px; background: white;
+      display: flex; align-items: center; justify-content: center; text-align: center;
+    }
+    .feature code { font-size: 11px; color: var(--green); }
+    .feature.target { grid-column: span 2; }
+    .protocols { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; flex: 2; }
+    .protocol { border: 1px solid #9b77c2; border-radius: 8px; padding: 8px; background: white; }
+    .protocol code { font-size: 11px; color: var(--purple); }
+    .protocol small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
+
+    .legend { grid-column: 2 / 4; display: flex; justify-content: flex-end; gap: 18px; color: var(--muted); font-size: 11px; }
+    .legend span::before { content: ""; display: inline-block; width: 24px; height: 2px; margin: 0 6px 3px 0; background: var(--slate); }
+    .legend .dashed::before { border-top: 2px dashed #8c99ad; background: transparent; }
+
+    .principles { display: grid; grid-template-columns: 1fr 1fr 1.15fr; gap: 16px; margin-top: 30px; }
+    .card { border: 1px solid var(--line); border-radius: 14px; padding: 18px 19px; background: white; }
+    .card h2 { margin: 0 0 8px; font-size: 17px; }
+    .card p { margin: 0; color: #435069; font-size: 13px; }
+    .card b { color: var(--ink); }
+    .card.srp { border-top: 5px solid var(--blue); }
+    .card.dip { border-top: 5px solid var(--purple); }
+    .card.enforcement { border-top: 5px solid var(--green); }
+    .swap { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 11px; color: var(--muted); }
+    .swap code { padding: 4px 7px; border-radius: 5px; background: var(--canvas); color: var(--ink); }
+    .terminal {
+      margin-top: 10px; padding: 11px 12px; border-radius: 8px; background: #172033; color: #d8e2f2;
+      font: 10.5px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .terminal .ok { color: #83e3af; }
+    .footnote { margin-top: 17px; color: var(--muted); text-align: right; font-size: 11px; }
+
+    /* Standalone export: keep the layer map as the single visual subject. */
+    .diagram-only main { width: 100vw; height: 100vh; min-height: 0; padding: 8px; }
+    .diagram-only .architecture {
+      height: calc(100vh - 16px);
+      grid-template-columns: 176px minmax(0, 1fr) 238px;
+      grid-template-rows: 1fr 1.45fr 1.25fr 1.4fr;
+    }
+    .diagram-only .layer-ir {
+      display: grid;
+      grid-template-columns: 122px repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+    .diagram-only .layer-ir .layer-title { grid-row: 1 / 3; }
+    .diagram-only .layer-ir .protocols { grid-column: 2 / 5; }
+    .diagram-only .protocol { display: flex; flex-direction: column; justify-content: center; }
+    .diagram-only .arrow-label { font-size: 11.5px; }
+    .diagram-only .feature code,
+    .diagram-only .protocol code { font-size: 12px; }
+    .diagram-only .protocol small { font-size: 11px; }
+    .diagram-only .provider-arrow { border-color: #64748b; background: #f1f5f9; }
+    .diagram-only { --muted: #52627b; }
+
+    /* Dark export: tuned to Alexandria's navy presentation deck. */
+    .diagram-only.dark-theme {
+      --ink: #f4f2e8;
+      --muted: #c5cbd3;
+      --canvas: #253244;
+      --blue: #89afff;
+      --blue-soft: #27364d;
+      --green: #72d4a7;
+      --green-soft: #243c38;
+      --orange: #f2b563;
+      --orange-soft: #3c342a;
+      --purple: #c0a8ff;
+      --purple-soft: #342e49;
+      --slate: #ffc400;
+    }
+    .dark-theme,
+    .dark-theme body { background: #1f2a38; color: var(--ink); }
+    .dark-theme .module,
+    .dark-theme .feature,
+    .dark-theme .protocol { background: #1c2837; }
+    .dark-theme .feature { border-color: #4c9274; }
+    .dark-theme .protocol { border-color: #816db6; }
+    .dark-theme .outside { border-color: #748195; background: var(--canvas); color: var(--slate); }
+    .dark-theme .outside-empty { background: transparent; }
+    .dark-theme .arrow-label { background: #1f2a38; color: var(--ink); }
+    .diagram-only.dark-theme .provider-arrow { border-color: var(--slate); background: #29384b; }
+    .diagram-only main > .eyebrow,
+    .diagram-only main > h1,
+    .diagram-only main > .subtitle,
+    .diagram-only main > .principles,
+    .diagram-only main > .footnote,
+    .diagram-only .legend { display: none; }
+  </style>
+</head>
+<body>
+  <main>
+    <div class="eyebrow">Alexandria · System Design</div>
+    <h1>Layered Architecture: Alexandria system design</h1>
+    <p class="subtitle">Four packages separate user interaction, optimization workflows, infrastructure support, and shared contracts.</p>
+
+    <section class="architecture" aria-label="Alexandria layer diagram">
+      <div class="role role-cli"><b>Interface</b><span>Input, output, review UI, command handling</span></div>
+      <div class="layer layer-cli">
+        <div class="layer-title"><code>cli/</code><span>user interface</span></div>
+        <div class="module"><b>main.py</b><small>Click commands and orchestration</small></div>
+        <div class="module"><b>envelope.py</b><small>phase wire formats</small></div>
+        <div class="module"><b>review UIs</b><small>terminal and local browser</small></div>
+        <i class="arrow"></i><span class="arrow-label">uses ops</span>
+      </div>
+      <div class="outside outside-empty"></div>
+
+      <div class="role role-ops"><b>Application</b><span>Optimization workflows and independent capabilities</span></div>
+      <div class="layer layer-ops">
+        <div class="layer-title"><code>ops/</code><span>processing</span></div>
+        <div class="module"><b>pipe.py</b><small>reduce · propose · score_report</small></div>
+        <div class="module"><b>report.py</b><small>quality and regression reports</small></div>
+        <div class="features">
+          <div class="feature"><code>represent</code></div>
+          <div class="feature"><code>score</code></div>
+          <div class="feature"><code>optimize</code></div>
+          <div class="feature"><code>select</code></div>
+          <div class="feature"><code>compare</code></div>
+          <div class="feature"><code>diff</code></div>
+          <div class="feature target"><code>target</code></div>
+        </div>
+        <i class="arrow"></i><span class="arrow-label">defaults via utils</span>
+      </div>
+      <div class="outside"><b>Ports defined in ir/</b><small>Algorithms depend on <code>ir/</code> protocols: <code>Embedder</code>, <code>SentenceMerger</code>, and <code>TargetedMerger</code>.</small></div>
+
+      <div class="role role-utils"><b>Infrastructure</b><span>Configuration, tokenization, and provider adapters</span></div>
+      <div class="layer layer-utils">
+        <div class="layer-title"><code>utils/</code><span>infrastructure support</span></div>
+        <div class="module"><b>embedders.py</b><small>OpenAIEmbedder · HashEmbedder</small></div>
+        <div class="module"><b>merger.py</b><small>OpenAIMerger · target generation</small></div>
+        <div class="module"><b>tokens.py</b><small>token counting + truncation</small></div>
+        <div class="module"><b>config.py</b><small>API key configuration</small></div>
+        <i class="arrow"></i><span class="arrow-label">uses shared IR</span>
+      </div>
+      <div class="outside provider-arrow"><b>OpenAI</b><small>OpenAI adapters and SDK clients live in <code>utils/</code>.</small></div>
+
+      <div class="role role-ir"><b>Domain</b><span>Validated data and provider-neutral contracts</span></div>
+      <div class="layer layer-ir">
+        <div class="layer-title"><code>ir/</code><span>data + contracts</span></div>
+        <div class="module"><b>document.py</b><small>Document · Section · Sentence</small></div>
+        <div class="module"><b>registry.py</b><small>strategy registration</small></div>
+        <div class="module"><b>similarity.py</b><small>pure vector operations</small></div>
+        <div class="protocols">
+          <div class="protocol"><code>Embedder</code><small>Protocol</small></div>
+          <div class="protocol"><code>SentenceMerger</code><small>Protocol</small></div>
+          <div class="protocol"><code>TargetedMerger</code><small>Protocol</small></div>
+        </div>
+      </div>
+      <div class="outside"><b>Shared foundation</b><small><code>cli/</code>, <code>ops/</code>, and <code>utils/</code> import <code>ir/</code>; <code>ir/</code> imports none of them.</small></div>
+
+      <div class="legend"><span>primary package dependency path</span><span class="dashed">system boundary</span></div>
+    </section>
+
+    <section class="principles">
+      <div class="card srp">
+        <h2>SRP-inspired responsibility boundaries</h2>
+        <p><b>ir</b> owns shared data and contracts, <b>ops</b> owns optimization workflows, <b>cli</b> owns user interaction, and <b>utils</b> owns configuration, token helpers, and provider adapters.</p>
+      </div>
+      <div class="card dip">
+        <h2>DIP-inspired algorithm boundary</h2>
+        <p>Core algorithms accept <b>Embedder</b> and merger protocols from <b>ir</b>. Injected adapters and test doubles can change without changing those algorithms; <b>ops</b> uses <b>utils</b> to construct defaults.</p>
+        <div class="swap"><code>test double</code> ↔ <code>OpenAI adapters</code> ↔ <code>custom adapters</code></div>
+      </div>
+      <div class="card enforcement">
+        <h2>Architecture enforcement · import-linter</h2>
+        <p>CI checks package direction, feature independence, and that <code>cli</code>, <code>ops</code>, and <code>ir</code> never import the OpenAI SDK directly.</p>
+        <div class="terminal">$ uv run lint-imports<br><span class="ok">Layered architecture KEPT</span><br><span class="ok">CLI reaches utils only through ops KEPT</span><br><span class="ok">Pipe composes features KEPT</span><br><span class="ok">Features are independent KEPT</span><br><span class="ok">OpenAI client isolated to the shell KEPT</span><br><br><span class="ok">Contracts: 5 kept, 0 broken.</span></div>
+      </div>
+    </section>
+    <div class="footnote">Source of truth: <code>pyproject.toml</code> import-linter contracts · July 2026</div>
+  </main>
+</body>
+</html>
