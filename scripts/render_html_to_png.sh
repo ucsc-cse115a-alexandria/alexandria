@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Render an HTML file to a PNG via headless Chrome.
-# Usage: scripts/render_html_to_png.sh <input.html> [output.png] [width] [page|diagram]
+# Usage: scripts/render_html_to_png.sh <input.html> [output.png] [width] [page|diagram|diagram-dark]
 set -euo pipefail
 
-input="${1:?usage: render_html_to_png.sh <input.html> [output.png] [width] [page|diagram]}"
+input="${1:?usage: render_html_to_png.sh <input.html> [output.png] [width] [page|diagram|diagram-dark]}"
 output="${2:-${input%.html}.png}"
 width="${3:-1400}"
 view="${4:-page}"
@@ -36,17 +36,19 @@ case "$view" in
     height="${RENDER_HEIGHT:-1150}"
     page_url="file://$(absolute_path "$input")"
     ;;
-  diagram)
+  diagram|diagram-dark)
     if ! [[ "$width" =~ ^[0-9]+$ ]] || (( width < 1200 )); then
       echo "error: diagram width must be an integer >= 1200, got: $width" >&2
       exit 1
     fi
     # A slide-friendly 1.8:1 canvas (width / height = 9 / 5).
     height="$(((width * 5 + 4) / 9))"
-    page_url="file://$(absolute_path "$input")?view=diagram"
+    theme_query=""
+    [[ "$view" == "diagram-dark" ]] && theme_query="&theme=dark"
+    page_url="file://$(absolute_path "$input")?view=diagram${theme_query}"
     ;;
   *)
-    echo "error: view must be 'page' or 'diagram', got: $view" >&2
+    echo "error: view must be 'page', 'diagram', or 'diagram-dark', got: $view" >&2
     exit 1
     ;;
 esac
