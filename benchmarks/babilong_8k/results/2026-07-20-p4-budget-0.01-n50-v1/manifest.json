@@ -1,0 +1,113 @@
+{
+  "schema_version": 1,
+  "implementation_commit": "231c6236dcdbd9090acae5b6d4ff39ca60f7143a",
+  "implementation_dirty": true,
+  "command": "/Users/marctan/ucscCode/CSE115A/Alexandria/scripts/prompt_compression_benchmark.py --benchmark babilong_8k --n 50 --seed 42 --cos-sim-diff-budgets 0.01 --model gpt-5.6-luna --merge-model gpt-5.6-luna --min-original-accuracy 0.50 --out benchmarks/babilong_8k/results/2026-07-20-p4-budget-0.01-n50-v1",
+  "benchmark": "babilong_8k",
+  "provenance": {
+    "dataset": "RMT-team/babilong@ee0d588794c7ac098062ee0d247c733d62e94fe2",
+    "prompt_and_metric": "booydar/babilong@38da79d79519ef87aa46ae804f838e1eab7f86d7"
+  },
+  "data_dir": "data/babilong/8k",
+  "n_cases": 50,
+  "case_keys": [
+    "qa1:47",
+    "qa2:40",
+    "qa3:58",
+    "qa4:82",
+    "qa5:73",
+    "qa1:46",
+    "qa2:7",
+    "qa3:37",
+    "qa4:62",
+    "qa5:86",
+    "qa1:91",
+    "qa2:36",
+    "qa3:83",
+    "qa4:14",
+    "qa5:36",
+    "qa1:17",
+    "qa2:38",
+    "qa3:50",
+    "qa4:66",
+    "qa5:75",
+    "qa1:68",
+    "qa2:0",
+    "qa3:31",
+    "qa4:31",
+    "qa5:87",
+    "qa1:54",
+    "qa2:21",
+    "qa3:66",
+    "qa4:74",
+    "qa5:46",
+    "qa1:1",
+    "qa2:55",
+    "qa3:72",
+    "qa4:93",
+    "qa5:41",
+    "qa1:72",
+    "qa2:73",
+    "qa3:18",
+    "qa4:95",
+    "qa5:58",
+    "qa1:22",
+    "qa2:65",
+    "qa3:38",
+    "qa4:70",
+    "qa5:9",
+    "qa1:8",
+    "qa2:88",
+    "qa3:32",
+    "qa4:88",
+    "qa5:32"
+  ],
+  "seed": 42,
+  "experiment_mode": "cos_sim_diff_budget",
+  "reductions_percent": null,
+  "cos_sim_diff_budgets": [
+    0.01
+  ],
+  "model": "gpt-5.6-luna",
+  "reasoning": "none",
+  "minimum_original_accuracy": 0.5,
+  "tokenizer": "cl100k_base",
+  "eligibility": {
+    "min_source_tokens": 0,
+    "max_source_tokens": null
+  },
+  "compression": {
+    "compressible_prompt_part": "context",
+    "embedding_model": "text-embedding-3-small",
+    "merge_model": "gpt-5.6-luna",
+    "require_target": false,
+    "minimum_retained_percent": 50.0,
+    "max_generation_calls_per_condition": 30,
+    "max_condition_seconds": 300.0
+  },
+  "source_token_distribution": {
+    "min": 6256,
+    "mean": 7574.2,
+    "p50": 7697.5,
+    "p95": 7871.3,
+    "max": 7922
+  },
+  "pricing_usd_per_million": {
+    "answer_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "merge_model": {
+      "input": 1.0,
+      "cached_input": 0.1,
+      "cache_write": 1.25,
+      "output": 6.0
+    },
+    "embedding_input": 0.02,
+    "context_tier": "standard short context"
+  },
+  "pricing_source": "https://developers.openai.com/api/docs/pricing",
+  "max_estimated_cost_usd": null
+}

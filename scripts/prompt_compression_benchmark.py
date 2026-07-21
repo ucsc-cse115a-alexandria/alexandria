@@ -139,14 +139,14 @@ def compress_parts_to_cos_sim_budget(
     )
 
 
-def _git_sha() -> str:
+def git_sha() -> str:
     git = shutil.which("git")
     if git is None:
         raise RuntimeError("git executable not found")
     return subprocess.run([git, "rev-parse", "HEAD"], check=True, capture_output=True, text=True).stdout.strip()
 
 
-def _git_dirty() -> bool:
+def git_dirty() -> bool:
     git = shutil.which("git")
     if git is None:
         raise RuntimeError("git executable not found")
@@ -158,7 +158,7 @@ def _prompt_hash(prompt: str) -> str:
     return hashlib.sha256(prompt.encode("utf-8")).hexdigest()
 
 
-def _generate(client: OpenAI, model: str, reasoning: str, prompt: str) -> GenerationResult:
+def generate_response(client: OpenAI, model: str, reasoning: str, prompt: str) -> GenerationResult:
     response = client.responses.create(
         model=model,
         reasoning=cast("Reasoning", {"effort": reasoning}),
@@ -167,7 +167,7 @@ def _generate(client: OpenAI, model: str, reasoning: str, prompt: str) -> Genera
     return GenerationResult(text=response.output_text, model=str(response.model))
 
 
-def _record(
+def build_condition_record(
     *,
     case: BenchmarkCase,
     condition: str,
@@ -269,11 +269,11 @@ def main() -> None:
         max_source_tokens=args.max_source_tokens,
     )
     token_counts = [count_tokens(case.prompt) for case in cases]
-    implementation_dirty = _git_dirty()
+    implementation_dirty = git_dirty()
     store = RunStore(args.out)
     manifest = {
         "schema_version": 1,
-        "implementation_commit": _git_sha(),
+        "implementation_commit": git_sha(),
         "implementation_dirty": implementation_dirty,
         "command": shlex.join(sys.argv),
         "benchmark": args.benchmark,
@@ -350,10 +350,10 @@ def main() -> None:
                     ),
                     meter.category("answer"),
                 ):
-                    generation = _generate(client, args.model, args.reasoning, case.prompt)
+                    generation = generate_response(client, args.model, args.reasoning, case.prompt)
                 answer_elapsed = time.monotonic() - started
                 usage = tuple(meter.records[usage_start:])
-                record = _record(
+                record = build_condition_record(
                     case=case,
                     condition="original",
                     reduction_percent=0.0,
@@ -408,10 +408,10 @@ def main() -> None:
                     ) = compress_parts(case.prompt_parts, reduction, merge_model=args.merge_model)
                 answer_started = time.monotonic()
                 with meter.category("answer"):
-                    generation = _generate(client, args.model, args.reasoning, parts.prompt)
+                    generation = generate_response(client, args.model, args.reasoning, parts.prompt)
                 answer_elapsed = time.monotonic() - answer_started
                 usage = tuple(meter.records[usage_start:])
-                record = _record(
+                record = build_condition_record(
                     case=case,
                     condition=condition,
                     reduction_percent=reduction,
@@ -464,7 +464,7 @@ def main() -> None:
                                 )
                             answer_started = time.monotonic()
                             with meter.category("answer"):
-                                generation = _generate(client, args.model, args.reasoning, parts.prompt)
+                                generation = generate_response(client, args.model, args.reasoning, parts.prompt)
                             answer_elapsed = time.monotonic() - answer_started
                     except (OpenAIError, UsageLimitExceeded, ValueError) as error:
                         terminal = isinstance(error, UsageLimitExceeded)
@@ -490,7 +490,7 @@ def main() -> None:
                         continue
                     usage = tuple(meter.records[usage_start:])
                     actual_reduction = max(0.0, (1.0 - sent_tokens / source_tokens) * 100.0)
-                    record = _record(
+                    record = build_condition_record(
                         case=case,
                         condition=condition,
                         reduction_percent=actual_reduction,

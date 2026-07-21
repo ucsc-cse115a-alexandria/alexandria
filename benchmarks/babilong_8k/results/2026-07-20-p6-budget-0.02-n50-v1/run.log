@@ -1,0 +1,141 @@
+
+--- sweep_runner invoking P6 at 2026-07-20T20:37:12.617885+00:00 ---
+completed qa1:47 original
+completed qa2:40 original
+completed qa3:58 original
+completed qa4:82 original
+completed qa5:73 original
+completed qa1:46 original
+completed qa2:7 original
+completed qa3:37 original
+completed qa4:62 original
+completed qa5:86 original
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/scripts/prompt_compression_benchmark.py", line 546, in <module>
+    main()
+    ~~~~^^
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/scripts/prompt_compression_benchmark.py", line 353, in main
+    generation = _generate(client, args.model, args.reasoning, case.prompt)
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/scripts/prompt_compression_benchmark.py", line 162, in _generate
+    response = client.responses.create(
+        model=model,
+        reasoning=cast("Reasoning", {"effort": reasoning}),
+        input=prompt,
+    )
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/benchmarks/prompt_compression/metering.py", line 116, in response_create
+    response = original_create(resource, *args, **kwargs)
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/.venv/lib/python3.14/site-packages/openai/resources/responses/responses.py", line 954, in create
+    return self._post(
+           ~~~~~~~~~~^
+        "/responses",
+        ^^^^^^^^^^^^^
+    ...<46 lines>...
+        stream_cls=Stream[ResponseStreamEvent],
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1332, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+                           ~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/marctan/ucscCode/CSE115A/Alexandria/.venv/lib/python3.14/site-packages/openai/_base_client.py", line 1105, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'Rate limit reached for gpt-5.6-luna in organization org-DHvFJeDxFF2gqGucA2N8EQVP on tokens per min (TPM): Limit 200000, Used 200000, Requested 7796. Please try again in 2.338s. Visit https://platform.openai.com/account/rate-limits to learn more.', 'type': 'tokens', 'param': None, 'code': 'rate_limit_exceeded'}}
+
+--- sweep_runner invoking P6 at 2026-07-20T20:56:55.912310+00:00 ---
+completed qa1:91 original
+completed qa2:36 original
+completed qa3:83 original
+completed qa4:14 original
+completed qa5:36 original
+completed qa1:17 original
+completed qa2:38 original
+completed qa3:50 original
+completed qa4:66 original
+completed qa5:75 original
+completed qa1:68 original
+completed qa2:0 original
+completed qa3:31 original
+completed qa4:31 original
+completed qa5:87 original
+completed qa1:54 original
+completed qa2:21 original
+completed qa3:66 original
+completed qa4:74 original
+completed qa5:46 original
+completed qa1:1 original
+completed qa2:55 original
+completed qa3:72 original
+completed qa4:93 original
+completed qa5:41 original
+completed qa1:72 original
+completed qa2:73 original
+completed qa3:18 original
+completed qa4:95 original
+completed qa5:58 original
+completed qa1:22 original
+completed qa2:65 original
+completed qa3:38 original
+completed qa4:70 original
+completed qa5:9 original
+completed qa1:8 original
+completed qa2:88 original
+completed qa3:32 original
+completed qa4:88 original
+completed qa5:32 original
+original baseline accuracy: 72.0% (minimum 50.0%)
+completed qa1:47 budget0p02: retained=0.999 context_diff=0.000238 full_diff=0.000410 correct=True
+completed qa2:40 budget0p02: retained=0.996 context_diff=0.002273 full_diff=0.002308 correct=False
+completed qa3:58 budget0p02: retained=0.985 context_diff=0.004930 full_diff=0.004227 correct=False
+completed qa4:82 budget0p02: retained=0.995 context_diff=0.002465 full_diff=0.003080 correct=False
+completed qa5:73 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:46 budget0p02: retained=0.998 context_diff=0.000982 full_diff=0.000698 correct=False
+completed qa2:7 budget0p02: retained=0.967 context_diff=0.003472 full_diff=0.003633 correct=False
+completed qa3:37 budget0p02: retained=0.988 context_diff=0.004594 full_diff=0.003909 correct=True
+completed qa4:62 budget0p02: retained=0.998 context_diff=0.002388 full_diff=0.002132 correct=False
+completed qa5:86 budget0p02: retained=0.993 context_diff=0.003317 full_diff=0.003040 correct=True
+completed qa1:91 budget0p02: retained=0.990 context_diff=0.003087 full_diff=0.002641 correct=True
+completed qa2:36 budget0p02: retained=0.996 context_diff=0.002501 full_diff=0.002481 correct=True
+completed qa3:83 budget0p02: retained=0.992 context_diff=0.004714 full_diff=0.004743 correct=False
+completed qa4:14 budget0p02: retained=0.999 context_diff=0.000380 full_diff=0.000366 correct=True
+completed qa5:36 budget0p02: retained=0.980 context_diff=0.004520 full_diff=0.003985 correct=True
+completed qa1:17 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa2:38 budget0p02: retained=0.999 context_diff=0.002536 full_diff=0.002175 correct=True
+completed qa3:50 budget0p02: retained=0.986 context_diff=0.008280 full_diff=0.007266 correct=False
+completed qa4:66 budget0p02: retained=0.998 context_diff=0.001180 full_diff=0.000792 correct=False
+completed qa5:75 budget0p02: retained=0.997 context_diff=0.001456 full_diff=0.001403 correct=True
+incomplete qa1:68 budget0p02: condition reached 30 generation-call limit
+completed qa2:0 budget0p02: retained=0.993 context_diff=0.002560 full_diff=0.002918 correct=False
+completed qa3:31 budget0p02: retained=0.986 context_diff=0.002240 full_diff=0.002349 correct=True
+completed qa4:31 budget0p02: retained=0.992 context_diff=0.005256 full_diff=0.004448 correct=True
+completed qa5:87 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa1:54 budget0p02: retained=0.976 context_diff=0.006060 full_diff=0.005861 correct=True
+completed qa2:21 budget0p02: retained=0.984 context_diff=0.004450 full_diff=0.003722 correct=True
+completed qa3:66 budget0p02: retained=0.995 context_diff=0.002107 full_diff=0.002354 correct=True
+completed qa4:74 budget0p02: retained=0.998 context_diff=0.001331 full_diff=0.001749 correct=True
+completed qa5:46 budget0p02: retained=0.992 context_diff=0.002869 full_diff=0.002642 correct=True
+completed qa1:1 budget0p02: retained=0.998 context_diff=0.000175 full_diff=0.000203 correct=True
+completed qa2:55 budget0p02: retained=0.993 context_diff=0.002840 full_diff=0.002962 correct=False
+completed qa3:72 budget0p02: retained=0.997 context_diff=0.001330 full_diff=0.001226 correct=False
+completed qa4:93 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:41 budget0p02: retained=0.987 context_diff=0.002703 full_diff=0.002296 correct=False
+completed qa1:72 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa2:73 budget0p02: retained=0.993 context_diff=0.002317 full_diff=0.002238 correct=True
+completed qa3:18 budget0p02: retained=0.977 context_diff=0.006012 full_diff=0.006035 correct=False
+completed qa4:95 budget0p02: retained=0.981 context_diff=0.002893 full_diff=0.003761 correct=True
+completed qa5:58 budget0p02: retained=0.997 context_diff=0.001832 full_diff=0.001826 correct=True
+completed qa1:22 budget0p02: retained=0.998 context_diff=0.001039 full_diff=0.001068 correct=True
+incomplete qa2:65 budget0p02: condition reached 30 generation-call limit
+completed qa3:38 budget0p02: retained=0.994 context_diff=0.001518 full_diff=0.001493 correct=False
+completed qa4:70 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa5:9 budget0p02: retained=0.999 context_diff=0.000855 full_diff=0.000896 correct=False
+completed qa1:8 budget0p02: retained=1.000 context_diff=0.000000 full_diff=0.000000 correct=True
+completed qa2:88 budget0p02: retained=1.000 context_diff=0.001570 full_diff=0.001402 correct=True
+completed qa3:32 budget0p02: retained=0.969 context_diff=0.007855 full_diff=0.005696 correct=False
+completed qa4:88 budget0p02: retained=0.994 context_diff=0.002697 full_diff=0.001962 correct=True
+completed qa5:32 budget0p02: retained=0.997 context_diff=0.002088 full_diff=0.002003 correct=True
+| Condition | Complete | Accuracy | Accuracy retention (95% CI) | Token reduction | Mean full-prompt cos diff | Budget compliance | Decision |
+|---|---:|---:|---:|---:|---:|---:|---|
+| original | 50/50 | 72.0% | 100.0% | 0.0% | 0.000000 | 100.0% | Baseline |
+| budget0p02 | 48/50 | 64.6% | 91.2% (75.0%–108.6%) | 0.7% | 0.002300 | 100.0% | FAIL |

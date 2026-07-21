@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import urllib.error
 import urllib.request
+from http.client import HTTPConnection
 from typing import Any
 
 import click
@@ -77,6 +78,21 @@ def test_validate_selection_payload_rejects_out_of_range_index() -> None:
         )
 
 
+@pytest.mark.parametrize(
+    ("payload", "message"),
+    [
+        ({"schema_version": 1, "accepted_indices": None, "total_count": 1}, "list of integers"),
+        ({"schema_version": 1, "accepted_indices": ["0"], "total_count": 1}, "list of integers"),
+        ({"schema_version": 1, "accepted_indices": [], "total_count": 2}, "does not match"),
+        ({"schema_version": 1, "accepted_indices": [0, 0], "total_count": 1}, "duplicates"),
+        ({"schema_version": 1, "accepted_indices": [-1], "total_count": 1}, "out of range"),
+    ],
+)
+def test_validate_selection_payload_rejects_malformed_selections(payload: dict[str, Any], message: str) -> None:
+    with pytest.raises(click.ClickException, match=message):
+        validate_selection_payload(payload, total_count=1)
+
+
 def test_accepted_candidates_preserves_confidence_order() -> None:
     proposal = _reviewable_proposal()
     candidates = accepted_candidates(proposal, (1, 0))
@@ -84,6 +100,11 @@ def test_accepted_candidates_preserves_confidence_order() -> None:
     assert len(candidates) == 2
     assert candidates[0] is proposal.diffs[0].candidate
     assert candidates[1] is proposal.diffs[1].candidate
+
+
+def test_inject_bridge_requires_body_tag() -> None:
+    with pytest.raises(click.ClickException, match="missing a </body>"):
+        inject_bridge("<main>review</main>", port=4242)
 
 
 def test_review_server_returns_accepted_candidates_on_done() -> None:
@@ -155,6 +176,64 @@ def test_review_server_rejects_invalid_done_payload() -> None:
         assert error.value.code == 400
     finally:
         server.shutdown()
+
+
+@pytest.mark.parametrize(
+    ("path", "data", "expected_status"),
+    [
+        ("/missing", None, 404),
+        ("/missing", b"{}", 404),
+        ("/selection", b"not-json", 400),
+        ("/selection", b'{"status":"unknown"}', 400),
+    ],
+)
+def test_review_server_rejects_bad_requests(path: str, data: bytes | None, expected_status: int) -> None:
+    server = ReviewServer("<html>review</html>", port=0)
+    server.start()
+    method = "POST" if data is not None else "GET"
+    connection = HTTPConnection("127.0.0.1", server.port)
+
+    try:
+        connection.request(method, path, body=data)
+        assert connection.getresponse().status == expected_status
+    finally:
+        connection.close()
+        server.shutdown()
+
+
+def test_review_server_serves_review_page() -> None:
+    server = ReviewServer("<html>review</html>", port=0)
+    server.start()
+    connection = HTTPConnection("127.0.0.1", server.port)
+
+    try:
+        connection.request("GET", "/")
+        response = connection.getresponse()
+        assert response.status == 200
+        assert response.headers["Content-Type"] == "text/html; charset=utf-8"
+        assert response.read() == b"<html>review</html>"
+    finally:
+        connection.close()
+        server.shutdown()
+
+
+@pytest.mark.parametrize("interrupt", [False, True])
+def test_review_server_wait_handles_missing_result(monkeypatch: pytest.MonkeyPatch, interrupt: bool) -> None:
+    server = ReviewServer("<html></html>", port=0)
+
+    def wait() -> None:
+        if interrupt:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(vars(server)["_event"], "wait", wait)
+    try:
+        if interrupt:
+            assert server.wait_for_selection().status == "aborted"
+        else:
+            with pytest.raises(click.ClickException, match="without a selection"):
+                server.wait_for_selection()
+    finally:
+        vars(server)["_httpd"].server_close()
 
 
 def test_run_browser_review_returns_candidates(monkeypatch: pytest.MonkeyPatch) -> None:

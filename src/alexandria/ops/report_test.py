@@ -24,6 +24,12 @@ class _OtherMerger(_FirstWinsMerger):
     pass
 
 
+class _IdentifiedMerger(_FirstWinsMerger):
+    @property
+    def model_id(self) -> str:
+        return "offline-test"
+
+
 def test_optimization_report_includes_compression_and_quality_metrics() -> None:
     report = optimization_report(
         "repeat me\nrepeat me\nunique line\n",
@@ -98,3 +104,35 @@ def test_compare_reports_flags_token_and_quality_regressions() -> None:
         "tokens.reduced",
         "quality.instruction_coverage",
     }
+
+
+@pytest.mark.parametrize(
+    ("quality_tolerance", "token_tolerance", "message"),
+    [(-0.1, 0, "quality_tolerance"), (0.0, -1, "token_tolerance")],
+)
+def test_compare_reports_rejects_negative_tolerances(
+    quality_tolerance: float, token_tolerance: int, message: str
+) -> None:
+    report = optimization_report("one line\n", HashEmbedder(), _FirstWinsMerger())
+
+    with pytest.raises(ValueError, match=message):
+        compare_reports(
+            report,
+            report,
+            quality_tolerance=quality_tolerance,
+            token_tolerance=token_tolerance,
+        )
+
+
+def test_compare_reports_rejects_a_different_source_token_count() -> None:
+    report = optimization_report("one line\n", HashEmbedder(), _FirstWinsMerger())
+    baseline = report.model_copy(update={"tokens": report.tokens.model_copy(update={"source": 999})})
+
+    with pytest.raises(ValueError, match="source token count"):
+        compare_reports(report, baseline)
+
+
+def test_report_uses_merger_model_id_when_available() -> None:
+    report = optimization_report("one line\n", HashEmbedder(), _IdentifiedMerger())
+
+    assert report.config.merger.endswith("._IdentifiedMerger:offline-test")
