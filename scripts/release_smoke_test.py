@@ -219,18 +219,14 @@ print(json.dumps({
         installed_module = Path(api_payload["module"])
         if venv.resolve() not in installed_module.parents:
             raise RuntimeError(
-                "Python smoke test did not import from the clean virtual environment: "
-                f"{installed_module}"
+                f"Python smoke test did not import from the clean virtual environment: {installed_module}"
             )
 
         print("Release installation smoke test passed.")
         print(f"Wheel: {wheels[0].name}")
         print(f"Source distribution: {source_distributions[0].name}")
         print(f"Installed module: {installed_module}")
-        print(
-            "Token reduction: "
-            f"{api_payload['source_tokens']} -> {api_payload['reduced_tokens']}"
-        )
+        print(f"Token reduction: {api_payload['source_tokens']} -> {api_payload['reduced_tokens']}")
 
 
 if __name__ == "__main__":
