@@ -103,6 +103,14 @@ per-task results, timing, cost, and append-only raw artifacts, earlier studies u
 [`benchmarks/prompt_compression/results/`](benchmarks/prompt_compression/results/), and the
 [benchmark runner guide](benchmarks/prompt_compression/README.md) for executing a new run.
 
+A `cos_sim_diff_budget` sweep (0.0025–0.02, BABILong 8k, n=50, seed 42) found no operating point
+that clears the 90% accuracy-retention release threshold with 95% confidence, including the shipped
+default. **Shipped default:** 70.0% accuracy, 0.8% token reduction, n=50. Token reduction and
+cost stayed flat across the whole range (~0.7–0.8%, ~$0.58 per run) — BABILong 8k prompts have
+little sentence-level redundancy for this compression mode to find. The default remains unchanged.
+See the [P0–P6 sweep report](benchmarks/prompt_compression/results/2026-07-20-babilong-p0-p6-sweep-n50-v1/report.md)
+for the full comparison table, time/cost breakdown, and evidence.
+
 ### Reproduce the published run
 
 The benchmark harness is repository tooling rather than part of the installed CLI wheel. After
