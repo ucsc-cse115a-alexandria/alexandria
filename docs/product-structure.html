@@ -128,7 +128,32 @@
     .footnote { margin-top: 17px; color: var(--muted); text-align: right; font-size: 11px; }
 
     /* Standalone export: keep the layer map as the single visual subject. */
-    .diagram-only main { min-height: 0; padding: 8px; }
+    .diagram-only main { width: 100vw; height: 100vh; min-height: 0; padding: 8px; }
+    .diagram-only .architecture {
+      height: calc(100vh - 16px);
+      grid-template-columns: 176px minmax(0, 1fr) 238px;
+      grid-template-rows: 1fr 1.45fr 1.25fr 1.4fr;
+    }
+    .diagram-only .layer-ir {
+      display: grid;
+      grid-template-columns: 122px repeat(3, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+    }
+    .diagram-only .layer-ir .layer-title { grid-row: 1 / 3; }
+    .diagram-only .layer-ir .protocols { grid-column: 2 / 5; }
+    .diagram-only .protocol { display: flex; flex-direction: column; justify-content: center; }
+    .diagram-only .feature-note {
+      grid-column: 1 / -1;
+      padding: 3px 8px 0;
+      text-align: center;
+    }
+    .diagram-only .arrow-label { font-size: 11.5px; }
+    .diagram-only .feature code,
+    .diagram-only .protocol code { font-size: 12px; }
+    .diagram-only .protocol small,
+    .diagram-only .feature-note { font-size: 11px; }
+    .diagram-only .provider-arrow { border-color: #64748b; background: #f1f5f9; }
+    .diagram-only { --muted: #52627b; }
     .diagram-only main > .eyebrow,
     .diagram-only main > h1,
     .diagram-only main > .subtitle,
@@ -167,11 +192,11 @@
           <div class="feature"><code>compare</code></div>
           <div class="feature"><code>diff</code></div>
           <div class="feature target"><code>target</code></div>
-          <div class="feature-note">features are mutually independent</div>
+          <div class="feature-note">7 mutually independent features</div>
         </div>
         <i class="arrow"></i><span class="arrow-label">defaults via utils</span>
       </div>
-      <div class="outside"><b>Ports defined in ir/</b><small>Core algorithms accept <code>Embedder</code> and merger protocols; strict targets also require <code>TargetedMerger</code>.</small></div>
+      <div class="outside"><b>Ports defined in ir/</b><small>Algorithms depend on <code>ir/</code> protocols: <code>Embedder</code>, <code>SentenceMerger</code>, and <code>TargetedMerger</code>.</small></div>
 
       <div class="role role-utils"><b>Infrastructure</b><span>Configuration, tokenization, and provider adapters</span></div>
       <div class="layer layer-utils">
@@ -182,7 +207,7 @@
         <div class="module"><b>config.py</b><small>API key configuration</small></div>
         <i class="arrow"></i><span class="arrow-label">uses shared IR</span>
       </div>
-      <div class="outside provider-arrow"><b>OpenAI</b><small>External service accessed through adapters in <code>utils</code>; OpenAI SDK imports and client construction stay there.</small></div>
+      <div class="outside provider-arrow"><b>OpenAI</b><small>OpenAI adapters and SDK clients live in <code>utils/</code>.</small></div>
 
       <div class="role role-ir"><b>Domain</b><span>Validated data and provider-neutral contracts</span></div>
       <div class="layer layer-ir">
@@ -196,7 +221,7 @@
           <div class="protocol"><code>TargetedMerger</code><small>Protocol</small></div>
         </div>
       </div>
-      <div class="outside"><b>Shared foundation</b><small>Imported directly by <code>cli</code>, <code>ops</code>, and <code>utils</code>; depends on no other Alexandria package.</small></div>
+      <div class="outside"><b>Shared foundation</b><small><code>cli/</code>, <code>ops/</code>, and <code>utils/</code> import <code>ir/</code>; <code>ir/</code> imports none of them.</small></div>
 
       <div class="legend"><span>primary package dependency path</span><span class="dashed">system boundary</span></div>
     </section>

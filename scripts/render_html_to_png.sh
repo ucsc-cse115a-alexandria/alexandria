@@ -37,7 +37,12 @@ case "$view" in
     page_url="file://$(absolute_path "$input")"
     ;;
   diagram)
-    height="${RENDER_HEIGHT:-560}"
+    if ! [[ "$width" =~ ^[0-9]+$ ]] || (( width < 1200 )); then
+      echo "error: diagram width must be an integer >= 1200, got: $width" >&2
+      exit 1
+    fi
+    # A slide-friendly 1.8:1 canvas (width / height = 9 / 5).
+    height="$(((width * 5 + 4) / 9))"
     page_url="file://$(absolute_path "$input")?view=diagram"
     ;;
   *)
