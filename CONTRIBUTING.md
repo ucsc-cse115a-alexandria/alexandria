@@ -1,113 +1,79 @@
 # Contributing to Alexandria
 
-This guide covers local setup, the code conventions, and how a change gets merged. The team keeps
-written rules short: style, formatting, typing, and import structure are decided by the tool
-configuration in [`pyproject.toml`](pyproject.toml) and enforced by CI, not by prose you have to
-remember. If the checks pass, the code matches house style, so review can focus on whether the change
-is correct.
+This guide explains how to set up the repository, run the required checks, write tests, and prepare a pull request. [`pyproject.toml`](pyproject.toml) defines the formatting, lint, typing, test, coverage, and import rules.
 
-The Scrum working agreement (roles, Definition of Done, meeting cadence) lives in
-[`docs/working-agreement.md`](docs/working-agreement.md).
+The Scrum roles and Definition of Done are in [`docs/working-agreement.md`](docs/working-agreement.md).
 
 ## Setup
 
-Alexandria needs Python 3.14 and [uv](https://docs.astral.sh/uv/).
+Alexandria requires Python 3.14 and [uv](https://docs.astral.sh/uv/).
 
 ```bash
 uv sync --dev --frozen
 uv run alexandria --help
 ```
 
-Pipeline commands call the OpenAI API. Set a key with `uv run alexandria config set openai-api-key`
-or `export OPENAI_API_KEY=...`. Tests do not need a key unless you run the live ones (see Testing).
+Commands that embed or rewrite text need an OpenAI API key. Store one with `uv run alexandria config set openai-api-key`, or set `OPENAI_API_KEY`. Most tests run without a key. Tests marked `ai` call OpenAI and skip when a key is not available.
 
-## The checks
+## Required checks
 
-CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs on every push and pull request to
-`main`. All five must pass before a merge. Run them locally with the same commands:
+CI runs these checks on every push and pull request to `main`:
 
 ```bash
-uv run ruff check .          # lint
-uv run ruff format --check . # format  (apply with: uv run ruff format .)
-uv run pyright               # types (strict)
-uv run lint-imports          # import layering
-uv run pytest                # tests + coverage (80% branch gate)
+uv run ruff check .
+uv run ruff format --check .
+uv run pyright
+uv run lint-imports
+uv run pytest
 ```
 
-Never silence a check with an inline ignore comment (`# noqa`, `# type: ignore`, `# ruff: noqa`,
-and the like). Fix the underlying cause instead.
+Do not hide an error with `# noqa`, `# type: ignore`, or a similar inline exception. Fix the cause. The repository requires at least 80% branch coverage.
 
 ## Code conventions
 
-The style guide is the tool configuration. The rules below are what those commands enforce, so you
-know them without opening `pyproject.toml`.
+Ruff owns formatting and lint rules. Pyright runs in strict mode. Import-linter checks the package layers.
 
-### Ruff
+The main layer direction is:
 
-- Line length 119, target Python 3.14, double quotes.
-- Lint rule sets: E, F, I (isort), UP (pyupgrade), B (bugbear), SIM (simplify), C4 (comprehensions),
-  TRY (tryceratops), ASYNC, TCH (type-checking imports), FA (future annotations), S (bandit
-  security), ARG (unused arguments), PERF (perflint), RUF, PIE, RET (returns), SLF (private-member
-  access), PTH (use pathlib).
-- Ignored globally: TRY003 (long inline exception messages), S311 (non-crypto random), RUF001
-  (fullwidth characters, for Japanese content).
-- Per file: `tests/**` and `*/*_test.py` allow `assert` (S101 off); `scripts/**` allow subprocess
-  and URL-open calls (S603, S310 off).
+```text
+cli -> ops -> utils -> ir
+```
 
-### Pyright
-
-Strict mode, over `src` and `benchmarks`.
-
-### Import layering
-
-`lint-imports` enforces a functional-core / imperative-shell design. Root package `alexandria`:
-
-- Layers `cli` -> `ops` -> `utils` -> `ir`. `ir` is the shared contract layer any layer may import.
-- `cli` reaches `utils` only through `ops` (no direct `cli` -> `utils` import).
-- `ops.pipe` may import features; a feature never imports `ops.pipe`.
-- Features are independent: a feature may not import a sibling feature. Shared types live in
-  `ir.contracts`.
-- Only the `utils` shell constructs OpenAI clients. `ir`, `ops`, and `cli` may not import `openai`.
-
-### Coverage
-
-Measured over `src/alexandria` with branch coverage on. CI fails below 80%. `__init__.py` and
-`*_test.py` are omitted.
+`ir` contains shared contracts. Features under `ops.features` do not import each other. The OpenAI client is created only behind the utility boundary. See [`pyproject.toml`](pyproject.toml) for the complete contracts and exceptions.
 
 ## Testing
 
-- Write code that can be unit-tested without mocking our own code. The pipeline takes its
-  dependencies as arguments (an `Embedder` and a `SentenceMerger`), so tests pass a deterministic
-  offline `HashEmbedder` and a small fake merger instead of patching internals.
-- Unit tests sit next to the module they cover as `<module>_test.py`. Broader end-to-end tests live
-  in [`tests/`](tests/).
-- Live end-to-end tests that call OpenAI carry the pytest `ai` marker. They skip unless a key is
-  resolvable. Run them on purpose with `uv run pytest -m ai`.
-- Decide the test cases when you define the task: know what must pass before you start.
+Unit tests use the `*_test.py` name and usually sit beside the code they test. Broader end-to-end tests are in [`tests/`](tests/). Tests for repository scripts and benchmark code stay beside those modules.
 
-## Prompt-quality regression report
+Pass dependencies into code instead of mocking Alexandria internals. Pipeline tests use `HashEmbedder` and small fake mergers for deterministic offline checks.
 
-A planned quality check runs `alexandria report` on a fixed prompt and compares the result against a
-committed baseline, to catch optimization regressions. The report command and its prompt
-(`benchmarks/optimization_prompt.txt`) are on `main`, but the CI workflow and the committed
-`benchmarks/optimization_baseline.json` are not yet (see the known problems in the [Release
-Summary](docs/release-summary.md)). When the baseline lands, run it locally, and update the baseline
-only for an intentional change explained in the same pull request:
+Run live tests only when you intend to make API calls:
 
 ```bash
-uv run alexandria report benchmarks/optimization_prompt.txt \
-  --model deterministic --optimizer greedy_pairwise --selector auto \
-  --threshold 0.85 --drift-budget 2.0 --baseline benchmarks/optimization_baseline.json \
-  --token-tolerance 0 --quality-tolerance 0.0
+uv run pytest -m ai
 ```
 
-The command exits non-zero when the reduced token count rises or a monitored quality score falls
-against the baseline.
+## Benchmark reports
+
+Benchmark result directories contain raw records, a manifest, a JSON summary, and `report.md`. Treat the raw records and manifest as evidence. Do not edit a generated `report.md` directly.
+
+For a retained-target run, rebuild `summary.json` and `report.md` from its saved records:
+
+```bash
+uv run python -m scripts.summarize_prompt_compression_benchmark \
+  benchmarks/BENCHMARK/results/RUN_DIRECTORY \
+  --release-threshold 0.90 --bootstrap-samples 10000 --bootstrap-seed 42
+```
+
+If the report format changes, update its generator and tests, then regenerate every affected report. Check that the committed table still matches `summary.json`.
+
+The `alexandria report` command can compare a new optimization report with a compatible baseline supplied by the user. The repository does not commit a baseline or run this comparison in CI.
 
 ## Pull requests
 
-- Keep pull requests small and reviewable, one concern each.
-- Separate structural changes (rename, move, extract) from behavior changes.
-- Cover every behavior change with a test that fails without the change.
-- Do not merge until CI is green.
-- Write a description that says what changed and why.
+- Keep one concern in each pull request.
+- Separate structural changes from behavior changes.
+- Add a test for every behavior change.
+- Update user documentation when behavior or commands change.
+- Explain what changed and why.
+- Do not merge until CI passes and a teammate approves.

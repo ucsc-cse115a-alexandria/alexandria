@@ -2,37 +2,31 @@
 
 [![Coverage badge](https://github.com/ucsc-cse115a-alexandria/alexandria/raw/python-coverage-comment-action-data/badge.svg)](https://github.com/ucsc-cse115a-alexandria/alexandria/tree/python-coverage-comment-action-data)
 
-Label-free prompt optimization: shorten instruction-heavy prompts while preserving their meaning.
-Alexandria finds near-duplicate instructions with sentence embeddings and has an LLM merge each pair
-into a single rewritten sentence — no labels, no training, no target output to compare against.
+Alexandria shortens instruction-heavy prompts without labels, training, or expected outputs. It finds similar instructions with sentence embeddings and asks an LLM to merge each pair into one shorter instruction.
 
-## Prerequisites and install
+Alexandria is at version `0.1.0`. The API may change before version 1.0. Normal reductions use the OpenAI API and may take several minutes or cost money.
 
-Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires CPython 3.14,
-[uv](https://docs.astral.sh/uv/), Git, and internet access for installation. The current release path
-is the public GitHub repository because `alexandria-prompt` is not yet published on PyPI. No GitHub
-authentication is required when installing over HTTPS.
+## Install
+
+Alexandria requires Python 3.14 or later, Git, and internet access. It is installed from GitHub because `alexandria-prompt` is not on PyPI yet.
 
 ```bash
-# Install the CLI in an isolated tool environment.
+# Install with pip.
+python -m pip install "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
+alexandria --help
+
+# Or install the CLI in an isolated uv environment.
 uv tool install "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
 
-# Or run one command without keeping the tool installed.
-uvx --from "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git" \
-  alexandria --help
-
-# Add the importable library to an existing uv project.
+# Add the package to an existing uv project.
 uv add "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
 ```
 
-The distribution name is `alexandria-prompt`; the command and import name are both `alexandria`.
-See the [release installation guide](docs/release-install.md) for clean-environment checks, the
-installed CLI and API smoke tests, and Windows notes.
+The distribution name is `alexandria-prompt`. The command and import name are both `alexandria`. See the [installation guide](docs/release-install.md) for clean-environment checks and Windows notes.
 
 ## Quickstart
 
-Normal reductions call OpenAI for embeddings and merging. They require an API key, network access,
-and access to the configured models. Store a key once, or export `OPENAI_API_KEY`:
+Store an OpenAI API key, then reduce a prompt:
 
 ```bash
 alexandria config set openai-api-key
@@ -47,108 +41,57 @@ alexandria reduce prompt.txt > reduced.txt
 cat reduced.txt
 ```
 
-The examples below use the installed `alexandria` command. From a development checkout, substitute
-`uv run alexandria`.
+From a development checkout, use `uv run alexandria` instead of `alexandria`.
 
-Common options:
+Common controls:
 
-- `--save-tokens N` stops once N tokens are saved.
-- `--target-reduction P` treats a P% reduction as a hard requirement; the result never exceeds the
-  derived token ceiling.
-- `--cos-sim-diff-budget B` caps accepted semantic change (`1 - cosine_similarity`, default `0.5`).
-- `--json` emits a machine-readable summary; `-v` streams progress to standard error.
+- `--save-tokens N` requests a specific token saving.
+- `--keep P` requests that the result retain P percent of the source tokens.
+- `--target-reduction P` requires a P percent reduction.
+- `--cos-sim-diff-budget B` limits accepted semantic change.
+- `--json` returns a machine-readable summary.
 
-`report` runs the same pipeline and emits JSON with token and quality metrics, optionally failing
-against a baseline report saved earlier:
+Best-effort controls may stop before their requested target. `--target-reduction` treats the token ceiling as a requirement. Use `--interactive` or `--browser` to review edits before applying them.
 
-```bash
-alexandria report prompt.txt
-```
+See the [CLI guide](docs/cli.md) for all commands, review modes, saved JSON envelopes, and baseline reports.
 
-See the [CLI guide](docs/cli.md) for phase-by-phase execution, saved JSON envelopes, baseline
-comparisons, and the full option reference.
-
-## Library
-
-The CLI is a thin wrapper; everything is importable. Call `reduce` directly from Python (it builds
-the OpenAI defaults, so a key must be resolvable — pass `api_key=`, export `OPENAI_API_KEY`, or use
-the saved config file):
+## Python library
 
 ```python
 import alexandria
 
 result = alexandria.reduce(
-    "Keep your answers concise and to the point.\n"
-    "Keep your answers brief and to the point.\n"
+    "Keep your answers concise.\n"
+    "Keep your answers brief.\n"
     "Use examples.\n"
 )
 print(result.text)
 ```
 
-See [the library guide](docs/library.md) for injecting your own embedder and merger for offline
-tests, and a runnable example in `examples/reduce_prompt.py`. The core library does not load `.env`
-files automatically; that example opts into `python-dotenv` for local development.
+The default library path also uses OpenAI. You can pass your own embedder and merger for offline use. See the [library guide](docs/library.md) and [`examples/reduce_prompt.py`](examples/reduce_prompt.py).
 
 ## Benchmark
 
-Hard-target reduction on BABILong 8k (n=50, seed 42, `gpt-5.6-luna` for compression and answers)
-swept retained-prompt targets from 95% down to 75% against the uncompressed 72% baseline. Shallow
-cuts produced an 8.0% token reduction (95% retained) with 62.0% accuracy and a 13.2% reduction
-(90% retained) with 64.0% accuracy.
+A BABILong 8k run used 50 cases, seed 42, and `gpt-5.6-luna` for compression and answers. The original prompts scored 72.0% accuracy. Keeping 95% of the prompt produced an 8.0% token reduction and 62.0% accuracy. Keeping 90% produced a 13.2% reduction and 64.0% accuracy.
 
 ![Task accuracy by retained prompt share](benchmarks/prompt_compression/results/2026-07-20-luna-keep75-95-n50-v1/accuracy_vs_retained.png)
 
-See the [run report](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/report.md) for
-per-task results, timing, cost, and append-only raw artifacts, earlier studies under
-[`benchmarks/prompt_compression/results/`](benchmarks/prompt_compression/results/), and the
-[benchmark runner guide](benchmarks/prompt_compression/README.md) for executing a new run.
+The benchmark measures downstream answer accuracy. It does not measure lossless preservation of every detail. Model output is nondeterministic, so another run may produce different values.
 
-### Reproduce the published run
-
-The benchmark harness is repository tooling rather than part of the installed CLI wheel. After
-installing Alexandria, clone the repository and run the harness from that checkout.
-The published run requires an OpenAI key, access to `gpt-5.6-luna`, the pinned BABILong download,
-network access, and a cost allowance of up to USD 15. Model output is nondeterministic, so a rerun
-reproduces the procedure and evidence format rather than byte-identical responses.
-
-```bash
-git clone https://github.com/ucsc-cse115a-alexandria/alexandria.git
-cd alexandria
-uv sync --frozen
-uv run python -m scripts.download_babilong_8k_data
-uv run python -m scripts.prompt_compression_benchmark \
-  --benchmark babilong_8k \
-  --n 50 --seed 42 \
-  --reductions 25 20 15 10 5 \
-  --data-dir data/babilong/8k \
-  --model gpt-5.6-luna \
-  --merge-model gpt-5.6-luna \
-  --min-original-accuracy 0.50 \
-  --max-estimated-cost-usd 15 \
-  --out trial_results/babilong_8k/keep75-95-reproduction
-```
-
-Run the same command with `--dry-run` first to validate sampling and output setup without model calls.
-The committed [manifest](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/manifest.json)
-records the original command, models, case IDs, provenance, and dirty working-tree status.
+See the [run report](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/report.md) for the saved measurements. The [benchmark guide](benchmarks/prompt_compression/README.md) explains the method, cost controls, raw artifacts, and reproduction commands.
 
 ## How it works
 
-The composable API and CLI expose four phases over one validated intermediate representation
-(`Document` → `Section` → `Sentence`). The default end-to-end reduction does not need a standalone
-Score result: `merge_rewrite` ranks pairs directly from their embeddings, so `reduce` skips Score
-unless a selected optimizer declares that it needs a scorer.
+Alexandria uses a validated `Document`, `Section`, and `Sentence` model.
 
-1. **Represent** — split the prompt into instructions, tokenize, and embed each one.
-2. **Score** — optionally rate each instruction's redundancy (cosine similarity to its most similar
-   other) when a selected optimizer needs scores.
-3. **Optimize** — an LLM rewrites each near-duplicate pair as one minimal-token sentence, re-checked
-   against the semantic budget with up to 3 attempts.
-4. **Select** — apply accepted edits in ascending `cos_sim_diff` order under the cumulative budget,
-   stopping at the requested token budget; `--target-reduction` uses a hard-target path that repairs
-   model overshoot deterministically.
+1. Represent splits, tokenizes, and embeds the prompt.
+2. Score can measure sentence redundancy when an optimizer needs it.
+3. Optimize proposes shorter replacements for similar instructions.
+4. Select applies compatible edits within the semantic and token budgets.
 
-See [the design specification](docs/spec.md) for the implementation architecture.
+The default optimizer ranks pairs directly, so `reduce` skips the optional Score phase. A separate hard-target path repairs model output until it reaches the required token ceiling when possible.
+
+See the [design specification](docs/spec.md) for the full contracts.
 
 ## Development
 
@@ -157,8 +100,10 @@ git clone https://github.com/ucsc-cse115a-alexandria/alexandria
 cd alexandria
 uv sync
 
-uv run pytest                          # tests + coverage
-python scripts/release_smoke_test.py   # build/install release artifacts; verify CLI + API
-uv run ruff check .                    # lint
-uv run pyright                         # types
+uv run pytest
+python scripts/release_smoke_test.py
+uv run ruff check .
+uv run pyright
 ```
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for every required check and the test layout.
