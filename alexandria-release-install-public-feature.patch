@@ -1,0 +1,659 @@
+diff --git a/.github/workflows/ci.yml b/.github/workflows/ci.yml
+index bc6bb530a57ad0edc0e6726a20efbfc192552f40..acd2823ecd61221b7a6b4c50c8e031098cfa3c83 100644
+--- a/.github/workflows/ci.yml
++++ b/.github/workflows/ci.yml
+@@ -46,6 +46,9 @@ jobs:
+       - name: Run tests
+         run: uv run pytest
+ 
++      - name: Verify release installation
++        run: python scripts/release_smoke_test.py
++
+       # Posts the coverage comment on PRs and updates the badge branch on main.
+       # Runs even when the fail_under gate fails so the report still shows up.
+       - name: Coverage comment
+diff --git a/README.md b/README.md
+index 8a511258d66ab541bd50deb279530632b1c83fbb..9836da1d1c4c58df7d59d82aa119fe7ae4c173aa 100644
+--- a/README.md
++++ b/README.md
+@@ -6,61 +6,67 @@ Label-free prompt optimization: shorten instruction-heavy prompts while preservi
+ Alexandria finds near-duplicate instructions with sentence embeddings and has an LLM merge each pair
+ into a single rewritten sentence — no labels, no training, no target output to compare against.
+ 
+-## Install
++## Prerequisites and install
+ 
+-Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14
+-and [uv](https://docs.astral.sh/uv/).
++Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires CPython 3.14,
++[uv](https://docs.astral.sh/uv/), Git, and internet access for installation. The current release path
++is the public GitHub repository because `alexandria-prompt` is not yet published on PyPI. No GitHub
++authentication is required when installing over HTTPS.
+ 
+ ```bash
+-# CLI
+-uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
++# Install the CLI in an isolated tool environment.
++uv tool install "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
+ 
+-# or run once without installing
+-uvx --from git+https://github.com/ucsc-cse115a-alexandria/alexandria.git alexandria reduce prompt.txt
++# Or run one command without keeping the tool installed.
++uvx --from "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git" \
++  alexandria --help
+ 
+-# as a library dependency
+-uv add git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
++# Add the importable library to an existing uv project.
++uv add "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
+ ```
+ 
+-The package is distributed as `alexandria-prompt`; the import name is `alexandria`. The examples
+-below use the installed `alexandria` command; from a development checkout, substitute
+-`uv run alexandria`.
++The distribution name is `alexandria-prompt`; the command and import name are both `alexandria`.
++See the [release installation guide](docs/release-install.md) for clean-environment checks, the
++installed CLI and API smoke tests, and Windows notes.
+ 
+-## Set your API key
++## Quickstart
+ 
+-Alexandria calls OpenAI for embeddings and merging. Store a key once (or `export OPENAI_API_KEY=...`):
++Normal reductions call OpenAI for embeddings and merging. They require an API key, network access,
++and access to the configured models. Store a key once, or export `OPENAI_API_KEY`:
+ 
+ ```bash
+ alexandria config set openai-api-key
+-```
+ 
+-## Usage
++cat > prompt.txt <<'EOF'
++Keep your answers concise and to the point.
++Keep your answers brief and to the point.
++Use examples.
++EOF
+ 
+-Reduce a prompt in one command:
+-
+-```bash
+ alexandria reduce prompt.txt > reduced.txt
++cat reduced.txt
+ ```
+ 
++The examples below use the installed `alexandria` command. From a development checkout, substitute
++`uv run alexandria`.
++
+ Common options:
+ 
+-- `--save-tokens N` — stop once N tokens are saved.
+-- `--target-reduction P` — treat a P% reduction as a hard requirement; the result never exceeds the
++- `--save-tokens N` stops once N tokens are saved.
++- `--target-reduction P` treats a P% reduction as a hard requirement; the result never exceeds the
+   derived token ceiling.
+-- `--cos-sim-diff-budget B` — cap the accepted semantic change (`1 - cosine_similarity`,
+-  default `0.5`).
+-- `--json` — emit a machine-readable summary; `-v` streams progress to stderr.
++- `--cos-sim-diff-budget B` caps accepted semantic change (`1 - cosine_similarity`, default `0.5`).
++- `--json` emits a machine-readable summary; `-v` streams progress to standard error.
+ 
+ `report` runs the same pipeline and emits JSON with token and quality metrics, optionally failing
+-against a baseline report you saved earlier (no baseline is included in the repository or checked
+-by CI):
++against a baseline report saved earlier:
+ 
+ ```bash
+ alexandria report prompt.txt
+ ```
+ 
+-See [the CLI guide](docs/cli.md) for phase-by-phase execution, saving and resuming JSON envelopes,
+-baseline comparisons with `--baseline`, and the full option reference.
++See the [CLI guide](docs/cli.md) for phase-by-phase execution, saved JSON envelopes, baseline
++comparisons, and the full option reference.
+ 
+ ## Library
+ 
+@@ -97,6 +103,35 @@ per-task results, timing, cost, and append-only raw artifacts, earlier studies u
+ [`benchmarks/prompt_compression/results/`](benchmarks/prompt_compression/results/), and the
+ [benchmark runner guide](benchmarks/prompt_compression/README.md) for executing a new run.
+ 
++### Reproduce the published run
++
++The benchmark harness is repository tooling rather than part of the installed CLI wheel. After
++installing Alexandria, clone the repository and run the harness from that checkout.
++The published run requires an OpenAI key, access to `gpt-5.6-luna`, the pinned BABILong download,
++network access, and a cost allowance of up to USD 15. Model output is nondeterministic, so a rerun
++reproduces the procedure and evidence format rather than byte-identical responses.
++
++```bash
++git clone https://github.com/ucsc-cse115a-alexandria/alexandria.git
++cd alexandria
++uv sync --frozen
++uv run python -m scripts.download_babilong_8k_data
++uv run python -m scripts.prompt_compression_benchmark \
++  --benchmark babilong_8k \
++  --n 50 --seed 42 \
++  --reductions 25 20 15 10 5 \
++  --data-dir data/babilong/8k \
++  --model gpt-5.6-luna \
++  --merge-model gpt-5.6-luna \
++  --min-original-accuracy 0.50 \
++  --max-estimated-cost-usd 15 \
++  --out trial_results/babilong_8k/keep75-95-reproduction
++```
++
++Run the same command with `--dry-run` first to validate sampling and output setup without model calls.
++The committed [manifest](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/manifest.json)
++records the original command, models, case IDs, provenance, and dirty working-tree status.
++
+ ## How it works
+ 
+ The composable API and CLI expose four phases over one validated intermediate representation
+@@ -122,7 +157,8 @@ git clone https://github.com/ucsc-cse115a-alexandria/alexandria
+ cd alexandria
+ uv sync
+ 
+-uv run pytest        # tests + coverage
+-uv run ruff check .  # lint
+-uv run pyright       # types
++uv run pytest                          # tests + coverage
++python scripts/release_smoke_test.py   # build/install release artifacts; verify CLI + API
++uv run ruff check .                    # lint
++uv run pyright                         # types
+ ```
+diff --git a/docs/release-install.md b/docs/release-install.md
+new file mode 100644
+index 0000000000000000000000000000000000000000..a2320c4bc0be212ed99314a13da71784cdbd9de4
+--- /dev/null
++++ b/docs/release-install.md
+@@ -0,0 +1,161 @@
++# Release installation and benchmark reproduction
++
++This guide verifies the current release path outside a source checkout. Alexandria is not yet on
++PyPI, so version 0.1.0 is installed from the GitHub repository. The distribution is named
++`alexandria-prompt`; the console command and Python import are both named `alexandria`.
++
++## Environment prerequisites
++
++- CPython 3.14.
++- `uv` and Git.
++- Internet access while Git and `uv` fetch the public repository and its dependencies.
++- An OpenAI API key and access to the configured models for normal reductions and benchmark runs.
++- No GPU. OpenAI performs the model work remotely.
++
++The automated installation smoke test described below uses a local deterministic embedding endpoint
++and an injected offline Python merger. It does not require an OpenAI key or make external model calls.
++
++## Install the CLI
++
++Install the current Git release into an isolated `uv` tool environment:
++
++```bash
++uv tool install "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
++alexandria --help
++```
++
++To replace an older installation with the current repository version:
++
++```bash
++uv tool install --force "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
++```
++
++On Windows PowerShell, the same commands work after `uv` and Git are on `PATH`.
++
++## Install the Python library
++
++Add the current Git release to a `uv` project:
++
++```bash
++mkdir alexandria-api-example
++cd alexandria-api-example
++uv init --python 3.14
++uv add "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
++```
++
++Confirm that the distribution and import names resolve:
++
++```bash
++uv run python - <<'PY'
++import importlib.metadata
++
++import alexandria
++
++print(importlib.metadata.version("alexandria-prompt"))
++print(alexandria.__file__)
++PY
++```
++
++The printed module path should be inside the project environment, not inside an Alexandria checkout.
++
++## Installed CLI quickstart
++
++Normal CLI reductions use OpenAI embeddings and merging. Save a key once, or export
++`OPENAI_API_KEY`:
++
++```bash
++alexandria config set openai-api-key
++
++cat > prompt.txt <<'EOF'
++Keep your answers concise and to the point.
++Keep your answers brief and to the point.
++Use examples.
++EOF
++
++alexandria reduce prompt.txt --json
++```
++
++A successful run exits with status 0 and emits JSON whose `reduced_tokens` value is lower than
++`source_tokens` for this redundant fixture. Model output can vary between runs.
++
++## Installed Python API quickstart
++
++Run this inside the `uv` project created above:
++
++```python
++import alexandria
++
++result = alexandria.reduce(
++    "Keep your answers concise and to the point.\n"
++    "Keep your answers brief and to the point.\n"
++    "Use examples.\n"
++)
++print(result.text)
++print(result.source_tokens, result.reduced_tokens)
++```
++
++The default API path resolves the key from `api_key=`, `OPENAI_API_KEY`, or the saved Alexandria
++configuration. For a deterministic API-only example without network calls, see the
++[offline library example](library.md#run-offline).
++
++## Automated clean-package smoke test
++
++From a repository checkout, run:
++
++```bash
++python scripts/release_smoke_test.py
++```
++
++The script performs the release checks in a temporary directory:
++
++1. Creates a clean Python 3.14 virtual environment.
++2. Builds the `alexandria-prompt` wheel and source distribution from release inputs, then installs the wheel.
++3. Runs the installed `alexandria` console script against an exact-duplicate fixture, using a local
++   deterministic mock for the OpenAI embeddings endpoint.
++4. Runs `import alexandria` through the installed interpreter with `HashEmbedder` and an offline
++   merger.
++5. Fails unless both paths reduce the prompt and the imported module comes from the clean virtual
++   environment.
++
++CI runs this smoke test on every pull request to `main` and every push to `main`.
++
++## Reproduce the published benchmark
++
++The published hard-target result is the
++[50-case BABILong 8k report](../benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/report.md).
++Its [manifest](../benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/manifest.json)
++records the original implementation revision, case IDs, models, data provenance, and command.
++
++The benchmark harness and dataset adapters are repository tooling and are not bundled into the
++installed CLI wheel. After installation, clone the repository to obtain them:
++
++```bash
++git clone https://github.com/ucsc-cse115a-alexandria/alexandria.git
++cd alexandria
++uv sync --frozen
++uv run python -m scripts.download_babilong_8k_data
++```
++
++Before spending money, validate the selected cases and output directory without model calls:
++
++```bash
++uv run python -m scripts.prompt_compression_benchmark \
++  --benchmark babilong_8k \
++  --n 50 --seed 42 \
++  --reductions 25 20 15 10 5 \
++  --data-dir data/babilong/8k \
++  --model gpt-5.6-luna \
++  --merge-model gpt-5.6-luna \
++  --min-original-accuracy 0.50 \
++  --max-estimated-cost-usd 15 \
++  --out trial_results/babilong_8k/keep75-95-reproduction \
++  --dry-run
++```
++
++Remove `--dry-run` to execute the reproduction. It requires `OPENAI_API_KEY`, access to
++`gpt-5.6-luna`, network access, and a cost allowance of up to USD 15. The published run spent
++about one hour in reduction work, so allow roughly that order of time.
++Because the answer and merge model outputs are nondeterministic, the expected result is the same
++procedure, case selection, and evidence schema rather than byte-identical responses or scores. The
++manifest also records that the original working tree was dirty, so its exact source state cannot be
++reconstructed from the commit alone.
+diff --git a/docs/test-plan-and-report.md b/docs/test-plan-and-report.md
+index bab799b46fe05d7a5ff2d1692a1fec2f093a83e4..5a24af1c80d8c58b02308019134ba62c39d3bb03 100644
+--- a/docs/test-plan-and-report.md
++++ b/docs/test-plan-and-report.md
+@@ -72,23 +72,31 @@ installs from the repository, the CLI runs, and the same reduction is callable f
+    ```bash
+    uv run python - <<'EOF'
+    import alexandria
+-   from alexandria.ops import HashEmbedder
+    from alexandria.ir.contracts import Params
++   from alexandria.ops import HashEmbedder
++
++
++   class FirstWinsMerger:
++       def merge(self, first: str, second: str, feedback: str | None = None) -> str:
++           del second, feedback
++           return first
++
+ 
+-   text = (
+-       "Always write tests before the implementation.\n"
+-       "Write tests first, before implementing anything.\n"
+-       "Never commit secrets.\n"
++   text = "Write tests first.\nWrite tests first.\nNever commit secrets.\n"
++   result = alexandria.reduce(
++       text,
++       HashEmbedder(),
++       FirstWinsMerger(),
++       params=Params(cos_sim_diff_budget=2.0),
+    )
+-   result = alexandria.reduce(text, embedder=HashEmbedder(), params=Params(cos_sim_diff_budget=2.0))
+    assert result.reduced_tokens < result.source_tokens
+    print(result.source_tokens, result.reduced_tokens)
+    print(result.text)
+    EOF
+    ```
+ 
+-2. Output: the assertion holds (`reduced_tokens < source_tokens`) and the two tests-first lines
+-   collapse to one.
++2. Output: the assertion holds (`reduced_tokens < source_tokens`) and the exact duplicate collapses
++   to one.
+ 
+ ### Scenario 3: Trade-off controls and token accounting (User story B) — Pass
+ 
+@@ -126,15 +134,16 @@ installs from the repository, the CLI runs, and the same reduction is callable f
+ 3. Output: one JSON object with a `similarity` field and the token reduction. Adding
+    `--min-similarity 0.9` makes the command exit non-zero when similarity falls below the floor.
+ 
+-### Scenario 7: Install and use outside the checkout (User story E) — Not yet run (draft)
++### Scenario 7: Install and use outside the checkout (User story E) — Automated CI gate
+ 
+-1. Run `uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git`.
+-2. Run `alexandria --help`. Output: the command list appears.
+-3. Run `alexandria config set openai-api-key`, then `alexandria reduce /tmp/claude.md --json`.
+-   Output: `reduced_tokens < source_tokens`.
+-4. In a Python shell outside the checkout, run `import alexandria; result =
+-   alexandria.reduce("...")`. Output: `result.text`, `result.source_tokens`, `result.reduced_tokens`,
+-   and `result.applied` are populated.
++1. Run `python scripts/release_smoke_test.py` from the repository checkout.
++2. The script builds the release wheel and source distribution, then installs the wheel in a
++   temporary Python 3.14 environment.
++3. It runs the installed `alexandria` console script with a local deterministic embeddings endpoint.
++   Output: the command exits successfully and `reduced_tokens < source_tokens`.
++4. It runs `import alexandria` through the installed interpreter with `HashEmbedder` and an offline
++   merger. Output: the API exits successfully, reduces the fixture, and reports a module path inside
++   the temporary environment rather than the checkout.
+ 
+ ### Release-version results
+ 
+@@ -146,13 +155,14 @@ installs from the repository, the CLI runs, and the same reduction is callable f
+ | 4. Review before adopting | C | Not yet run (draft) |
+ | 5. Quality metrics | D | Not yet run (draft) |
+ | 6. Compare two prompts | D | Not yet run (draft) |
+-| 7. Install and use outside the checkout | E | Not yet run (draft) |
++| 7. Install and use outside the checkout | E | Automated (pending CI) |
+ 
+ The Pass rows are backed by automated end-to-end tests that ran green on 2026-07-20:
+ `tests/ai_e2e_test.py` reduced two verbose sample prompts through the real pipeline against
+ `gpt-5.6-luna` (both cases passed), and `tests/pipeline_e2e_test.py` exercised the offline
+-deterministic path (passed). Scenarios 4 through 7 are written from the released feature set but have
+-not been run for this report. They are ready to run at the review.
++deterministic path (passed). Scenarios 4 through 6 are written from the released feature set but
++have not been run for this report. Scenario 7 is enforced by the clean-package smoke script in CI;
++record it as Pass after the release workflow completes successfully.
+ 
+ ## Unit tests
+ 
+diff --git a/scripts/release_smoke_test.py b/scripts/release_smoke_test.py
+new file mode 100644
+index 0000000000000000000000000000000000000000..9dfaf11a69fb7484bbca4eb05e91319e8873e590
+--- /dev/null
++++ b/scripts/release_smoke_test.py
+@@ -0,0 +1,237 @@
++"""Build the release wheel and verify its installed CLI and Python API."""
++
++from __future__ import annotations
++
++import hashlib
++import json
++import math
++import os
++import shutil
++import subprocess
++import tempfile
++import threading
++from contextlib import contextmanager
++from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
++from pathlib import Path
++from typing import TYPE_CHECKING, Any
++
++if TYPE_CHECKING:
++    from collections.abc import Iterator
++
++PROMPT = "repeat me\nrepeat me\nunique line\n"
++
++
++def _run(command: list[str], *, cwd: Path, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
++    result = subprocess.run(
++        command,
++        cwd=cwd,
++        env=env,
++        text=True,
++        capture_output=True,
++        check=False,
++    )
++    if result.returncode != 0:
++        rendered = " ".join(command)
++        raise RuntimeError(
++            f"Command failed with exit code {result.returncode}: {rendered}\n"
++            f"stdout:\n{result.stdout}\n"
++            f"stderr:\n{result.stderr}"
++        )
++    return result
++
++
++def _venv_executable(venv: Path, name: str) -> Path:
++    scripts_dir = "Scripts" if os.name == "nt" else "bin"
++    suffix = ".exe" if os.name == "nt" else ""
++    return venv / scripts_dir / f"{name}{suffix}"
++
++
++def _hash_embedding(text: str, dimensions: int = 32) -> list[float]:
++    digest = hashlib.sha256(text.encode("utf-8")).digest()
++    values = [((digest[index % len(digest)] / 255.0) * 2.0) - 1.0 for index in range(dimensions)]
++    norm = math.sqrt(sum(value * value for value in values))
++    return [value / norm for value in values]
++
++
++class _OpenAIMockHandler(BaseHTTPRequestHandler):
++    protocol_version = "HTTP/1.1"
++
++    def do_POST(self) -> None:
++        length = int(self.headers.get("Content-Length", "0"))
++        request = json.loads(self.rfile.read(length))
++        if self.path != "/v1/embeddings":
++            self._send_json(500, {"error": {"message": f"unexpected smoke-test endpoint: {self.path}"}})
++            return
++
++        raw_inputs = request.get("input", [])
++        inputs = [raw_inputs] if isinstance(raw_inputs, str) else raw_inputs
++        response = {
++            "object": "list",
++            "data": [
++                {
++                    "object": "embedding",
++                    "index": index,
++                    "embedding": _hash_embedding(str(text)),
++                }
++                for index, text in enumerate(inputs)
++            ],
++            "model": request.get("model", "text-embedding-3-small"),
++            "usage": {
++                "prompt_tokens": sum(max(1, len(str(text).split())) for text in inputs),
++                "total_tokens": sum(max(1, len(str(text).split())) for text in inputs),
++            },
++        }
++        self._send_json(200, response)
++
++    def log_message(self, format: str, *args: Any) -> None:
++        del format, args
++
++    def _send_json(self, status: int, payload: dict[str, object]) -> None:
++        body = json.dumps(payload).encode("utf-8")
++        self.send_response(status)
++        self.send_header("Content-Type", "application/json")
++        self.send_header("Content-Length", str(len(body)))
++        self.end_headers()
++        self.wfile.write(body)
++
++
++@contextmanager
++def _openai_mock_server() -> Iterator[str]:
++    server = ThreadingHTTPServer(("127.0.0.1", 0), _OpenAIMockHandler)
++    thread = threading.Thread(target=server.serve_forever, daemon=True)
++    thread.start()
++    host, port = server.server_address
++    try:
++        yield f"http://{host}:{port}/v1"
++    finally:
++        server.shutdown()
++        server.server_close()
++        thread.join()
++
++
++def _runtime_env(base_url: str) -> dict[str, str]:
++    env = os.environ.copy()
++    env.pop("PYTHONPATH", None)
++    env.update(
++        {
++            "NO_PROXY": "127.0.0.1,localhost",
++            "OPENAI_API_KEY": "release-smoke-test-key",
++            "OPENAI_BASE_URL": base_url,
++            "PYTHONNOUSERSITE": "1",
++        }
++    )
++    return env
++
++
++def _assert_cli_reduction(result: subprocess.CompletedProcess[str]) -> None:
++    payload = json.loads(result.stdout)
++    if payload["reduced_tokens"] >= payload["source_tokens"]:
++        raise RuntimeError(f"Installed CLI did not reduce the fixture: {result.stdout}")
++    if payload["text"] != "repeat me\nunique line\n":
++        raise RuntimeError(f"Installed CLI returned unexpected text: {result.stdout}")
++
++
++def main() -> None:
++    repository = Path(__file__).resolve().parents[1]
++    uv = shutil.which("uv")
++    if uv is None:
++        raise RuntimeError("uv is required to run the release installation smoke test")
++
++    with tempfile.TemporaryDirectory(prefix="alexandria-release-smoke-") as temp_dir:
++        workspace = Path(temp_dir)
++        source = workspace / "source"
++        dist_dir = workspace / "dist"
++        venv = workspace / ".venv"
++
++        source.mkdir()
++        for filename in ("LICENSE", "README.md", "pyproject.toml"):
++            shutil.copy2(repository / filename, source / filename)
++        shutil.copytree(repository / "src", source / "src")
++
++        _run([uv, "venv", "--python", "3.14", str(venv)], cwd=workspace)
++        python = _venv_executable(venv, "python")
++        alexandria = _venv_executable(venv, "alexandria")
++        _run(
++            [uv, "build", "--python", str(python), "--out-dir", str(dist_dir)],
++            cwd=source,
++        )
++        wheels = list(dist_dir.glob("*.whl"))
++        source_distributions = list(dist_dir.glob("*.tar.gz"))
++        if len(wheels) != 1 or len(source_distributions) != 1:
++            raise RuntimeError(
++                "Expected one wheel and one source distribution, found "
++                f"{len(wheels)} wheel(s) and {len(source_distributions)} source distribution(s) in {dist_dir}"
++            )
++        _run([uv, "pip", "install", "--python", str(python), str(wheels[0])], cwd=workspace)
++
++        prompt_path = workspace / "prompt.txt"
++        prompt_path.write_text(PROMPT, encoding="utf-8")
++        with _openai_mock_server() as base_url:
++            cli_result = _run(
++                [
++                    str(alexandria),
++                    "reduce",
++                    str(prompt_path),
++                    "--cos-sim-diff-budget",
++                    "2.0",
++                    "--json",
++                ],
++                cwd=workspace,
++                env=_runtime_env(base_url),
++            )
++        _assert_cli_reduction(cli_result)
++
++        api_program = """
++import importlib.metadata
++import json
++from pathlib import Path
++
++import alexandria
++from alexandria.ir.contracts import Params
++from alexandria.ops import HashEmbedder
++
++
++class FirstWinsMerger:
++    def merge(self, first: str, second: str, feedback: str | None = None) -> str:
++        del second, feedback
++        return first
++
++
++result = alexandria.reduce(
++    "repeat me\\nrepeat me\\nunique line\\n",
++    HashEmbedder(),
++    FirstWinsMerger(),
++    params=Params(cos_sim_diff_budget=2.0),
++)
++if result.reduced_tokens >= result.source_tokens:
++    raise SystemExit("installed Python API did not reduce the fixture")
++if result.text != "repeat me\\nunique line\\n":
++    raise SystemExit("installed Python API returned unexpected text")
++print(json.dumps({
++    "module": str(Path(alexandria.__file__).resolve()),
++    "version": importlib.metadata.version("alexandria-prompt"),
++    "source_tokens": result.source_tokens,
++    "reduced_tokens": result.reduced_tokens,
++}))
++"""
++        api_result = _run([str(python), "-c", api_program], cwd=workspace, env=_runtime_env("http://127.0.0.1"))
++        api_payload = json.loads(api_result.stdout)
++        installed_module = Path(api_payload["module"])
++        if venv.resolve() not in installed_module.parents:
++            raise RuntimeError(
++                "Python smoke test did not import from the clean virtual environment: "
++                f"{installed_module}"
++            )
++
++        print("Release installation smoke test passed.")
++        print(f"Wheel: {wheels[0].name}")
++        print(f"Source distribution: {source_distributions[0].name}")
++        print(f"Installed module: {installed_module}")
++        print(
++            "Token reduction: "
++            f"{api_payload['source_tokens']} -> {api_payload['reduced_tokens']}"
++        )
++
++
++if __name__ == "__main__":
++    main()

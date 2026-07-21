@@ -6,61 +6,67 @@ Label-free prompt optimization: shorten instruction-heavy prompts while preservi
 Alexandria finds near-duplicate instructions with sentence embeddings and has an LLM merge each pair
 into a single rewritten sentence — no labels, no training, no target output to compare against.
 
-## Install
+## Prerequisites and install
 
-Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires Python 3.14
-and [uv](https://docs.astral.sh/uv/).
+Alexandria is currently version `0.1.0`; its pre-1.0 API may still change. It requires CPython 3.14,
+[uv](https://docs.astral.sh/uv/), Git, and internet access for installation. The current release path
+is the public GitHub repository because `alexandria-prompt` is not yet published on PyPI. No GitHub
+authentication is required when installing over HTTPS.
 
 ```bash
-# CLI
-uv tool install git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
+# Install the CLI in an isolated tool environment.
+uv tool install "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
 
-# or run once without installing
-uvx --from git+https://github.com/ucsc-cse115a-alexandria/alexandria.git alexandria reduce prompt.txt
+# Or run one command without keeping the tool installed.
+uvx --from "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git" \
+  alexandria --help
 
-# as a library dependency
-uv add git+https://github.com/ucsc-cse115a-alexandria/alexandria.git
+# Add the importable library to an existing uv project.
+uv add "git+https://github.com/ucsc-cse115a-alexandria/alexandria.git"
 ```
 
-The package is distributed as `alexandria-prompt`; the import name is `alexandria`. The examples
-below use the installed `alexandria` command; from a development checkout, substitute
-`uv run alexandria`.
+The distribution name is `alexandria-prompt`; the command and import name are both `alexandria`.
+See the [release installation guide](docs/release-install.md) for clean-environment checks, the
+installed CLI and API smoke tests, and Windows notes.
 
-## Set your API key
+## Quickstart
 
-Alexandria calls OpenAI for embeddings and merging. Store a key once (or `export OPENAI_API_KEY=...`):
+Normal reductions call OpenAI for embeddings and merging. They require an API key, network access,
+and access to the configured models. Store a key once, or export `OPENAI_API_KEY`:
 
 ```bash
 alexandria config set openai-api-key
-```
 
-## Usage
+cat > prompt.txt <<'EOF'
+Keep your answers concise and to the point.
+Keep your answers brief and to the point.
+Use examples.
+EOF
 
-Reduce a prompt in one command:
-
-```bash
 alexandria reduce prompt.txt > reduced.txt
+cat reduced.txt
 ```
+
+The examples below use the installed `alexandria` command. From a development checkout, substitute
+`uv run alexandria`.
 
 Common options:
 
-- `--save-tokens N` — stop once N tokens are saved.
-- `--target-reduction P` — treat a P% reduction as a hard requirement; the result never exceeds the
+- `--save-tokens N` stops once N tokens are saved.
+- `--target-reduction P` treats a P% reduction as a hard requirement; the result never exceeds the
   derived token ceiling.
-- `--cos-sim-diff-budget B` — cap the accepted semantic change (`1 - cosine_similarity`,
-  default `0.5`).
-- `--json` — emit a machine-readable summary; `-v` streams progress to stderr.
+- `--cos-sim-diff-budget B` caps accepted semantic change (`1 - cosine_similarity`, default `0.5`).
+- `--json` emits a machine-readable summary; `-v` streams progress to standard error.
 
 `report` runs the same pipeline and emits JSON with token and quality metrics, optionally failing
-against a baseline report you saved earlier (no baseline is included in the repository or checked
-by CI):
+against a baseline report saved earlier:
 
 ```bash
 alexandria report prompt.txt
 ```
 
-See [the CLI guide](docs/cli.md) for phase-by-phase execution, saving and resuming JSON envelopes,
-baseline comparisons with `--baseline`, and the full option reference.
+See the [CLI guide](docs/cli.md) for phase-by-phase execution, saved JSON envelopes, baseline
+comparisons, and the full option reference.
 
 ## Library
 
@@ -97,6 +103,35 @@ per-task results, timing, cost, and append-only raw artifacts, earlier studies u
 [`benchmarks/prompt_compression/results/`](benchmarks/prompt_compression/results/), and the
 [benchmark runner guide](benchmarks/prompt_compression/README.md) for executing a new run.
 
+### Reproduce the published run
+
+The benchmark harness is repository tooling rather than part of the installed CLI wheel. After
+installing Alexandria, clone the repository and run the harness from that checkout.
+The published run requires an OpenAI key, access to `gpt-5.6-luna`, the pinned BABILong download,
+network access, and a cost allowance of up to USD 15. Model output is nondeterministic, so a rerun
+reproduces the procedure and evidence format rather than byte-identical responses.
+
+```bash
+git clone https://github.com/ucsc-cse115a-alexandria/alexandria.git
+cd alexandria
+uv sync --frozen
+uv run python -m scripts.download_babilong_8k_data
+uv run python -m scripts.prompt_compression_benchmark \
+  --benchmark babilong_8k \
+  --n 50 --seed 42 \
+  --reductions 25 20 15 10 5 \
+  --data-dir data/babilong/8k \
+  --model gpt-5.6-luna \
+  --merge-model gpt-5.6-luna \
+  --min-original-accuracy 0.50 \
+  --max-estimated-cost-usd 15 \
+  --out trial_results/babilong_8k/keep75-95-reproduction
+```
+
+Run the same command with `--dry-run` first to validate sampling and output setup without model calls.
+The committed [manifest](benchmarks/babilong_8k/results/2026-07-20-luna-keep75-95-n50-v1/manifest.json)
+records the original command, models, case IDs, provenance, and dirty working-tree status.
+
 ## How it works
 
 The composable API and CLI expose four phases over one validated intermediate representation
@@ -122,7 +157,8 @@ git clone https://github.com/ucsc-cse115a-alexandria/alexandria
 cd alexandria
 uv sync
 
-uv run pytest        # tests + coverage
-uv run ruff check .  # lint
-uv run pyright       # types
+uv run pytest                          # tests + coverage
+python scripts/release_smoke_test.py   # build/install release artifacts; verify CLI + API
+uv run ruff check .                    # lint
+uv run pyright                         # types
 ```
