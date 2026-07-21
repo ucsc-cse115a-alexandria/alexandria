@@ -8,10 +8,10 @@ Jul 20 and will be finalized after the last sprint day.
 
 ## Actions to stop doing
 
-- Stop letting docs describe infrastructure that is planned but not merged. `docs/contributing.md`
+- Stop letting docs describe infrastructure that is planned but not merged. `CONTRIBUTING.md`
   documents an "Optimization quality" CI workflow and a committed baseline, but neither the workflow
   file (`.github/workflows/optimization-quality.yml`) nor `benchmarks/optimization_baseline.json`
-  is on `main`. Documentation should describe what is actually merged, not what we intend to merge.
+  is on `main`. Docs should describe what is merged.
 
 ## Actions to start doing
 
@@ -45,8 +45,8 @@ Jul 20 and will be finalized after the last sprint day.
   were added and run over retained-percent (keep50–90 n50, keep75–95 n50) and `cos_sim_diff` budget
   (cos-budget n50). Supporting compression work landed: the hard-target guarantee (#106),
   `--target-reduction` (#101), `--keep` percent (#99), prune-first target compression (#104),
-  parallel best-of-3 target merge (#109), and semantic-merge compression (#98). The outcome is the
-  sprint's key finding: no stronger default was kept. Every operating point failed the
+  parallel best-of-3 target merge (#109), and semantic-merge compression (#98). The main result: no
+  stronger default was kept. Every operating point failed the
   accuracy-retention threshold. The original ~76% average accuracy dropped to ~56–63% at
   `cos_sim_diff` budgets of 0.0025–0.02, for only 0.40–0.51% token reduction, and keep75–95 failed
   the same way. The default stays conservative. Counting this story as done means the measurement and
@@ -56,7 +56,8 @@ Jul 20 and will be finalized after the last sprint day.
   identifiers. PyPI publication was not done; install is via the git URL for now.
 - **User story 5: prepare the project for open-source contributors.** Implementation-aligned docs
   (#117) landed. The README was rewritten for OSS readers, and `docs/cli.md`, `docs/library.md`,
-  `docs/contributing.md`, and `docs/tech-stack.md` were refreshed.
+  and `docs/tech-stack.md` were refreshed. The contribution guide was consolidated into a root
+  `CONTRIBUTING.md`.
 - **Enabler A: reproducible benchmark artifacts.** The results-directory convention and the
   `report.md` format are established, a benchmark runner guide was added, and a deterministic
   benchmark smoke test landed.
@@ -64,7 +65,7 @@ Jul 20 and will be finalized after the last sprint day.
 ### Not completed (planned but unfinished)
 
 - **User story 3: monitor optimization quality in CI.** Quality monitoring was worked on and merged
-  on a branch (#115), and `docs/contributing.md` documents the workflow and baseline, but the CI
+  on a branch (#115), and `CONTRIBUTING.md` documents the workflow and baseline, but the CI
   regression gate did not land on `main`. The workflow file and the baseline JSON are not on `main`,
   and CI still runs only lint, format, pyright, import-linter, and pytest. The regression check does
   not run on push or pull request yet.
@@ -76,9 +77,9 @@ Jul 20 and will be finalized after the last sprint day.
 - Cached embeddings in `TrackedEmbedder` and vectorized the similarity hot paths.
 - Added a sentence segmenter (#107) and an embedding-cluster analysis notebook (#108), and stripped
   notebook outputs (#114).
-- Late in the sprint (Jul 20, likely a follow-up PR): a Team Working Agreement, a Test Plan and
-  Report, a Release Summary, and live end-to-end tests behind a pytest `ai` marker that skip without
-  an OpenAI key.
+- Late in the sprint: a Team Working Agreement, a Test Plan and Report, a Release Summary, a
+  consolidated `CONTRIBUTING.md`, and live end-to-end tests behind a pytest `ai` marker (skipped
+  without an OpenAI key).
 
 ## Work completion rate
 
