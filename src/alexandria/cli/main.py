@@ -44,6 +44,10 @@ _REDUCTION_SCHEMA_VERSION = 1
 _COS_SIM_DIFF_HELP = (
     "max cumulative cos_sim_diff from the original prompt the reduction may accept (default: 0.5 = 50%)"
 )
+_THRESHOLD_HELP = (
+    "cosine similarity two sentences must reach to be merged "
+    f"(default: {_DEFAULTS.threshold}); lower it to catch looser paraphrases"
+)
 
 
 class _ReduceMode(StrEnum):
@@ -288,6 +292,9 @@ def compare_cmd(ctx: click.Context, original: IO[str], edited: IO[str], min_simi
     help="require reducing the prompt by P percent; exit with an error if the target is not met",
 )
 @click.option("--cos-sim-diff-budget", type=float, default=_DEFAULTS.cos_sim_diff_budget, help=_COS_SIM_DIFF_HELP)
+@click.option(
+    "--threshold", type=click.FloatRange(min=0.0, max=1.0), default=_DEFAULTS.threshold, help=_THRESHOLD_HELP
+)
 @click.option("--json", "as_json", is_flag=True, help="emit a JSON reduction summary instead of the reduced text")
 @click.option(
     "--interactive", is_flag=True, help="review each proposed edit in the terminal and apply only the checked ones"
@@ -309,6 +316,7 @@ def reduce_cmd(
     keep: float | None,
     target_reduction: float | None,
     cos_sim_diff_budget: float,
+    threshold: float,
     as_json: bool,
     interactive: bool,
     browser: bool,
@@ -322,6 +330,7 @@ def reduce_cmd(
       alexandria reduce prompt.md                    # automatic: apply every edit within --cos-sim-diff-budget
       alexandria reduce --keep 95 prompt.md          # aim to keep 95% of the source tokens
       alexandria reduce prompt.md --save-tokens 200  # stop once 200 tokens are saved (lowest cos_sim_diff first)
+      alexandria reduce prompt.md --threshold 0.7    # merge looser paraphrases, not just near-identical lines
       alexandria reduce prompt.md --json             # machine-readable summary of what was applied
       alexandria reduce --interactive prompt.md      # review each proposed edit yourself (FILE required)
       alexandria reduce --browser prompt.md          # review each proposed edit in a browser (FILE required)
@@ -365,7 +374,7 @@ def reduce_cmd(
                 prompt,
                 embedder,
                 merger,
-                Params(cos_sim_diff_budget=cos_sim_diff_budget),
+                Params(cos_sim_diff_budget=cos_sim_diff_budget, threshold=threshold),
                 lambda proposal: review(proposal.document, proposal.diffs),
             )
         elif mode is _ReduceMode.BROWSER:
@@ -373,7 +382,7 @@ def reduce_cmd(
                 prompt,
                 embedder,
                 merger,
-                Params(cos_sim_diff_budget=cos_sim_diff_budget),
+                Params(cos_sim_diff_budget=cos_sim_diff_budget, threshold=threshold),
                 lambda proposal: run_browser_review(proposal, open_browser=not no_open),
             )
         else:
@@ -388,6 +397,7 @@ def reduce_cmd(
                 max_tokens = max(source_tokens - save_tokens, 1) if save_tokens is not None else None
             params = Params(
                 cos_sim_diff_budget=cos_sim_diff_budget,
+                threshold=threshold,
                 max_tokens=max_tokens,
                 require_target=target_reduction is not None,
             )

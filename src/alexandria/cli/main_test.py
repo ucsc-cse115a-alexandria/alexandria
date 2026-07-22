@@ -242,6 +242,23 @@ def test_reduce_keeps_everything_under_the_default_budget() -> None:
 
 
 @pytest.mark.usefixtures("offline_models")
+def test_threshold_flag_is_accepted_and_still_merges() -> None:
+    runner = CliRunner()
+    result = runner.invoke(
+        cli, ["reduce", "--threshold", "0.7", "--cos-sim-diff-budget", "2.0"], input="keep one\nkeep one\nunique\n"
+    )
+    assert result.exit_code == 0
+    assert result.output.count("keep one") == 1
+    assert "unique" in result.output
+
+
+def test_threshold_out_of_range_is_rejected() -> None:
+    result = CliRunner().invoke(cli, ["reduce", "--threshold", "1.5"], input="a line\nanother line\n")
+    assert result.exit_code != 0
+    assert "1.5" in result.output
+
+
+@pytest.mark.usefixtures("offline_models")
 def test_reduce_json_reports_the_applied_edits_and_token_counts() -> None:
     runner = CliRunner()
     result = runner.invoke(
@@ -518,7 +535,7 @@ def test_removed_flags_are_gone_from_help() -> None:
     result = runner.invoke(cli, ["reduce", "--help"])
 
     assert result.exit_code == 0
-    for flag in ("--model", "--optimizer", "--selector", "--threshold", "--min-similarity", "--max-tokens"):
+    for flag in ("--model", "--optimizer", "--selector", "--min-similarity", "--max-tokens"):
         assert flag not in result.output
 
 
