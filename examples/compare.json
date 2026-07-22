@@ -1,0 +1,7 @@
+{
+  "similarity": 0.9549418687820435,
+  "original_tokens": 256,
+  "edited_tokens": 182,
+  "token_reduction": 0.2890625,
+  "cos_sim_diff": 0.04505813121795654
+}
