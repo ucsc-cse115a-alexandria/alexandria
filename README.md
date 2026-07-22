@@ -9,7 +9,7 @@
 | src/alexandria/cli/envelope.py           |       22 |        0 |        0 |        0 |    100.0% |           |
 | src/alexandria/cli/hunks.py              |       25 |        0 |       12 |        0 |    100.0% |           |
 | src/alexandria/cli/interactive.py        |      127 |        6 |       38 |        6 |     92.7% |37, 39, 111, 156-157, 186, 197-\>181 |
-| src/alexandria/cli/main.py               |      229 |        2 |       60 |        2 |     98.6% |  134, 403 |
+| src/alexandria/cli/main.py               |      231 |        2 |       60 |        2 |     98.6% |  138, 413 |
 | src/alexandria/cli/review\_html.py       |       68 |        3 |       12 |        1 |     92.5% |   333-336 |
 | src/alexandria/cli/verbose.py            |       32 |        0 |        8 |        0 |    100.0% |           |
 | src/alexandria/ir/contracts.py           |      169 |        1 |       38 |       18 |     90.8% |73-\>75, 73-\>exit, 75-\>exit, 85-\>exit, 92-\>exit, 138, 231-\>exit, 248-\>250, 248-\>exit, 250-\>252, 250-\>exit, 252-\>254, 252-\>exit, 254-\>261, 254-\>exit, 261-\>exit, 292-\>exit, 312-\>exit |
@@ -29,7 +29,7 @@
 | src/alexandria/utils/embedders.py        |       55 |        2 |       10 |        2 |     93.8% |31, 53-\>55, 92 |
 | src/alexandria/utils/merger.py           |       33 |        1 |       10 |        0 |     97.7% |        79 |
 | src/alexandria/utils/tokens.py           |       20 |        1 |       10 |        2 |     90.0% |18, 27-\>32 |
-| **TOTAL**                                | **2118** |   **54** |  **560** |   **67** | **95.4%** |           |
+| **TOTAL**                                | **2120** |   **54** |  **560** |   **67** | **95.4%** |           |
 
 
 ## Setup coverage badge
