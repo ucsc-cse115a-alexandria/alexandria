@@ -529,8 +529,7 @@
         "regression": 2,
         "improvement": 0,
         "both_wrong": 3
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     }
   }
 }

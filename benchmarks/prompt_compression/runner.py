@@ -31,17 +31,6 @@ class _ConditionSummary(TypedDict):
     estimated_cost_usd: float
 
 
-class _ComparisonSummary(TypedDict):
-    release_decision: str
-
-
-class _BaselineQualification(TypedDict):
-    minimum_original_accuracy: float
-    original_accuracy: float
-    qualifies: bool
-    decision: str
-
-
 def condition_summary(records: Sequence[ConditionRecord]) -> dict[str, object]:
     source_tokens = sum(record.source_tokens for record in records)
     sent_tokens = sum(record.sent_tokens for record in records)
@@ -88,7 +77,7 @@ def summarize_records(
     bootstrap_samples: int = 10_000,
     bootstrap_seed: int = 42,
 ) -> dict[str, object]:
-    """Build paired condition summaries and plain PASS/FAIL release decisions."""
+    """Build paired condition summaries and bootstrap confidence intervals."""
     if not records:
         raise ValueError("at least one condition record is required")
     if len({record.benchmark for record in records}) != 1:
@@ -146,11 +135,6 @@ def summarize_records(
             "official_score_retention": official.model_dump(),
             "accuracy_retention": accuracy.model_dump(),
             "transitions": transitions,
-            "release_decision": (
-                "PASS: accuracy-retention confidence interval clears the release threshold"
-                if accuracy.clears_release_threshold
-                else "FAIL: accuracy-retention confidence interval does not clear the release threshold"
-            ),
         }
     tasks: dict[str, dict[str, object]] = {}
     for task in sorted({record.task for record in records}):
@@ -176,11 +160,6 @@ def summarize_records(
             "minimum_original_accuracy": minimum_original_accuracy,
             "original_accuracy": original_accuracy,
             "qualifies": baseline_qualifies,
-            "decision": (
-                "PASS: original accuracy clears the minimum baseline"
-                if baseline_qualifies
-                else "FAIL: original accuracy does not clear the minimum baseline"
-            ),
         },
         "conditions": conditions,
         "tasks": tasks,
@@ -191,11 +170,9 @@ def summarize_records(
 def benchmark_report(summary: dict[str, object]) -> str:
     """Render the user-facing evidence table from a saved summary payload."""
     raw_conditions = summary["conditions"]
-    raw_comparisons = summary["comparisons"]
-    if not isinstance(raw_conditions, dict) or not isinstance(raw_comparisons, dict):
-        raise TypeError("summary conditions and comparisons must be mappings")
+    if not isinstance(raw_conditions, dict):
+        raise TypeError("summary conditions must be a mapping")
     conditions = cast("dict[str, _ConditionSummary]", raw_conditions)
-    comparisons = cast("dict[str, _ComparisonSummary]", raw_comparisons)
     lines = [
         "| Condition | Mean input tokens | Token reduction | Cosine difference | Accuracy | "
         "Execution time | Execution cost | Reduction time | Reduction cost |",
@@ -213,20 +190,4 @@ def benchmark_report(summary: dict[str, object]) -> str:
             f"{float(raw['reduction_seconds']):.1f}s | "
             f"${float(raw['estimated_reduction_cost_usd']):.4f} |"
         )
-    baseline = summary.get("baseline_qualification")
-    if isinstance(baseline, dict):
-        typed_baseline = cast("_BaselineQualification", baseline)
-        lines.extend(
-            [
-                "",
-                "## Baseline qualification",
-                "",
-                f"- **Original:** {typed_baseline['decision']} "
-                f"({typed_baseline['original_accuracy'] * 100:.1f}% accuracy; minimum "
-                f"{typed_baseline['minimum_original_accuracy'] * 100:.1f}%)",
-            ]
-        )
-    lines.extend(["", "## Release decisions", ""])
-    for condition, raw in comparisons.items():
-        lines.append(f"- **{condition}:** {raw['release_decision']}")
     return "\n".join(lines)

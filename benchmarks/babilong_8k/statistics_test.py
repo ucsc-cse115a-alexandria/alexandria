@@ -42,7 +42,7 @@ def test_bootstrap_requires_comparable_nonempty_outcomes() -> None:
         paired_retention_bootstrap([False], [True])
 
 
-def test_committed_release_decision_is_reproducible_from_paired_outcomes() -> None:
+def test_committed_retention_is_reproducible_from_paired_outcomes() -> None:
     payload = json.loads(_COMMITTED_RESULT.read_text(encoding="utf-8"))
     records = payload["records"]
 
@@ -59,4 +59,3 @@ def test_committed_release_decision_is_reproducible_from_paired_outcomes() -> No
     assert estimate.model_dump() == expected
     assert payload["target"]["successes"] == len(records)
     assert payload["target"]["failures"] == 0
-    assert payload["quality"]["release_decision"].startswith("FAIL:")

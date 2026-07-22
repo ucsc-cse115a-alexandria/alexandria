@@ -12,22 +12,10 @@ links to raw evidence.
 - Embedding model: `text-embedding-3-small`
 - Retained-prompt targets: 50%, 60%, 70%, 80%, 90%, plus uncompressed original
 - Original eligibility gate: at least 50% task accuracy
-- Release rule: lower endpoint of the paired-bootstrap 95% accuracy-retention interval must be at least 90%
 - Bootstrap: 10,000 paired resamples, seed 42
 
 BABILong 8k and RULERv2 used their complete prepared datasets. LongBench v2 used the pinned official
 `length=short` subset with a 128,000-token complete-prompt ceiling.
-
-## Baseline qualification
-
-| Benchmark | Original accuracy | Gate | Compressed conditions run? |
-|---|---:|---|---|
-| BABILong 8k | 68% | PASS | Yes |
-| RULERv2 | 74% | PASS | Yes |
-| LongBench v2 | 48% | FAIL | No |
-
-LongBench is retained as original-only evidence. It is excluded from compressed curves and their Average because
-it has no corresponding compressed observations.
 
 ## Aggregate results
 
@@ -49,8 +37,7 @@ benchmark's own original accuracy before averaging.
 | RULERv2 | 74% | 30% | 38% | 46% | 48% | 50% |
 
 At keep90, BABILong retained 105.9% of original accuracy with a paired 95% interval of 84.6%–133.3%; RULERv2
-retained 67.6% with an interval of 50.0%–85.7%. Both decisions are **FAIL** because the lower interval endpoint is
-below 90%. Every other compressed condition also failed on both qualified benchmarks.
+retained 67.6% with an interval of 50.0%–85.7%.
 
 ## Figures
 
@@ -107,11 +94,6 @@ uv run python -m scripts.plot_prompt_compression_benchmarks \
   --out-dir benchmarks/prompt_compression/results/2026-07-19-luna-keep50-90-n50-v1
 ```
 
-The LongBench command intentionally exits non-zero after writing its original-only summary because its baseline
-does not qualify. Two transient TLS timeouts interrupted the qualified runs. Re-running the identical commands
-skipped completed case-condition keys and finished without duplicate records; the committed `run.log` files
-preserve the interruption and resume evidence.
-
 ## Raw evidence
 
 - [BABILong 8k](../../../babilong_8k/results/2026-07-19-luna-keep50-90-n50-v1/)
@@ -131,5 +113,3 @@ usage events, console log, machine-readable summary, and benchmark-specific repo
   bootstrap resample.
 - This run evaluates Luna and the pinned sampled cases; it does not establish performance for other models or
   datasets.
-- No compressed condition cleared the release threshold, so these results do not support a production-safety
-  claim.

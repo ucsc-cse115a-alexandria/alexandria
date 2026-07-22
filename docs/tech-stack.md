@@ -1,43 +1,34 @@
 # Alexandria technology stack
 
-This page summarizes the current implementation. `pyproject.toml` is authoritative for package
-metadata and dependencies. See the
-[design specification](spec.md) for component contracts and the [CLI guide](cli.md) for commands.
+This page records the main technology choices and their purpose. [`pyproject.toml`](../pyproject.toml) defines the versions and dependencies. See the [design specification](spec.md) for component contracts.
 
 ## Runtime and packaging
 
-| Area | Current choice | Role |
+| Area | Choice | Purpose |
 | --- | --- | --- |
-| Language | Python 3.14+ | Typed library and Click command-line application. |
-| Environment and lockfile | `uv` | Reproducible development and runtime dependency resolution. |
-| Build backend | Hatchling | Builds the source distribution and `src`-layout wheel; co-located tests are excluded. |
-| IR and validation | Pydantic v2 | Frozen `Document` / `Section` / `Sentence` models, edit contracts, envelopes, and reports. |
-| Embeddings and rewrites | OpenAI API via the Python SDK | `text-embedding-3-small` embeddings and `gpt-5.6-luna` rewrites, isolated behind protocols. |
-| Numerics | NumPy | `float32` vectors, normalization, cosine similarity, and semantic-change measurements. |
-| Token metric | `tiktoken` | `cl100k_base` token counts used for budgets and reports. |
-| CLI | Click | Phase commands, end-to-end reduction, reporting, review modes, and configuration. |
-| Persistence | Pydantic JSON | Versioned `DocumentEnvelope`, `ScoredEnvelope`, and `PlanEnvelope` streams. |
+| Language | Python 3.14 | Provides typing features used by the library and CLI. |
+| Environment | `uv` | Installs dependencies and maintains the lockfile. |
+| Build | Hatchling | Builds the `src`-layout wheel and source distribution. |
+| Data contracts | Pydantic v2 | Validates the document model, edits, parameters, reports, and JSON envelopes. |
+| Embeddings and rewrites | OpenAI Python SDK | Provides the default embedding and merge implementations behind injectable protocols. |
+| Numeric operations | NumPy | Stores vectors and calculates cosine similarity. |
+| Token counting | `tiktoken` | Applies the shared `cl100k_base` token measure. |
+| CLI | Click | Defines commands, options, configuration, and review workflows. |
 
-Library callers can inject implementations of the embedder and merger protocols.
+Library users can provide their own embedder and merger. Alexandria does not require the OpenAI implementation when those dependencies are injected.
 
-## Development and verification
+## Development checks
 
-| Area | Current choice |
+| Check | Tool |
 | --- | --- |
-| Tests | pytest and pytest-cov, with co-located `*_test.py` modules and integration tests under `tests/`. |
-| Lint and format | Ruff. |
-| Static types | Pyright in strict mode. |
-| Architecture | import-linter contracts plus layer-specific imports. |
-| CI | GitHub Actions runs repository quality checks. |
-| Analysis scripts | NumPy, SciPy, and Matplotlib. |
-| Research notebooks | JupyterLab, IPykernel, Matplotlib, UMAP, HDBSCAN, and scikit-learn analyze embeddings produced through Alexandria's OpenAI-backed default. |
+| Tests and coverage | pytest and pytest-cov |
+| Lint and formatting | Ruff |
+| Static typing | Pyright in strict mode |
+| Package boundaries | import-linter |
+| Continuous integration | GitHub Actions |
 
-## Strategy extension status
+Tests use the `*_test.py` name and usually sit beside the code they test. Broader end-to-end tests are in `tests/`.
 
-Scorers, optimizers, and selectors use small in-process registries. Built-ins register when their
-modules are imported. End-to-end composition can ask an optimizer which scorers it requires; the
-default optimizer currently requires none, while the standalone redundancy score remains available
-for inspection.
+## Extension boundary
 
-There is no installed third-party plugin loading or CLI flag for choosing a strategy. Library callers
-can select registered names and inject model boundaries.
+Scorers, optimizers, and selectors use in-process registries. The Python library can select registered implementations. Version `0.1.0` does not discover installed third-party plugins, and the CLI does not provide a strategy-selection option.

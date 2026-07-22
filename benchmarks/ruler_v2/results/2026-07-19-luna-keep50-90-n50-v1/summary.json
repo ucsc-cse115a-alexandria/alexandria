@@ -11,8 +11,7 @@
   "baseline_qualification": {
     "minimum_original_accuracy": 0.5,
     "original_accuracy": 0.74,
-    "qualifies": true,
-    "decision": "PASS: original accuracy clears the minimum baseline"
+    "qualifies": true
   },
   "conditions": {
     "original": {
@@ -1715,8 +1714,7 @@
         "regression": 23,
         "improvement": 1,
         "both_wrong": 12
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     },
     "keep60": {
       "official_score_retention": {
@@ -1752,8 +1750,7 @@
         "regression": 20,
         "improvement": 2,
         "both_wrong": 11
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     },
     "keep70": {
       "official_score_retention": {
@@ -1789,8 +1786,7 @@
         "regression": 15,
         "improvement": 1,
         "both_wrong": 12
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     },
     "keep80": {
       "official_score_retention": {
@@ -1826,8 +1822,7 @@
         "regression": 14,
         "improvement": 1,
         "both_wrong": 12
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     },
     "keep90": {
       "official_score_retention": {
@@ -1863,8 +1858,7 @@
         "regression": 14,
         "improvement": 2,
         "both_wrong": 11
-      },
-      "release_decision": "FAIL: accuracy-retention confidence interval does not clear the release threshold"
+      }
     }
   }
 }

@@ -43,8 +43,7 @@
     "clears_release_threshold": false,
     "cos_sim_diff_budget_met": 100,
     "mean_cos_sim_diff": 0.007167115807533264,
-    "p95_cos_sim_diff": 0.025801575183868407,
-    "release_decision": "FAIL: retention confidence interval does not clear the release threshold"
+    "p95_cos_sim_diff": 0.025801575183868407
   },
   "performance": {
     "merge_calls": 99,

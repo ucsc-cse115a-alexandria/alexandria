@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem in Alexandria.
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include API keys or private prompts. Report security issues through the private security link.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the problem and what you expected.
+      placeholder: Alexandria returned an error when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest steps that show the problem.
+      placeholder: |
+        1. Run `alexandria ...`
+        2. Use this input...
+        3. See this result...
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Include Alexandria, Python, and operating system versions.
+      placeholder: Alexandria 0.1.0, Python 3.14, macOS 15
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or other details
+      description: Remove API keys, private prompts, and personal data before posting.
+      render: shell
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Before submitting
+      options:
+        - label: I searched existing issues for the same problem.
+          required: true
+        - label: I removed secrets and private data from this report.
+          required: true

@@ -353,8 +353,7 @@
         "regression": 0,
         "improvement": 0,
         "both_wrong": 4
-      },
-      "release_decision": "PASS: accuracy-retention confidence interval clears the release threshold"
+      }
     }
   }
 }

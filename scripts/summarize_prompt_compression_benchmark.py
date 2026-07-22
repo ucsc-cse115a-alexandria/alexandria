@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Recompute benchmark confidence intervals and release decisions from saved raw records."""
+"""Recompute benchmark confidence intervals from saved raw records."""
 
 from __future__ import annotations
 

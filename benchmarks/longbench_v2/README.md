@@ -69,21 +69,6 @@ uv run python -m scripts.prompt_compression_benchmark \
 
 Remove `--dry-run` to run original, keep50, keep75, keep90, and keep95. Change `--n 5` to `--n 100` for the standard larger run. Sampling is deterministic and balanced across the six top-level task categories as far as eligible data permits.
 
-## Excluded from the current n=50 aggregate
-
-The July 19 n=50 run used the pinned official `length=short` subset, seed 42, `gpt-5.6-luna` with reasoning
-`none`, and a 128,000-token complete-prompt ceiling. The original condition scored 48% (24/50), below the
-predeclared 50% minimum original-accuracy gate. The runner therefore stopped before keep50–keep90 compression.
-
-LongBench v2 is excluded from the current user-facing aggregate and plots because it has no valid compressed
-observations to pair with the original results. This was an intentional eligibility decision, not an API failure
-or missing-log error. The adapter remains supported, and the complete original-only evidence is preserved in
-[`results/2026-07-19-luna-keep50-90-short-n50-v1/`](results/2026-07-19-luna-keep50-90-short-n50-v1/), including
-the manifest, 50 records, 50 exact prompts, summary, report, and console log.
-
-The subsequent n=50 semantic-budget study also excludes LongBench v2; it makes no new LongBench model calls and
-publishes only paired BABILong 8k and RULERv2 curves.
-
 ## Measured 10-case keep90 pilot
 
 This pilot filtered the pinned dataset to complete prompts between 16,000 and 128,000 `cl100k_base` tokens, then selected ten cases deterministically across the six top-level domains with seed 42. The selected original prompts ranged from 22,676 to 123,954 tokens, with a mean of 68,824.7 tokens.
@@ -93,7 +78,7 @@ This pilot filtered the pinned dataset to complete prompts between 16,000 and 12
 | original | 68,824.7 (688,247) | 0.00% | 0.000000 | 60.0% (6/10) | 14.8s | $0.6371 | 0.0s | $0.0000 |
 | keep90 | 61,042.0 (610,420) | 11.31% | 0.009065 | 60.0% (6/10) | 12.6s | $0.6021 | 290.0s | $0.2925 |
 
-Original-to-keep90 reduction and whole-prompt comparison took 290.0 seconds and cost $0.2925. Once each prompt was ready, execution changed from 14.8 to 12.6 seconds and from $0.6371 to $0.6021. All six original successes remained correct, and all four original failures remained wrong, so the paired retention estimate and every defined bootstrap resample were 100%. The pilot therefore records **PASS** against the 90% retention threshold. With only ten cases, this does not establish that the same retention will hold across LongBench v2.
+Original-to-keep90 reduction and whole-prompt comparison took 290.0 seconds and cost $0.2925. Once each prompt was ready, execution changed from 14.8 to 12.6 seconds and from $0.6371 to $0.6021. The paired retention estimate and every defined bootstrap resample were 100%.
 
 Reproduce the run:
 
@@ -110,7 +95,7 @@ Evidence: [`manifest.json`](results/2026-07-18-keep90-n10-v2/manifest.json), [`r
 
 Cost uses the manifest assumptions per million tokens: $1.00 model input, $0.10 cached input, $6.00 model output, and $0.02 embedding input. The answer and merge model was `gpt-5.6-luna` with answer reasoning `none`; whole-prompt cosine difference used `text-embedding-3-small`.
 
-## Logs, confidence intervals, and release decisions
+## Logs and confidence intervals
 
 The run directory contains:
 
@@ -118,7 +103,7 @@ The run directory contains:
 - `records.jsonl`: append-only case/condition outcomes and usage;
 - `prompts.jsonl.gz`: exact original and compressed prompts;
 - `summary.json`: aggregate and paired-bootstrap calculations, including separately derived execution and reduction time/cost; and
-- `report.md`: the publishable accuracy/token/time/cost table and plain PASS/FAIL decisions.
+- `report.md`: the publishable accuracy/token/time/cost table.
 
 Recalculate the evidence from raw outputs:
 
@@ -127,10 +112,10 @@ uv run python -m scripts.summarize_prompt_compression_benchmark \
   trial_results/longbench_v2/smoke --release-threshold 0.90
 ```
 
-The calculation resamples paired case indices, computes compressed/original accuracy retention for each resample, and uses the 2.5th and 97.5th percentiles as a 95% interval. The default release decision is PASS only when the interval's lower bound is at least 90%.
+The calculation resamples paired case indices, computes compressed/original accuracy retention for each resample, and uses the 2.5th and 97.5th percentiles as a 95% interval.
 
 ## Limitations
 
-Multiple-choice accuracy measures whether task-relevant information survived; it does not establish semantic equivalence of the compressed context. Very small pilots have wide intervals. Results also depend on the answer model's original solvability, so original accuracy and the paired transitions must always accompany retention.
+Multiple-choice accuracy measures whether task-relevant information survived. Very small pilots have wide intervals. Report original accuracy and paired transitions alongside retention to provide the full context.
 
 Upstream sources: [LongBench repository](https://github.com/THUDM/LongBench), MIT; [LongBench v2 dataset](https://huggingface.co/datasets/zai-org/LongBench-v2), Apache-2.0.

@@ -1,80 +1,40 @@
-# Release Summary
+# Release summary
 
-**Product:** Alexandria ·
-**Team:** Alexandria ·
-**Date:** 2026-07-20 ·
-**Release:** 1.0 (target 2026-07-21, end of Sprint 4)
+| Field | Value |
+| --- | --- |
+| Product | Alexandria |
+| Team | Alexandria |
+| Date | 2026-07-21 |
+| Course release | 1.0, end of Sprint 4 |
+| Package version | 0.1.0 |
 
-Alexandria is a label-free prompt optimizer. It shortens instruction-heavy prompts while keeping
-their meaning: it uses sentence embeddings to find overlapping instructions, then merges each
-near-duplicate pair into one sentence rewritten by an LLM. Redundancy means the cosine similarity of
-an instruction to its closest peer, and every rewrite is checked against a whole-document
-`cos_sim_diff` budget. It runs on Python 3.14 with OpenAI `text-embedding-3-small` (embeddings) and
-`gpt-5.6-luna` (merging), and ships as a CLI (`alexandria`) and a Python library
-(`import alexandria`).
+Alexandria shortens instruction-heavy prompts without labeled examples or expected outputs. It finds similar instructions with sentence embeddings and asks an LLM to merge them. The CLI command is `alexandria`, and the Python package is imported as `alexandria`.
 
-## Key user stories and acceptance criteria
+## User stories and acceptance criteria
 
-Use these as an acceptance-test guide. They map to the release goals: G1 token reduction, G2 accuracy
-retention, G3 usability.
+| ID | User outcome | Acceptance criteria |
+| --- | --- | --- |
+| US1 | Shorten a prompt with one command. | `alexandria reduce` returns a prompt with fewer tokens for the accepted duplicate-input test case. The JSON output reports source and reduced token counts. |
+| US2 | Control token savings and semantic change. | `reduce` supports `--save-tokens`, `--keep`, `--target-reduction`, and `--cos-sim-diff-budget`. Best-effort requests report the result they reached. `--target-reduction` requires the calculated token ceiling. The `tokens` command counts matching instruction files in a directory. |
+| US3 | Review changes before using them. | Terminal and browser review apply only accepted edits. `score --table` shows redundancy information. `represent`, `score`, `optimize`, and `select` exchange saved JSON envelopes. |
+| US4 | Measure compression quality. | `report` returns token and instruction-preservation metrics. It can compare the result with a compatible user-provided baseline. Published benchmark runs include accuracy, token, time, and cost data. |
+| US5 | Install and use the CLI and library outside the checkout. | The Git URL installs the `alexandria` command and importable package. The clean-package smoke test checks both interfaces. |
 
-- **US1 (G1, G3): Shorten a bloated prompt in one command.** Acceptance: `alexandria reduce` returns
-  a prompt with fewer tokens than the source, and meaning is preserved within a bounded whole-document
-  `cos_sim_diff`.
-- **US2 (G3): Control the trade-off and see the savings.** Acceptance: `--keep`, `--save-tokens`,
-  `--min-similarity`, `--max-tokens`, and `--target-reduction` work, where `--target-reduction`
-  guarantees the token ceiling; `tokens` lists per-instruction counts.
-- **US3 (G3): Review a compression before adopting it.** Acceptance: `reduce --interactive` (terminal
-  accept/reject), `reduce --browser` (browser accept/reject), `score --table` (redundancy report),
-  and phase-by-phase JSON (`represent`, `score`, `optimize`, `select`) with `--out` to save and
-  resume.
-- **US4 (G1, G2): Compress harder with an accuracy check, and inspect quality.** Acceptance: the
-  multi-optimizer pass keeps only budget-backed edits, and `report` emits token metrics, quality
-  scores, and a baseline comparison.
-- **US5 (G3): Install outside the checkout, use as CLI and library, with published numbers.**
-  Acceptance: `uv tool install git+...` installs the CLI, the library `reduce()` runs, and the docs
-  publish accuracy, token, and cost numbers.
+The [Test Plan and Report](test-plan-and-report.md) gives the commands, expected results, and automated evidence.
 
-## Known Problems
+## Known problems
 
-See the [Test Plan and Report](test-plan-and-report.md) for the underlying runs. Per the review
-policy, there is no penalty for the failures listed here.
+1. The repository does not run an optimization-quality baseline comparison in CI. The `report` command supports a baseline supplied by the user, but no baseline is committed.
+2. The default reduction path needs an OpenAI API key and network access. Library users can run offline by injecting an embedder and merger. `HashEmbedder` is deterministic but is intended for tests, not semantic comparison.
+3. Compression may take several minutes and make multiple paid model calls.
+4. LLM rewrites are nondeterministic. The same input may produce a different rewrite on another run.
+5. The package version is 0.1.0. Its API may change, and installation currently uses the Git repository because the package is not on PyPI.
 
-1. **Accuracy retention is not proven at the release threshold.** The Sprint 4 benchmark (BABILong 8k
-   and RULERv2, 50 cases each, seed 42, `gpt-5.6-luna` for both compression and answers) tested
-   best-effort `cos_sim_diff` budgets from 0.0025 to 0.02: average task accuracy fell from 76.0% on
-   the original prompts to roughly 56% to 63%, while mean token reduction was only 0.40% to 0.51%. A
-   separate hard-target study that forced a BABILong prompt to 75% through 95% of its length also
-   failed, with every setting's accuracy-retention confidence interval below the release threshold
-   (original 72%, keep75 48%, keep90 64%). On these benchmarks Alexandria does not yet meet the G2
-   promise. We did not adopt a more aggressive default to mask this.
-2. **Quality-monitoring CI is not on `main`.** `CONTRIBUTING.md` describes an "Optimization
-   quality" workflow (`.github/workflows/optimization-quality.yml`) and a committed
-   `benchmarks/optimization_baseline.json`, but neither file is on `main`. CI currently runs lint,
-   format, pyright, import-linter, and pytest only. The docs and the actual CI need to be reconciled.
-3. **The pipeline requires an OpenAI key and network access.** Offline use exists only through the
-   library, by injecting your own embedder and merger. The built-in offline `HashEmbedder` is not
-   semantic (it catches only exact-duplicate lines), so offline runs need a generous `cos_sim_diff`
-   budget.
-4. **Compression can be slow and cost real money.** The merge model is called once per near-duplicate
-   pair. Some benchmark reduction runs cost more than \$1 each and took several minutes.
-5. **Merge output is nondeterministic.** Because merging goes through an LLM, the same input can
-   produce different output across runs.
-6. **Pre-1.0 software.** The version is 0.1.0 and the API may still change. It is not on PyPI, so the
-   only install path is the git URL.
+## Product backlog
 
-## Product Backlog
-
-High-priority follow-on work, ordered by priority.
-
-1. **Reach accuracy retention at the release threshold.** Tune the default operating point and widen
-   benchmark coverage so the G2 promise holds. This is the one release goal not met.
-2. **Land the quality-monitoring CI.** Commit the `optimization-quality.yml` workflow and the
-   `optimization_baseline.json` baseline, then reconcile `CONTRIBUTING.md`.
-3. **Publish to PyPI** so install is a single command instead of a git URL.
-4. **Add a hosted embedding API backend** as an alternative to the OpenAI-only path.
-5. **Add per-model exact tokenizers** for accurate counts across models.
-6. **Rewrite instructions beyond drop-and-merge**, so compression is not limited to removing
-   near-duplicates.
-7. **Make the redundancy metric configurable** instead of fixed to nearest-neighbor cosine
-   similarity.
+1. Add a committed optimization baseline and run the comparison in CI.
+2. Publish `alexandria-prompt` to PyPI.
+3. Add another hosted embedding provider.
+4. Add exact tokenizers for more models.
+5. Support rewrite methods that do more than delete and merge near-duplicate instructions.
+6. Make the redundancy metric configurable.
