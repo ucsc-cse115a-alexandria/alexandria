@@ -16,19 +16,8 @@
 We keep written rules short. Style, formatting, typing, and import structure are decided by tool
 configuration and enforced by CI, not by prose. Passing CI means the code is in house style, so
 review focuses on whether a change is correct. The code conventions and the exact tool rules live in
-the root [`CONTRIBUTING.md`](../CONTRIBUTING.md); this document covers the Scrum agreement.
-
-## Definition of Done
-
-A user story or task is done when all of these hold:
-
-- Its acceptance criteria are met.
-- Code and tests are merged to `main`.
-- CI is green across all five checks (lint, format, types, import layering, tests).
-- Branch coverage is at least 80%.
-- User-facing docs are updated when behavior or the CLI changes.
-- At least one teammate has reviewed and approved.
-- Every behavior change is covered by a test that fails without the change.
+the root [`CONTRIBUTING.md`](../CONTRIBUTING.md); this document covers the Scrum agreement. The
+Definition of Done lives in [`definition-of-done.md`](definition-of-done.md).
 
 ## Style guide
 

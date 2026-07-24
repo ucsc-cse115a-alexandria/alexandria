@@ -2,7 +2,7 @@
 
 This guide explains how to set up the repository, run the required checks, write tests, and prepare a pull request. [`pyproject.toml`](pyproject.toml) defines the formatting, lint, typing, test, coverage, and import rules.
 
-The Scrum roles and Definition of Done are in [`docs/working-agreement.md`](docs/working-agreement.md).
+The Scrum roles are in [`docs/working-agreement.md`](docs/working-agreement.md). The Definition of Done is in [`docs/definition-of-done.md`](docs/definition-of-done.md).
 
 ## Setup
 

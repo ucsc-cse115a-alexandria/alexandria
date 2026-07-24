@@ -25,6 +25,11 @@ proof rests on.
 - Write that result into the user-facing README / docs, so a user can read the evidence before they
   adopt compression (2h)
 
+Acceptance criteria:
+
+- The benchmark runs on the original prompt and its Alexandria-compressed version, reporting the accuracy difference between the two.
+- The accuracy result is published in the user-facing README / docs.
+
 **Total for user story 1: 6 hours**
 
 ### User story 2: Steer the accuracy/cost trade-off (G3 · Customer/User value · Priority 2)
@@ -38,6 +43,12 @@ proof rests on.
   similarity floor the user sets (2h). Depends on the compression fidelity check in Enabler B.
 - Add a `--max-tokens N` option so reduction targets a token budget (2h)
 - Add token counting to the CLI: report tokens before and after, plus the reduction percentage (2h)
+
+Acceptance criteria:
+
+- The `--min-similarity` option stops reduction before it crosses the user-set similarity floor.
+- The `--max-tokens` option targets reduction to a token budget.
+- The CLI reports token count before and after reduction, plus the reduction percentage.
 
 **Total for user story 2: 6 hours**
 
