@@ -32,7 +32,7 @@ Acceptance criteria:
 
 Tasks:
 
-- Freeze the Sprint 4 evaluation protocol and command log, using the IFEval benchmark selected by the
+- Freeze the Sprint 4 evaluation protocol and command log, using the BABILong benchmark selected by the
   Sprint 2/3 benchmark work rather than reopening the benchmark survey (2h)
 - Run the original prompts and Alexandria's default compressed prompts through the benchmark, recording
   prompt-level and instruction-level accuracy, token reduction, wall-clock time, and API cost (5h)
